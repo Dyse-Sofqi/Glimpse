@@ -1,16 +1,16 @@
 // Adapted from https://github.com/mgmeyers/obsidian-style-setting
 
 import { App, Modal, Setting, TextAreaComponent } from "obsidian";
-import DynamicHighlightsPlugin from "../main";
+import GazerPlugin from "../main";
 import { SearchQueries } from "./settings";
 
 
 export class ExportModal extends Modal {
-  plugin: DynamicHighlightsPlugin;
+  plugin: GazerPlugin;
   section: string;
   config: SearchQueries;
 
-  constructor(app: App, plugin: DynamicHighlightsPlugin, section: string, config: SearchQueries) {
+  constructor(app: App, plugin: GazerPlugin, section: string, config: SearchQueries) {
     super(app);
     this.plugin = plugin;
     this.config = config;
@@ -21,10 +21,10 @@ export class ExportModal extends Modal {
     let { contentEl, modalEl } = this;
 
     modalEl.addClass("modal-style-settings");
-    modalEl.addClass("modal-dynamic-highlights");
+    modalEl.addClass("modal-gazer");
     
 
-    new Setting(contentEl).setName(`Export settings for: ${this.section}`).then(setting => {
+    new Setting(contentEl).setName(`导出设置: ${this.section}`).then(setting => {
       const output = JSON.stringify(this.config, null, 2);
 
       // Build a copy to clipboard link
@@ -32,7 +32,7 @@ export class ExportModal extends Modal {
         "a",
         {
           cls: "style-settings-copy",
-          text: "Copy to clipboard",
+          text: "复制到剪贴板",
           href: "#",
         },
         copyButton => {
@@ -61,9 +61,9 @@ export class ExportModal extends Modal {
       // Build a download link
       setting.controlEl.createEl("a", {
         cls: "style-settings-download",
-        text: "Download",
+        text: "下载",
         attr: {
-          download: "dynamic-highlights.json",
+          download: "gazer.json",
           href: `data:application/json;charset=utf-8,${encodeURIComponent(output)}`,
         },
       });

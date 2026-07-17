@@ -33,7 +33,7 @@ export class RegExpCursor implements Iterator<{from: number, to: number, match: 
     if (/\\[sWDnr]|\n|\r|\[\^/.test(query)) return new MultilineRegExpCursor(text, query, options, from, to) as any
     this.re = new RegExp(query, baseFlags + (options?.ignoreCase ? "i" : ""))
     this.iter = text.iter()
-    let startLine = text.lineAt(from)
+    const startLine = text.lineAt(from)
     this.curLineStart = startLine.from
     this.matchPos = from
     this.getLine(this.curLineStart)
@@ -61,9 +61,9 @@ export class RegExpCursor implements Iterator<{from: number, to: number, match: 
   next() {
     for (let off = this.matchPos - this.curLineStart;;) {
       this.re.lastIndex = off
-      let match = this.matchPos <= this.to && execWithIndices(this.re, this.curLine)
+      const match = this.matchPos <= this.to && execWithIndices(this.re, this.curLine)
       if (match) {
-        let from = this.curLineStart + match.index, to = from + match[0].length
+        const from = this.curLineStart + match.index, to = from + match[0].length
         this.matchPos = to + (from == to ? 1 : 0)
         if (from == this.curLine.length) this.nextLine()
         if (from < to || from > this.value.to) {
@@ -93,9 +93,9 @@ class FlattenedDoc {
   get to() { return this.from + this.text.length }
 
   static get(doc: Text, from: number, to: number) {
-    let cached = flattened.get(doc)
+    const cached = flattened.get(doc)
     if (!cached || cached.from >= to || cached.to <= from) {
-      let flat = new FlattenedDoc(from, doc.sliceString(from, to))
+      const flat = new FlattenedDoc(from, doc.sliceString(from, to))
       flattened.set(doc, flat)
       return flat
     }
@@ -134,7 +134,7 @@ class MultilineRegExpCursor implements Iterator<{from: number, to: number, match
 
   next() {
     for (;;) {
-      let off = this.re.lastIndex = this.matchPos - this.flat.from
+      const off = this.re.lastIndex = this.matchPos - this.flat.from
       let match = execWithIndices(this.re, this.flat.text)
       // Skip empty matches directly after the last match
       if (match && !match[0] && match.index == off) {
@@ -146,7 +146,7 @@ class MultilineRegExpCursor implements Iterator<{from: number, to: number, match
       if (match && this.flat.to < this.to && match.index + match[0].length > this.flat.text.length - 10)
         match = null
       if (match) {
-        let from = this.flat.from + match.index, to = from + match[0].length
+        const from = this.flat.from + match.index, to = from + match[0].length
         this.value = {from, to, match}
         this.matchPos = to + (from == to ? 1 : 0)
         return this

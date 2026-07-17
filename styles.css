@@ -1,11 +1,9 @@
 /* #region selection highlighter styles */
 
-.cm-matched-word,
 .cm-matched-string {
   text-decoration: underline dashed var(--text-accent);
 }
 
-.cm-current-word,
 .cm-current-string {
   text-decoration: underline dotted var(--text-accent);
 }
@@ -14,11 +12,11 @@
 
 /* #region settings tab */
 
-.dynamic-highlights-settings {
+.gazer-settings {
   position: relative;
 }
 
-.dynamic-highlights-settings button.action-button {
+.gazer-settings button.action-button {
   display: grid;
   place-content: center;
   padding: 8px 18px;
@@ -26,29 +24,29 @@
   margin-right: 12px;
 }
 
-.dynamic-highlights-settings h3.persistent-highlights {
+.gazer-settings h3.persistent-highlights {
   margin: 0;
 }
 
 /* #region import/export */
 
-.dynamic-highlights-settings .import-export-wrapper {
+.gazer-settings .import-export-wrapper {
   right: 0;
   position: absolute;
   padding: 0 30px;
 }
 
-.dynamic-highlights-settings .import-export-wrapper a {
+.gazer-settings .import-export-wrapper a {
   padding: 0 0.2em;
 }
 
 /* #endregion import/export */
 
-.dynamic-highlights-settings .highlighter-definition {
+.gazer-settings .highlighter-definition {
   display: block;
 }
 
-.dynamic-highlights-settings .highlighter-definition .setting-item-control {
+.gazer-settings .highlighter-definition .setting-item-control {
   align-content: center;
   align-items: flex-end;
   /* TODO: switch to using grid with columns and rows */
@@ -60,22 +58,22 @@
 
 /* #region color selection */
 
-/* .dynamic-highlights-settings .highlighter-name {
+/* .gazer-settings .highlighter-name {
   width: 20ch;
 } */
 
-.dynamic-highlights-settings .color-wrapper {
+.gazer-settings .color-wrapper {
   display: flex;
   align-items: flex-end;
   align-self: center;
 }
 
-.dynamic-highlights-settings .pickr {
+.gazer-settings .pickr {
   /* display: flex; */
 }
 
-.modal.mod-settings .dynamic-highlights-settings .pcr-button,
-.modal.mod-settings .dynamic-highlights-settings .color-wrapper {
+.modal.mod-settings .gazer-settings .pcr-button,
+.modal.mod-settings .gazer-settings .color-wrapper {
   margin: 0;
   padding: 0;
   /* fixing a weird primary style that caused the picker to be oblong */
@@ -84,7 +82,7 @@
   --scale-2-4: 0;
 }
 
-.modal.mod-settings .dynamic-highlights-settings .setting-item .pickr button.pcr-button {
+.modal.mod-settings .gazer-settings .setting-item .pickr button.pcr-button {
   border-radius: 50px;
   overflow: hidden;
   border: 2px solid var(--background-modifier-border);
@@ -96,24 +94,23 @@
 
 /* #region search term & save */
 
-.dynamic-highlights-settings .query-wrapper {
+.gazer-settings .query-wrapper {
   display: flex;
   align-items: flex-end;
   flex-grow: 100;
 }
 
-.dynamic-highlights-settings .query-wrapper input {
+.gazer-settings .query-wrapper input {
   flex-grow: 100;
-  width: 15ch;
 }
 
-.dynamic-highlights-settings .highlighter-settings-regex {
+.gazer-settings .highlighter-settings-regex {
   /* TODO: fix the fact that this gets squashed on mobile */
   align-self: center;
   margin: 1px 4px 0;
 }
 
-.dynamic-highlights-settings .action-button.action-button-save {
+.gazer-settings .action-button.action-button-save {
   align-self: center;
 }
 
@@ -121,7 +118,7 @@
 
 /* #region settings tab -- mark types */
 
-.dynamic-highlights-settings .mark-wrapper {
+.gazer-settings .mark-wrapper {
   display: grid;
   /* align-items: flex-end; */
   width: 100%;
@@ -129,20 +126,20 @@
   grid-template-columns: repeat(10, auto);
 }
 
-.dynamic-highlights-settings .mark-wrapper .checkbox-container {
+.gazer-settings .mark-wrapper .checkbox-container {
   /* add spacing between toggle description and toggle button */
   /* TODO: do this properly with grid spacing */
   margin: 0px 18px 0 8px;
 }
 
-.is-mobile .dynamic-highlights-settings .mark-wrapper {
+.is-mobile .gazer-settings .mark-wrapper {
   white-space: nowrap;
   grid-template-columns: repeat(2, auto);
 }
 
 /* #endregion settings tab -- mark types */
 
-.dynamic-highlights-settings .group-wrapper {
+.gazer-settings .group-wrapper {
   display: grid;
   align-items: center;
   grid-template-columns: repeat(2, auto);
@@ -150,18 +147,18 @@
 
 /* #region custom css editor */
 
-/* .dynamic-highlights-settings .custom-css {
+/* .gazer-settings .custom-css {
   width: 100%;
   height: 10em;
 } */
 
-.dynamic-highlights-settings .custom-css-wrapper {
+.gazer-settings .custom-css-wrapper {
   flex-grow: 100;
   text-align: left;
   width: 100%;
 }
 
-.dynamic-highlights-settings .custom-css-wrapper .cm-editor {
+.gazer-settings .custom-css-wrapper .cm-editor {
   border: 1px solid var(--background-modifier-border);
   background-color: var(--background-primary-alt);
   max-height: 15em;
@@ -169,15 +166,15 @@
   resize: vertical;
 }
 
-.dynamic-highlights-settings .custom-css-wrapper .cm-editor[style*="height"] {
+.gazer-settings .custom-css-wrapper .cm-editor[style*="height"] {
   max-height: unset;
 }
 
-.dynamic-highlights-settings .custom-css-wrapper .cm-gutters {
+.gazer-settings .custom-css-wrapper .cm-gutters {
   background-color: var(--background-primary-alt);
 }
 
-.dynamic-highlights-settings .cm-line {
+.gazer-settings .cm-line {
   font-family: var(--font-monospace);
 }
 
@@ -185,25 +182,25 @@
 
 /* #region mobile specific styles */
 
-.is-mobile .dynamic-highlights-settings .setting-item-control button.action-button-save,
-.is-mobile .dynamic-highlights-settings .query-wrapper input {
+.is-mobile .gazer-settings .setting-item-control button.action-button-save,
+.is-mobile .gazer-settings .query-wrapper input {
   width: unset;
 }
 
-.is-mobile .dynamic-highlights-settings .setting-item-control input.highlighter-name {
+.is-mobile .gazer-settings .setting-item-control input.highlighter-name {
   width: fit-content;
 }
 
-.is-mobile .dynamic-highlights-settings .query-wrapper {
+.is-mobile .gazer-settings .query-wrapper {
   display: grid;
   grid-template-columns: 1fr auto auto;
   place-items: center;
 }
 
-.is-mobile .dynamic-highlights-settings .setting-item-control select,
-.is-mobile .dynamic-highlights-settings .setting-item-control input,
-.is-mobile .dynamic-highlights-settings .setting-item-control textarea,
-.is-mobile .dynamic-highlights-settings .setting-item-control button {
+.is-mobile .gazer-settings .setting-item-control select,
+.is-mobile .gazer-settings .setting-item-control input,
+.is-mobile .gazer-settings .setting-item-control textarea,
+.is-mobile .gazer-settings .setting-item-control button {
   width: 100%;
   margin: 0 4px;
 }
@@ -212,32 +209,40 @@
 
 /* #region persistent highlighter listing */
 
-.dynamic-highlights-settings .highlighter-container {
+.gazer-settings .highlighter-container {
   /* allow for copy and paste */
   user-select: text;
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.dynamic-highlights-settings .highlighter-container .highlighter-details {
+.gazer-settings .highlighter-container .highlighter-details {
   display: flex;
   padding: 18px 0 18px 0;
   border-top: none;
 }
 
-.dynamic-highlights-settings .highlighter-container .highlighter-details .setting-item-control {
+.gazer-settings .highlighter-container .highlighter-details .setting-item-control {
   flex-wrap: nowrap;
   flex-grow: 0;
 }
 
-.dynamic-highlights-settings .highlighter-setting-icon {
-  display: flex;
-  height: 24px;
-  width: 24px;
+/* 高亮样式预览 — 以规则颜色渲染"预览"文本 */
+.gazer-settings .highlighter-style-preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  padding: 0 6px;
+  border-radius: 3px;
+  font-size: var(--font-text-size);
+  font-family: var(--font-text);
+  line-height: 20px;
+  white-space: nowrap;
 }
 
 /* #region selection highlighter settings */
 
-.dynamic-highlights-settings .ignored-words-input {
+.gazer-settings .ignored-words-input {
   width: 25rem;
   height: 10em;
   resize: vertical;
@@ -247,7 +252,7 @@
 
 /* #region persistent highlighters sortable ui */
 
-.dynamic-highlights-settings .highlighter-item-draggable {
+.gazer-settings .highlighter-item-draggable {
   cursor: initial;
   display: grid;
   grid-gap: 8px;
@@ -256,31 +261,32 @@
   border-top: 1px solid var(--background-modifier-border);
 }
 
-.dynamic-highlights-settings .highlighter-setting-icon-drag {
+.gazer-settings .highlighter-setting-icon-drag {
   cursor: grab;
+  margin-inline-end: 0;
 }
 
-.dynamic-highlights-settings .highlighter-sortable-fallback {
+.gazer-settings .highlighter-sortable-fallback {
   cursor: grabbing;
   box-shadow: 0px 3px 32px rgb(31 38 135 / 15%);
 }
 
-.dynamic-highlights-settings .highlighter-sortable-grab {
+.gazer-settings .highlighter-sortable-grab {
   cursor: grabbing;
 }
 
-.dynamic-highlights-settings .highlighter-sortable-ghost {
+.gazer-settings .highlighter-sortable-ghost {
   opacity: 0.4;
   cursor: grabbing;
 }
 
-.dynamic-highlights-settings .highlighter-sortable-chosen {
+.gazer-settings .highlighter-sortable-chosen {
   cursor: grabbing;
   padding: 0 0 0 18px;
   background-color: var(--background-primary);
 }
 
-.dynamic-highlights-settings .highlighter-sortable-drag {
+.gazer-settings .highlighter-sortable-drag {
   cursor: grabbing;
   box-shadow: 0px 3px 32px rgb(31 38 135 / 15%);
 }
@@ -291,20 +297,20 @@
 
 /* #region style settings import/export */
 
-.modal-dynamic-highlights {
+.modal-gazer {
   height: 70vh;
   display: flex;
   flex-direction: column;
 }
 
-.modal-dynamic-highlights .modal-content {
+.modal-gazer .modal-content {
   flex-grow: 1;
   margin: 0;
   display: flex;
   flex-direction: column;
 }
 
-.modal-dynamic-highlights textarea {
+.modal-gazer textarea {
   display: block;
   width: 100%;
   height: 100%;
@@ -316,24 +322,24 @@
   margin-bottom: 5px;
 }
 
-.modal-dynamic-highlights .setting-item {
+.modal-gazer .setting-item {
   align-items: flex-start;
 }
 
-.modal-dynamic-highlights .setting-item .setting-item-control a {
+.modal-gazer .setting-item .setting-item-control a {
   margin-left: 4px;
 }
 
-.modal-dynamic-highlights button {
+.modal-gazer button {
   margin: 10px 0 0;
 }
 
-.modal-dynamic-highlights .style-settings-import-error {
+.modal-gazer .style-settings-import-error {
   display: none;
   color: var(--text-error);
 }
 
-.modal-dynamic-highlights .style-settings-import-error.active {
+.modal-gazer .style-settings-import-error.active {
   display: block;
 }
 

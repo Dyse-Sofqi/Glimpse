@@ -1,6 +1,5 @@
-import { StaticHighlightOptions } from "src/highlighters/static";
+import { StaticHighlightOptions } from "../highlighters/static";
 import { SelectionHighlightOptions } from "../highlighters/selection";
-import { ignoredWords } from "./ignoredWords";
 
 interface SearchConfig {
   value: string;
@@ -14,7 +13,7 @@ export interface CSSSettings {
   [key: string]: SettingValue;
 }
 
-interface SearchQuery {
+export interface SearchQuery {
   query: string;
   class: string;
   color: string | null;
@@ -29,19 +28,17 @@ export interface SearchQueries {
 
 export type HighlighterOptions = SelectionHighlightOptions | StaticHighlightOptions;
 
-export interface DynamicHighlightsSettings {
+export interface GazerSettings {
   selectionHighlighter: SelectionHighlightOptions;
   staticHighlighter: StaticHighlightOptions;
 }
 
-export const DEFAULT_SETTINGS: DynamicHighlightsSettings = {
+export const DEFAULT_SETTINGS: GazerSettings = {
   selectionHighlighter: {
-    highlightWordAroundCursor: true,
     highlightSelectedText: true,
     maxMatches: 100,
-    minSelectionLength: 3,
+    minSelectionLength: 1,
     highlightDelay: 200,
-    ignoredWords: ignoredWords,
   },
   staticHighlighter: {
     queries: {},

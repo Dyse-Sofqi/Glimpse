@@ -3,8 +3,7 @@ import { EditorView } from "@codemirror/view";
 import { debounce, MarkdownView, Plugin } from "obsidian";
 import { highlightSelectionMatches, reconfigureSelectionHighlighter } from "./highlighters/selection";
 import { buildStyles, staticHighlighterExtension } from "./highlighters/static";
-import addIcons from "./icons/customIcons";
-import { DEFAULT_SETTINGS, DynamicHighlightsSettings, HighlighterOptions } from "./settings/settings";
+import { DEFAULT_SETTINGS, GazerSettings, HighlighterOptions } from "./settings/settings";
 import { SettingTab } from "./settings/ui";
 
 interface CustomCSS {
@@ -12,8 +11,8 @@ interface CustomCSS {
   enabled: boolean;
 }
 
-export default class DynamicHighlightsPlugin extends Plugin {
-  settings: DynamicHighlightsSettings;
+export default class GazerPlugin extends Plugin {
+  settings: GazerSettings;
   extensions: Extension[];
   styles: Extension;
   staticHighlighter: Extension;
@@ -26,7 +25,6 @@ export default class DynamicHighlightsPlugin extends Plugin {
     await this.loadSettings();
     this.settingsTab = new SettingTab(this.app, this);
     this.addSettingTab(this.settingsTab);
-    addIcons();
     this.staticHighlighter = staticHighlighterExtension(this);
     this.extensions = [];
     this.updateSelectionHighlighter();

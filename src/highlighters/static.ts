@@ -5,8 +5,8 @@ import { syntaxTree, tokenClassNodeProp } from "@codemirror/language";
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetType } from "@codemirror/view";
 import { cloneDeep } from "lodash";
 import type { RegExpExecArray } from "regexp-match-indices/types";
-import DynamicHighlightsPlugin from "src/main";
-import { SearchQueries } from "src/settings/settings";
+import GazerPlugin from "../main";
+import { SearchQueries, SearchQuery } from "../settings/settings";
 import { StyleSpec } from "style-mod";
 import { RegExpCursor } from "./regexp-cursor";
 
@@ -31,9 +31,9 @@ export const staticHighlightConfig = Facet.define<StaticHighlightOptions, Requir
 
 const staticHighlighterCompartment = new Compartment();
 
-export function staticHighlighterExtension(plugin: DynamicHighlightsPlugin): Extension {
-  let ext: Extension[] = [staticHighlighter];
-  let options = plugin.settings.staticHighlighter;
+export function staticHighlighterExtension(plugin: GazerPlugin): Extension {
+  const ext: Extension[] = [staticHighlighter];
+  const options = plugin.settings.staticHighlighter;
   ext.push(staticHighlightConfig.of(cloneDeep(options)));
   return ext;
 }
@@ -42,15 +42,15 @@ export interface Styles {
   [selector: string]: StyleSpec;
 }
 
-export function buildStyles(plugin: DynamicHighlightsPlugin) {
-  let queries = Object.values(plugin.settings.staticHighlighter.queries);
-  let styles: Styles = {};
-  for (let query of queries) {
-    let className = "." + query.class;
+export function buildStyles(plugin: GazerPlugin) {
+  const queries: SearchQuery[] = Object.values(plugin.settings.staticHighlighter.queries);
+  const styles: Styles = {};
+  for (const query of queries) {
+    const className = "." + query.class;
     if (!query.color) continue;
     styles[className] = { backgroundColor: query.color };
   }
-  let theme = EditorView.theme(styles);
+  const theme = EditorView.theme(styles);
   return theme;
 }
 
@@ -63,7 +63,7 @@ class IconWidget extends WidgetType {
   }
 
   toDOM() {
-    let headerEl = document.createElement("span");
+    const headerEl = document.createElement("span");
     this.className && headerEl.addClass(this.className);
     return headerEl;
   }
@@ -81,7 +81,7 @@ const staticHighlighter = ViewPlugin.fromClass(
     widgetDecorations: DecorationSet;
 
     constructor(view: EditorView) {
-      let { token, line, group, widget } = this.getDeco(view);
+      const { token, line, group, widget } = this.getDeco(view);
       this.decorations = token;
       this.lineDecorations = line;
       this.groupDecorations = group;
@@ -89,9 +89,9 @@ const staticHighlighter = ViewPlugin.fromClass(
     }
 
     update(update: ViewUpdate) {
-      let reconfigured = update.startState.facet(staticHighlightConfig) !== update.state.facet(staticHighlightConfig);
+      const reconfigured = update.startState.facet(staticHighlightConfig) !== update.state.facet(staticHighlightConfig);
       if (update.docChanged || update.viewportChanged || reconfigured) {
-        let { token, line, group, widget } = this.getDeco(update.view);
+        const { token, line, group, widget } = this.getDeco(update.view);
         this.decorations = token;
         this.lineDecorations = line;
         this.groupDecorations = group;
@@ -105,15 +105,15 @@ const staticHighlighter = ViewPlugin.fromClass(
       group: DecorationSet;
       widget: DecorationSet;
     } {
-      let { state } = view,
+      const { state } = view,
         tokenDecos: Range<Decoration>[] = [],
         lineDecos: Range<Decoration>[] = [],
         groupDecos: Range<Decoration>[] = [],
         widgetDecos: Range<Decoration>[] = [],
         lineClasses: { [key: number]: string[] } = {},
-        queries = Object.values(view.state.facet(staticHighlightConfig).queries);
-      for (let part of view.visibleRanges) {
-        for (let query of queries) {
+        queries: SearchQuery[] = Object.values(view.state.facet(staticHighlightConfig).queries);
+      for (const part of view.visibleRanges) {
+        for (const query of queries) {
           let cursor: RegExpCursor | SearchCursor;
           try {
             if (query.regex) cursor = new RegExpCursor(state.doc, query.query, {}, part.from, part.to);
@@ -123,10 +123,10 @@ const staticHighlighter = ViewPlugin.fromClass(
             continue;
           }
           while (!cursor.next().done) {
-            let { from, to } = cursor.value;
-            let string = state.sliceDoc(from, to).trim();
+            const { from, to } = cursor.value;
+            const string = state.sliceDoc(from, to).trim();
             const linePos = view.state.doc.lineAt(from)?.from;
-            let syntaxNode = syntaxTree(view.state).resolveInner(linePos + 1),
+            const syntaxNode = syntaxTree(view.state).resolveInner(linePos + 1),
               nodeProps = syntaxNode.type.prop(tokenClassNodeProp),
               excludedSection = ["hmd-codeblock", "hmd-frontmatter"].find(token =>
                 nodeProps?.split(" ").includes(token)
@@ -141,21 +141,21 @@ const staticHighlighter = ViewPlugin.fromClass(
               tokenDecos.push(markDeco.range(from, to));
             }
             if (query.mark?.contains("start") || query.mark?.contains("end")) {
-              let startDeco = Decoration.widget({ widget: new IconWidget(query.class + "-start") });
-              let endDeco = Decoration.widget({ widget: new IconWidget(query.class + "-end") });
+              const startDeco = Decoration.widget({ widget: new IconWidget(query.class + "-start") });
+              const endDeco = Decoration.widget({ widget: new IconWidget(query.class + "-end") });
               if (query.mark?.contains("start")) widgetDecos.push(startDeco.range(from, from));
               if (query.mark?.contains("end")) widgetDecos.push(endDeco.range(to, to));
             }
             if (query.mark?.contains("group")) {
               let groups;
               if (cursor instanceof RegExpCursor) {
-                let match = cursor.value?.match as RegExpExecArray;
+                const match = cursor.value?.match as RegExpExecArray;
                 groups = match.indices?.groups;
               }
               groups &&
                 Object.entries(groups).forEach(group => {
                   try {
-                    let [groupName, [groupFrom, groupTo]] = group;
+                    const [groupName, [groupFrom, groupTo]] = group;
                     const groupDeco = Decoration.mark({ class: groupName });
                     groupDecos.push(groupDeco.range(linePos + groupFrom, linePos + groupTo));
                   } catch (err) {

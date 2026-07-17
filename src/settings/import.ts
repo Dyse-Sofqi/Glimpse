@@ -2,14 +2,14 @@
 
 import Ajv from "ajv";
 import { App, ButtonComponent, Modal, Setting, TextAreaComponent } from "obsidian";
-import { queriesSchema } from "src/schema/queries";
-import DynamicHighlightsPlugin from "../main";
+import { queriesSchema } from "../schema/queries";
+import GazerPlugin from "../main";
 import { SearchQueries } from "./settings";
 
 export class ImportModal extends Modal {
-  plugin: DynamicHighlightsPlugin;
+  plugin: GazerPlugin;
 
-  constructor(app: App, plugin: DynamicHighlightsPlugin) {
+  constructor(app: App, plugin: GazerPlugin) {
     super(app);
     this.plugin = plugin;
   }
@@ -18,17 +18,17 @@ export class ImportModal extends Modal {
     let { contentEl, modalEl } = this;
 
     modalEl.addClass("modal-style-settings");
-    modalEl.addClass("modal-dynamic-highlights");
+    modalEl.addClass("modal-gazer");
 
     new Setting(contentEl)
-      .setName("Import highlighters")
-      .setDesc("Import an entire or partial configuration. Warning: this may override existing highlighters");
+      .setName("导入高亮器")
+      .setDesc("导入完整或部分配置。警告：可能覆盖现有高亮器");
 
     new Setting(contentEl).then(setting => {
       // Build an error message container
       const errorSpan = createSpan({
         cls: "style-settings-import-error",
-        text: "Error importing config",
+        text: "导入配置出错",
       });
 
       setting.nameEl.appendChild(errorSpan);
@@ -54,11 +54,11 @@ export class ImportModal extends Modal {
             this.close();
           } catch (e) {
             errorSpan.addClass("active");
-            errorSpan.setText(`Error importing highlighters: ${e}`);
+            errorSpan.setText(`导入高亮器出错: ${e}`);
           }
         } else {
           errorSpan.addClass("active");
-          errorSpan.setText(`Error importing highlighters: config is empty`);
+          errorSpan.setText(`导入高亮器出错: 配置为空`);
         }
       };
 
@@ -92,14 +92,14 @@ export class ImportModal extends Modal {
       // Build a label we will style as a link
       setting.controlEl.createEl("label", {
         cls: "style-settings-import-label",
-        text: "Import from file",
+        text: "从文件导入",
         attr: {
           for: "style-settings-import-input",
         },
       });
 
-      new TextAreaComponent(contentEl).setPlaceholder("Paste config here...").then(ta => {
-        new ButtonComponent(contentEl).setButtonText("Save").onClick(async () => {
+      new TextAreaComponent(contentEl).setPlaceholder("在此粘贴配置...").then(ta => {
+        new ButtonComponent(contentEl).setButtonText("保存").onClick(async () => {
           await importAndClose(ta.getValue().trim());
         });
       });

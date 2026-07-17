@@ -13,12 +13,11 @@
     "strictNullChecks": true,
     "lib": [
       "DOM",
-      "ES5",
-      "ES6",
-      "ES7"
-    ]
+      "ES2017"
+    ],
+    "skipLibCheck": true
   },
   "include": [
-    "**/*.ts"
+    "src/**/*.ts"
   ]
 }

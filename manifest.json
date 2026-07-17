@@ -1,10 +1,10 @@
 {
-  "id": "obsidian-dynamic-highlights",
-  "name": "Dynamic Highlights",
-  "version": "0.3.1",
+  "id": "gazer",
+  "name": "Gazer",
+  "version": "0.3.2",
   "minAppVersion": "0.15.0",
   "description": "Dynamically highlight text based on cursor selection or search query with full regex, mobile, and live preview support",
-  "author": "NothingIsLost",
-  "authorUrl": "https://github.com/nothingislost",
+  "author": "Sofqi",
+  "authorUrl": "https://github.com/Dyse-Sofqi/ziping/blob/main/zanshang.jpg",
   "isDesktopOnly": false
 }
