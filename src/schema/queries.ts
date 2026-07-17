@@ -18,6 +18,9 @@ export const queriesSchema = {
         enabled: {
           type: "boolean",
         },
+        group: {
+          type: "string",
+        },
         mark: {
           items: {
             enum: ["end", "group", "line", "match", "start"],

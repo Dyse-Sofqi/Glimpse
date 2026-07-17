@@ -4,7 +4,11 @@ import Ajv from "ajv";
 import { App, ButtonComponent, Modal, Setting, TextAreaComponent } from "obsidian";
 import { queriesSchema } from "../schema/queries";
 import GazerPlugin from "../main";
-import { SearchQueries } from "./settings";
+
+interface ImportPayload {
+  queries: Record<string, any>;
+  groups?: string[];
+}
 
 export class ImportModal extends Modal {
   plugin: GazerPlugin;
@@ -37,15 +41,25 @@ export class ImportModal extends Modal {
       const importAndClose = async (str: string) => {
         if (str) {
           try {
-            let { queries, queryOrder } = this.plugin.settings.staticHighlighter;
-            const importedSettings = JSON.parse(str) as SearchQueries;
+            let { queries, queryOrder, groups } = this.plugin.settings.staticHighlighter;
+            const imported = JSON.parse(str) as ImportPayload;
+            const importedQueries = imported.queries || imported;
             const ajv = new Ajv();
             const validate = ajv.compile(queriesSchema);
-            if (!validate(importedSettings)) {
+            if (!validate(importedQueries)) {
               throw validate.errors?.map(err => `${err.instancePath} ${err.message}`).first();
             }
-            queries = Object.assign(queries, importedSettings);
-            Object.keys(importedSettings).forEach(key => queryOrder.includes(key) || queryOrder.push(key));
+            queries = Object.assign(queries, importedQueries);
+            Object.keys(importedQueries).forEach(key => queryOrder.includes(key) || queryOrder.push(key));
+            // old format without groups → strip group field, all go to 默认
+            if (!imported.groups) {
+              Object.keys(importedQueries).forEach(key => { delete queries[key].group; });
+            }
+            if (imported.groups) {
+              imported.groups.forEach(g => {
+                if (!groups.includes(g)) groups.push(g);
+              });
+            }
             await this.plugin.saveSettings();
             this.plugin.updateStaticHighlighter();
             this.plugin.updateStyles();

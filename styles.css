@@ -19,28 +19,72 @@
 .gazer-settings button.action-button {
   display: grid;
   place-content: center;
-  padding: 8px 18px;
-  /* set this to the obsidian default to address theme devs messing with it 👀 */
-  margin-right: 12px;
+  padding: 6px 10px;
+  margin-right: 6px;
 }
 
 .gazer-settings h3.persistent-highlights {
   margin: 0;
 }
 
-/* #region import/export */
+/* #region toolbar */
 
-.gazer-settings .import-export-wrapper {
-  right: 0;
-  position: absolute;
-  padding: 0 30px;
+.gazer-settings .gazer-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 0;
 }
 
-.gazer-settings .import-export-wrapper a {
-  padding: 0 0.2em;
+/* #region group tabs */
+
+.gazer-settings .gazer-group-tabs {
+  display: flex;
+  align-items: flex-end;
+  padding: 0;
+  flex-wrap: wrap;
+  background-image: linear-gradient(var(--background-primary-alt), var(--background-primary-alt));
+  background-size: 100% 2px;
+  background-repeat: no-repeat;
+  background-position: bottom;
+  margin-bottom: 8px;
 }
 
-/* #endregion import/export */
+.gazer-settings .gazer-group-tab-bar {
+  display: flex;
+  gap: 1px;
+  flex-wrap: wrap;
+}
+
+.gazer-settings .gazer-group-tab {
+  padding: 6px 16px;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  background: var(--background-primary-alt);
+}
+
+.gazer-settings .gazer-group-tab.active {
+  color: var(--text-accent);
+  background: var(--background-primary-alt);
+  border-bottom: 2px solid var(--text-accent);
+}
+
+.gazer-settings .gazer-group-actions {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.gazer-settings .gazer-group-tab.drag-hover {
+  background: var(--text-accent);
+  color: var(--text-on-accent);
+  transform: scale(1.08);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+
+/* #endregion group tabs */
 
 .gazer-settings .highlighter-definition {
   display: block;
@@ -116,19 +160,21 @@
 
 /* #endregion search term & save */
 
-/* #region settings tab -- mark types */
+/* #region mark toggles (definition area) */
 
 .gazer-settings .mark-wrapper {
   display: grid;
-  /* align-items: flex-end; */
   width: 100%;
   align-items: center;
   grid-template-columns: repeat(10, auto);
 }
 
+.gazer-settings .mark-wrapper > div {
+  display: flex;
+  align-items: center;
+}
+
 .gazer-settings .mark-wrapper .checkbox-container {
-  /* add spacing between toggle description and toggle button */
-  /* TODO: do this properly with grid spacing */
   margin: 0px 18px 0 8px;
 }
 
@@ -137,7 +183,26 @@
   grid-template-columns: repeat(2, auto);
 }
 
-/* #endregion settings tab -- mark types */
+/* #endregion mark toggles */
+
+/* #region match toggle (per-item) */
+
+.gazer-settings .match-toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.gazer-settings .match-toggle-wrapper .checkbox-container {
+  margin: 0;
+}
+
+.gazer-settings .highlighter-details.match-disabled {
+  opacity: 0.45;
+}
+
+/* #endregion match toggle */
 
 .gazer-settings .group-wrapper {
   display: grid;
@@ -217,7 +282,7 @@
 
 .gazer-settings .highlighter-container .highlighter-details {
   display: flex;
-  padding: 18px 0 18px 0;
+  padding: 8px;
   border-top: none;
 }
 
@@ -231,6 +296,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  align-self: center;
   width: auto;
   padding: 0 6px;
   border-radius: 3px;
@@ -264,6 +330,8 @@
 .gazer-settings .highlighter-setting-icon-drag {
   cursor: grab;
   margin-inline-end: 0;
+  display: flex;
+  align-items: center;
 }
 
 .gazer-settings .highlighter-sortable-fallback {
@@ -282,13 +350,12 @@
 
 .gazer-settings .highlighter-sortable-chosen {
   cursor: grabbing;
-  padding: 0 0 0 18px;
-  background-color: var(--background-primary);
+  border-radius: var(--setting-items-radius);
+  box-shadow: 0px 3px 32px rgb(31 38 135 / 15%);
 }
 
 .gazer-settings .highlighter-sortable-drag {
   cursor: grabbing;
-  box-shadow: 0px 3px 32px rgb(31 38 135 / 15%);
 }
 
 /* #endregion persistent highlighters sortable ui */

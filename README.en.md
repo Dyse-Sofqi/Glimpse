@@ -6,12 +6,6 @@ Currently only supports Source mode and Live Preview mode. Reading mode and lega
 
 ### Selection Highlighting
 
-When nothing is selected, automatically highlights all occurrences of the word at the cursor:
-- Case-insensitive matching
-- Current cursor word marked as `.cm-current-word`
-- Other matching words in the document marked as `.cm-matched-word`
-- All matches include `data-contents` attribute with the matched word value
-
 When text is selected, highlights all occurrences of the selected text:
 - Case-insensitive matching
 - Current selection marked as `.cm-selection`
@@ -98,6 +92,16 @@ Thanks to @chetachiezikeuzor for the settings UI code, inspired by https://githu
 ---
 
 ### Changelog
+
+#### 0.4.0 (2026-07-17)
+
+- Group tabs: create, rename, delete groups to organize highlighters
+- Drag highlighters onto group tabs with hover animation
+- Add group button opens naming modal by default
+- Import backward compatibility: old format without groups → all go to "默认"
+- All group action buttons use Obsidian's native `.clickable-icon` styling
+- Group tab UI redesign: zero-gap layout, accent-colored active tab, rounded top/square bottom, full-width separator line
+- TypeScript strict mode error fixes
 
 #### 0.3.2 (2026-07-17)
 - Drag handle icon changed to Obsidian's native Lucide `grip-vertical`

@@ -21,6 +21,7 @@ export interface SearchQuery {
   mark?: markTypes[];
   css?: string;
   enabled?: boolean;
+  group?: string;
 }
 export interface SearchQueries {
   [key: string]: SearchQuery;
@@ -43,6 +44,7 @@ export const DEFAULT_SETTINGS: GazerSettings = {
   staticHighlighter: {
     queries: {},
     queryOrder: [],
+    groups: [],
   },
 };
 

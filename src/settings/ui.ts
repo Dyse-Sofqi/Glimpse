@@ -4,6 +4,7 @@ import Pickr from "@simonwep/pickr";
 import {
   App,
   ButtonComponent,
+  Modal,
   Notice,
   PluginSettingTab,
   Scope,
@@ -18,7 +19,6 @@ import { basicSetup } from "../editor/extensions";
 import GazerPlugin from "../main";
 import { ExportModal } from "./export";
 import { ImportModal } from "./import";
-import { markTypes } from "./settings";
 import { materialPalenight } from "../editor/theme-dark";
 import { basicLightTheme } from "../editor/theme-light";
 
@@ -27,68 +27,31 @@ export class SettingTab extends PluginSettingTab {
   editor!: EditorView;
   scope!: Scope;
   pickrInstance!: Pickr;
+  activeGroup: string = "默认";
+  _dragItemId: string | undefined;
 
   constructor(app: App, plugin: GazerPlugin) {
     super(app, plugin);
     this.plugin = plugin;
-    // this.scope = new Scope(app.scope);
   }
 
   hide() {
     this.editor?.destroy();
     this.pickrInstance && this.pickrInstance.destroyAndRemove();
-    // this.app.keymap.popScope(this.scope);
   }
 
   display(): void {
-    // this.app.keymap.pushScope(this.scope);
     const { containerEl } = this;
     containerEl.empty();
     const config = this.plugin.settings.staticHighlighter;
-    const importExportEl = containerEl.createDiv("import-export-wrapper");
-    importExportEl.createEl(
-      "a",
-      {
-        cls: "gazer-import",
-        text: "导入",
-        href: "#",
-      },
-      el => {
-        el.addEventListener("click", e => {
-          e.preventDefault();
-          new ImportModal(this.plugin.app, this.plugin).open();
-        });
-      }
-    );
-    importExportEl.createEl(
-      "a",
-      {
-        cls: "gazer-export",
-        text: "导出",
-        href: "#",
-      },
-      el => {
-        el.addEventListener("click", e => {
-          e.preventDefault();
-          new ExportModal(this.plugin.app, this.plugin, "All", config.queries).open();
-        });
-      }
-    );
-    containerEl
-      .createEl("h3", {
-        text: "持久高亮",
-      })
-      .addClass("persistent-highlights");
+    containerEl.createEl("h3", { text: "持久高亮" }).addClass("persistent-highlights");
     containerEl.addClass("gazer-settings");
 
     const defineQueryUI = new Setting(containerEl);
-
     defineQueryUI
       .setName("定义持久高亮器")
       .setClass("highlighter-definition")
-      .setDesc(
-        `在此处定义高亮器名称、背景色和搜索词/表达式。输入正则查询时请启用正则开关。定义完成后记得点击保存按钮。`
-      );
+      .setDesc("在此处定义高亮器名称、背景色和搜索词/表达式。输入正则查询时请启用正则开关。定义完成后记得点击保存按钮。");
 
     const classInput = new TextComponent(defineQueryUI.controlEl);
     classInput.setPlaceholder("高亮器名称");
@@ -99,7 +62,6 @@ export class SettingTab extends PluginSettingTab {
 
     let pickrInstance: Pickr;
     const colorPicker = new ButtonComponent(colorWrapper);
-
     colorPicker.setClass("highlightr-color-picker").then(() => {
       this.pickrInstance = pickrInstance = new Pickr({
         el: colorPicker.buttonEl,
@@ -112,17 +74,7 @@ export class SettingTab extends PluginSettingTab {
           preview: true,
           opacity: true,
           hue: true,
-          interaction: {
-            hex: true,
-            rgba: false,
-            hsla: true,
-            hsva: false,
-            cmyk: false,
-            input: true,
-            clear: true,
-            cancel: true,
-            save: true,
-          },
+          interaction: { hex: true, rgba: false, hsla: true, hsva: false, cmyk: false, input: true, clear: true, cancel: true, save: true },
         },
       });
       colorWrapper.querySelector(".pcr-button")!.ariaLabel = "Background color picker";
@@ -130,20 +82,15 @@ export class SettingTab extends PluginSettingTab {
       pickrInstance
         .on("clear", (instance: Pickr) => {
           instance.hide();
-          classInput.inputEl.setAttribute("style", `background-color: none; color: var(--text-normal);`);
+          classInput.inputEl.setAttribute("style", "background-color: none; color: var(--text-normal);");
         })
-        .on("cancel", (instance: Pickr) => {
-          instance.hide();
-        })
+        .on("cancel", (instance: Pickr) => instance.hide())
         .on("change", (color: Pickr.HSVaColor) => {
           const colorHex = color?.toHEXA().toString() || "";
-          let newColor;
-          colorHex && colorHex.length == 6 ? (newColor = `${colorHex}A6`) : (newColor = colorHex);
+          const newColor = colorHex && colorHex.length === 6 ? `${colorHex}A6` : colorHex;
           classInput.inputEl.setAttribute("style", `background-color: ${newColor}; color: var(--text-normal);`);
         })
-        .on("save", (color: Pickr.HSVaColor, instance: Pickr) => {
-          instance.hide();
-        });
+        .on("save", (color: Pickr.HSVaColor, instance: Pickr) => instance.hide());
     });
 
     const queryWrapper = defineQueryUI.controlEl.createDiv("query-wrapper");
@@ -154,44 +101,25 @@ export class SettingTab extends PluginSettingTab {
     const queryTypeInput = new ToggleComponent(queryWrapper);
     queryTypeInput.toggleEl.addClass("highlighter-settings-regex");
     queryTypeInput.toggleEl.ariaLabel = "启用正则";
-    queryTypeInput.onChange(value => {
-      if (value) {
-        queryInput.setPlaceholder("搜索表达式");
-        // groupWrapper.show();
-        marks.group?.element.show();
-      } else {
-        queryInput.setPlaceholder("搜索词");
-        marks.group?.element.hide();
-      }
+
+    // mark toggles: group, line, start, end
+    const marksWrapper = defineQueryUI.controlEl.createDiv({ cls: "mark-wrapper" });
+    const marks: { [key: string]: { container: HTMLDivElement; toggle: ToggleComponent } } = {};
+    const toggleLabels: Record<string, string> = { line: "父行", start: "开始", end: "结束", group: "捕获组" };
+    Object.entries(toggleLabels).forEach(([key, label]) => {
+      const item = marksWrapper.createDiv();
+      item.createSpan({ text: label });
+      const toggle = new ToggleComponent(item);
+      toggle.setValue(true);
+      marks[key] = { container: item, toggle };
     });
 
-    type MarkTypes = Record<markTypes, { description: string; defaultState: boolean }>;
-    type MarkItems = Partial<Record<markTypes, { element: HTMLElement; component: ToggleComponent }>>;
-    const buildMarkerTypes = (parentEl: HTMLElement) => {
-      const types: MarkItems = {};
-      const marks: MarkTypes = {
-        match: { description: "匹配", defaultState: true },
-        group: { description: "捕获组", defaultState: false },
-        line: { description: "父行", defaultState: false },
-        start: { description: "开始", defaultState: false },
-        end: { description: "结束", defaultState: false },
-      };
-      const container = parentEl.createDiv("mark-wrapper");
-      let type: markTypes;
-      for (type in marks) {
-        const mark = marks[type];
-        const wrapper = container.createDiv("mark-wrapper");
-        if (type === "group") wrapper.hide();
-        wrapper.createSpan("match-type").setText(mark.description);
-        const component = new ToggleComponent(wrapper).setValue(mark.defaultState);
-        types[type] = {
-          element: wrapper,
-          component: component,
-        };
-      }
-      return types;
-    };
-    const marks = buildMarkerTypes(defineQueryUI.controlEl);
+    queryTypeInput.onChange(value => {
+      queryInput.setPlaceholder(value ? "搜索表达式" : "搜索词");
+      const gw = marks["group"]?.container;
+      if (gw) gw.style.visibility = value ? "" : "hidden";
+    });
+    { const gw = marks["group"]?.container; if (gw) gw.style.visibility = "hidden"; }
 
     const customCSSWrapper = defineQueryUI.controlEl.createDiv("custom-css-wrapper");
     customCSSWrapper.createSpan("setting-item-name").setText("自定义 CSS");
@@ -213,20 +141,22 @@ export class SettingTab extends PluginSettingTab {
         const queryTypeValue = queryTypeInput.getValue();
         const customCss = this.editor.state.doc.toString();
 
+        const enabledMarks = Object.entries(marks)
+          .filter(([, m]) => m.toggle.getValue())
+          .map(([k]) => k);
+
         if (className) {
           if (!config.queryOrder.includes(className)) {
             config.queryOrder.push(className);
           }
-          const enabledMarks = Object.entries(marks)
-            .map(([type, item]) => item.component.getValue() && type)
-            .filter(m => m);
           config.queries[className] = {
             class: className,
-            color: hexValue ? hexValue : "",
+            color: hexValue ?? "",
             regex: queryTypeValue,
             query: queryValue,
-            mark: enabledMarks,
+            mark: enabledMarks.length ? enabledMarks : ["match"],
             css: customCss,
+            group: this.activeGroup === "默认" ? undefined : this.activeGroup,
           };
           await this.plugin.saveSettings();
           this.plugin.updateStaticHighlighter();
@@ -244,15 +174,172 @@ export class SettingTab extends PluginSettingTab {
         }
       });
 
-    const highlightersContainer = containerEl.createEl("div", {
-      cls: "highlighter-container",
+    // toolbar: toggle all, import, export
+    const toolbarEl = containerEl.createDiv({ cls: "gazer-toolbar" });
+
+    const allMatchOn = config.queryOrder.every(h => config.queries[h]?.mark?.includes("match") ?? true);
+    new ButtonComponent(toolbarEl).setClass("action-button").setButtonText(allMatchOn ? "全部禁止" : "全部启用").onClick(async () => {
+      const newVal = !allMatchOn;
+      config.queryOrder.forEach(h => {
+        const q = config.queries[h];
+        if (newVal) {
+          q.mark = [...(q.mark || []), "match"];
+        } else {
+          q.mark = q.mark?.filter((m: string) => m !== "match") || [];
+        }
+      });
+      await this.plugin.saveSettings();
+      this.plugin.updateStaticHighlighter();
+      this.plugin.updateStyles();
+      this.display();
     });
 
-    this.plugin.settings.staticHighlighter.queryOrder.forEach((highlighter: string) => {
-      const { query, regex } = config.queries[highlighter];
+    new ButtonComponent(toolbarEl).setClass("action-button").setButtonText("导入").onClick(() => {
+      new ImportModal(this.plugin.app, this.plugin).open();
+    });
+
+    new ButtonComponent(toolbarEl).setClass("action-button").setButtonText("导出").onClick(() => {
+      new ExportModal(this.plugin.app, this.plugin, "全部", {
+        queries: config.queries,
+        groups: config.groups,
+      }).open();
+    });
+
+    // group tabs
+    const groupTabEl = containerEl.createDiv({ cls: "gazer-group-tabs" });
+    const tabBarEl = groupTabEl.createDiv({ cls: "gazer-group-tab-bar" });
+    const allGroups = ["默认", ...(config.groups || [])];
+    allGroups.forEach(g => {
+      const tabEl = tabBarEl.createEl("span", { cls: "gazer-group-tab", text: g });
+      if (g === this.activeGroup) tabEl.addClass("active");
+      tabEl.addEventListener("click", () => {
+        this.activeGroup = g;
+        this.display();
+      });
+      // drop target for dragged highlighters
+      tabEl.addEventListener("dragover", e => {
+        if (!this._dragItemId) return;
+        e.preventDefault();
+        tabEl.addClass("drag-hover");
+      });
+      tabEl.addEventListener("dragleave", () => {
+        tabEl.removeClass("drag-hover");
+      });
+      tabEl.addEventListener("drop", e => {
+        e.preventDefault();
+        tabEl.removeClass("drag-hover");
+        if (!this._dragItemId || g === this.activeGroup) return;
+        const draggedId = this._dragItemId;
+        this._dragItemId = undefined;
+        if (!config.queries[draggedId]) return;
+        config.queries[draggedId].group = g === "默认" ? undefined : g;
+        this.activeGroup = g;
+        this.plugin.saveSettings();
+        this.display();
+      });
+    });
+
+    // group action buttons: add, delete, rename
+    const groupActionsEl = groupTabEl.createDiv({ cls: "gazer-group-actions" });
+
+    const addGroupBtn = new ButtonComponent(groupActionsEl);
+    addGroupBtn.setIcon("plus").setClass("clickable-icon").setTooltip("新建分组").onClick(() => {
+      const modal = new Modal(this.app);
+      modal.titleEl.setText("新建分组");
+      const input = new TextComponent(modal.contentEl);
+      input.inputEl.style.width = "100%";
+      input.inputEl.style.marginBottom = "12px";
+      input.setPlaceholder("输入分组名称");
+      input.inputEl.focus();
+      new Setting(modal.contentEl)
+        .addButton(b => b.setButtonText("取消").onClick(() => { modal.close(); }))
+        .addButton(b => b.setButtonText("确认").setClass("mod-cta").onClick(() => {
+          const name = input.getValue().trim();
+          if (!name) { new Notice("分组名不能为空"); return; }
+          if (["默认", ...(config.groups || [])].includes(name)) { new Notice("分组名已存在"); return; }
+          if (!config.groups) config.groups = [];
+          config.groups.push(name);
+          this.activeGroup = name;
+          this.plugin.saveSettings();
+          this.display();
+          modal.close();
+        }));
+      modal.open();
+    });
+
+    // rename group button
+    const renameGroupBtn = new ButtonComponent(groupActionsEl);
+    renameGroupBtn.setIcon("folder-pen").setClass("clickable-icon").setTooltip("重命名分组").onClick(() => {
+      if (this.activeGroup === "默认") return;
+      const modal = new Modal(this.app);
+      modal.titleEl.setText(`重命名分组"${this.activeGroup}"`);
+      const input = new TextComponent(modal.contentEl);
+      input.inputEl.style.width = "100%";
+      input.inputEl.style.marginBottom = "12px";
+      input.setValue(this.activeGroup);
+      input.inputEl.focus();
+      input.inputEl.select();
+      new Setting(modal.contentEl)
+        .addButton(b => b.setButtonText("取消").onClick(() => { modal.close(); }))
+        .addButton(b => b.setButtonText("确认").setClass("mod-cta").onClick(() => {
+          const newName = input.getValue().trim();
+          if (!newName || newName === this.activeGroup) { modal.close(); return; }
+          if (["默认", ...(config.groups || [])].includes(newName)) {
+            new Notice("分组名已存在");
+            return;
+          }
+          // update group name on all highlighters in this group
+          config.queryOrder.forEach(h => {
+            if (config.queries[h]?.group === this.activeGroup) config.queries[h].group = newName;
+          });
+          const idx = config.groups?.indexOf(this.activeGroup);
+          if (idx !== undefined && idx > -1) config.groups![idx] = newName;
+          this.activeGroup = newName;
+          this.plugin.saveSettings();
+          this.display();
+          modal.close();
+        }));
+      modal.open();
+    });
+
+    // delete group button
+    const delGroupBtn = new ButtonComponent(groupActionsEl);
+    delGroupBtn.setIcon("delete").setClass("clickable-icon").onClick(async () => {
+      if (this.activeGroup === "默认") return;
+      const groupHighlighters = config.queryOrder.filter(h => config.queries[h]?.group === this.activeGroup);
+      if (groupHighlighters.length > 0) {
+        const confirmed = await new Promise<boolean>(resolve => {
+          const confirmModal = new Modal(this.app);
+          confirmModal.contentEl.createEl("p", { text: `确定删除分组"${this.activeGroup}"？该组包含 ${groupHighlighters.length} 个高亮器。` });
+          new Setting(confirmModal.contentEl)
+            .addButton(b => b.setButtonText("取消").onClick(() => { confirmModal.close(); resolve(false); }))
+            .addButton(b => b.setButtonText("删除").setClass("mod-warning").onClick(() => { confirmModal.close(); resolve(true); }));
+          confirmModal.open();
+        });
+        if (!confirmed) return;
+      }
+      const idx = config.groups?.indexOf(this.activeGroup);
+      if (idx !== undefined && idx > -1) config.groups?.splice(idx, 1);
+      this.activeGroup = "默认";
+      await this.plugin.saveSettings();
+      this.display();
+    });
+
+    const highlightersContainer = containerEl.createEl("div", { cls: "highlighter-container" });
+
+    const filteredOrder = config.queryOrder.filter(h => {
+      const q = config.queries[h];
+      if (this.activeGroup === "默认") return !q.group || q.group === "默认";
+      return q.group === this.activeGroup;
+    });
+    filteredOrder.forEach((highlighter: string) => {
+      const { query, regex, mark } = config.queries[highlighter];
       const color = config.queries[highlighter].color;
       const settingItem = highlightersContainer.createEl("div");
       settingItem.id = "dh-" + highlighter;
+      settingItem.draggable = true;
+      settingItem.addEventListener("dragstart", () => { this._dragItemId = highlighter; });
+      settingItem.addEventListener("dragend", () => { this._dragItemId = undefined; });
       const desc: string[] = [];
       desc.push((regex ? "搜索表达式: " : "搜索词: ") + query);
 
@@ -285,9 +372,8 @@ export class SettingTab extends PluginSettingTab {
       setting
         .addButton(button => {
           button
-            .setClass("action-button")
+            .setClass("clickable-icon")
             .setClass("action-button-edit")
-            .setClass("mod-cta")
             .setIcon("pencil")
             .setTooltip("编辑")
             .onClick(async evt => {
@@ -297,31 +383,25 @@ export class SettingTab extends PluginSettingTab {
               queryInput.inputEl.value = options.query;
               pickrInstance.setColor(options.color);
               queryTypeInput.setValue(options.regex);
+              // restore mark toggle states
+              Object.entries(marks).forEach(([key, m]) => {
+                m.toggle.setValue(options.mark?.includes(key) ?? true);
+              });
               const extensions = basicSetup;
               if (document.body.hasClass("theme-dark")) {
                 extensions.push(materialPalenight);
               } else {
                 extensions.push(basicLightTheme);
               }
-              this.editor.setState(EditorState.create({ doc: options.css ? options.css : "", extensions: extensions }));
-              if (options?.mark) {
-                Object.entries(marks).map(([key, value]) =>
-                  options.mark!.includes(key) ? value.component.setValue(true) : value.component.setValue(false)
-                );
-              } else {
-                Object.entries(marks).map(([key, value]) =>
-                  key === "match" ? value.component.setValue(true) : value.component.setValue(false)
-                );
-              }
+              this.editor.setState(EditorState.create({ doc: options.css ?? "", extensions }));
               containerEl.scrollTop = 0;
             });
         })
         .addButton(button => {
           button
-            .setClass("action-button")
+            .setClass("clickable-icon")
             .setClass("action-button-delete")
             .setIcon("trash")
-            .setClass("mod-warning")
             .setTooltip("删除")
             .onClick(async () => {
               new Notice(`${highlighter} 高亮已删除`);
@@ -333,6 +413,24 @@ export class SettingTab extends PluginSettingTab {
               highlightersContainer.querySelector(`#dh-${highlighter}`)!.detach();
             });
         });
+
+      // match toggle after delete button
+      const matchWrapper = setting.controlEl.createDiv({ cls: "match-toggle-wrapper" });
+      new ToggleComponent(matchWrapper)
+        .setValue(mark?.includes("match") ?? true)
+        .onChange(async val => {
+          const options = config.queries[highlighter];
+          if (val) {
+            options.mark = [...(options.mark || []), "match"];
+          } else {
+            options.mark = options.mark?.filter((m: string) => m !== "match") || [];
+          }
+          setting.settingEl.toggleClass("match-disabled", !val);
+          await this.plugin.saveSettings();
+          this.plugin.updateStaticHighlighter();
+          this.plugin.updateStyles();
+        });
+      if (!(mark?.includes("match") ?? true)) setting.settingEl.addClass("match-disabled");
     });
     const sortableEl = Sortable.create(highlightersContainer, {
       animation: 500,
@@ -341,21 +439,19 @@ export class SettingTab extends PluginSettingTab {
       dragClass: "highlighter-sortable-drag",
       handle: ".highlighter-setting-icon-drag",
       dragoverBubble: true,
-      forceFallback: true,
       fallbackClass: "highlighter-sortable-fallback",
       easing: "cubic-bezier(1, 0, 0, 1)",
-      onSort: command => {
-        const arrayResult = config.queryOrder;
-        const [removed] = arrayResult.splice(command.oldIndex!, 1);
-        arrayResult.splice(command.newIndex!, 0, removed);
-        this.plugin.settings.staticHighlighter.queryOrder = arrayResult;
-        this.plugin.saveSettings();
+      onSort: async command => {
+        const items = highlightersContainer.querySelectorAll('[id^="dh-"]');
+        const domOrder = Array.from(items).map(el => el.id.replace("dh-", ""));
+        const nonFiltered = config.queryOrder.filter(h => !domOrder.includes(h));
+        config.queryOrder = [...domOrder, ...nonFiltered];
+        this.plugin.settings.staticHighlighter.queryOrder = config.queryOrder;
+        await this.plugin.saveSettings();
       },
     });
 
-    containerEl.createEl("h3", {
-      text: "选择高亮",
-    });
+    containerEl.createEl("h3", { text: "选择高亮" });
     new Setting(containerEl).setName("高亮当前选中文本的所有出现位置").addToggle(toggle => {
       toggle.setValue(this.plugin.settings.selectionHighlighter.highlightSelectedText).onChange(value => {
         this.plugin.settings.selectionHighlighter.highlightSelectedText = value;

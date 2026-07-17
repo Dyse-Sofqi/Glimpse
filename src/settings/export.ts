@@ -2,18 +2,17 @@
 
 import { App, Modal, Setting, TextAreaComponent } from "obsidian";
 import GazerPlugin from "../main";
-import { SearchQueries } from "./settings";
 
 
 export class ExportModal extends Modal {
   plugin: GazerPlugin;
   section: string;
-  config: SearchQueries;
+  exportData: object;
 
-  constructor(app: App, plugin: GazerPlugin, section: string, config: SearchQueries) {
+  constructor(app: App, plugin: GazerPlugin, section: string, exportData: object) {
     super(app);
     this.plugin = plugin;
-    this.config = config;
+    this.exportData = exportData;
     this.section = section;
   }
 
@@ -22,10 +21,10 @@ export class ExportModal extends Modal {
 
     modalEl.addClass("modal-style-settings");
     modalEl.addClass("modal-gazer");
-    
+
 
     new Setting(contentEl).setName(`导出设置: ${this.section}`).then(setting => {
-      const output = JSON.stringify(this.config, null, 2);
+      const output = JSON.stringify(this.exportData, null, 2);
 
       // Build a copy to clipboard link
       setting.controlEl.createEl(

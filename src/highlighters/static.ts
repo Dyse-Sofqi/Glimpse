@@ -13,11 +13,13 @@ import { RegExpCursor } from "./regexp-cursor";
 export type StaticHighlightOptions = {
   queries: SearchQueries;
   queryOrder: string[];
+  groups: string[];
 };
 
 const defaultOptions: StaticHighlightOptions = {
   queries: {},
   queryOrder: [],
+  groups: [],
 };
 
 export const staticHighlightConfig = Facet.define<StaticHighlightOptions, Required<StaticHighlightOptions>>({
