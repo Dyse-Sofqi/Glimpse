@@ -1,4 +1,4 @@
-## Gazer
+## Glimpse
 
 An Obsidian plugin that dynamically highlights text based on cursor selection or search query.
 
@@ -92,6 +92,14 @@ Thanks to @chetachiezikeuzor for the settings UI code, inspired by https://githu
 ---
 
 ### Changelog
+
+#### 0.5.0 (2026-07-18)
+
+- TypeScript: added definite assignment assertions to all class props, removed unused `customCSS` prop/interface
+- Fixed type mismatch in `updateConfig` with `reconfigureSelectionHighlighter` signature
+- tsconfig: removed deprecated `baseUrl`, enabled `strict`, switched `moduleResolution` to `bundler`
+- Added `.clickable-icon:hover` anti-theme-bleed styles using `--icon-color-hover` and `--background-modifier-hover`
+- Line/start/end toggles default to OFF when creating new highlighters
 
 #### 0.4.0 (2026-07-17)
 

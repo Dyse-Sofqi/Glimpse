@@ -16,21 +16,21 @@ import {
 } from "obsidian";
 import Sortable from "sortablejs";
 import { basicSetup } from "../editor/extensions";
-import GazerPlugin from "../main";
+import GlimpsePlugin from "../main";
 import { ExportModal } from "./export";
 import { ImportModal } from "./import";
 import { materialPalenight } from "../editor/theme-dark";
 import { basicLightTheme } from "../editor/theme-light";
 
 export class SettingTab extends PluginSettingTab {
-  plugin: GazerPlugin;
+  plugin: GlimpsePlugin;
   editor!: EditorView;
   scope!: Scope;
   pickrInstance!: Pickr;
   activeGroup: string = "默认";
   _dragItemId: string | undefined;
 
-  constructor(app: App, plugin: GazerPlugin) {
+  constructor(app: App, plugin: GlimpsePlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
@@ -45,7 +45,7 @@ export class SettingTab extends PluginSettingTab {
     containerEl.empty();
     const config = this.plugin.settings.staticHighlighter;
     containerEl.createEl("h3", { text: "持久高亮" }).addClass("persistent-highlights");
-    containerEl.addClass("gazer-settings");
+    containerEl.addClass("glimpse-settings");
 
     const defineQueryUI = new Setting(containerEl);
     defineQueryUI
@@ -110,7 +110,7 @@ export class SettingTab extends PluginSettingTab {
       const item = marksWrapper.createDiv();
       item.createSpan({ text: label });
       const toggle = new ToggleComponent(item);
-      toggle.setValue(true);
+      toggle.setValue(key === "group");
       marks[key] = { container: item, toggle };
     });
 
@@ -175,7 +175,7 @@ export class SettingTab extends PluginSettingTab {
       });
 
     // toolbar: toggle all, import, export
-    const toolbarEl = containerEl.createDiv({ cls: "gazer-toolbar" });
+    const toolbarEl = containerEl.createDiv({ cls: "glimpse-toolbar" });
 
     const allMatchOn = config.queryOrder.every(h => config.queries[h]?.mark?.includes("match") ?? true);
     new ButtonComponent(toolbarEl).setClass("action-button").setButtonText(allMatchOn ? "全部禁止" : "全部启用").onClick(async () => {
@@ -206,11 +206,11 @@ export class SettingTab extends PluginSettingTab {
     });
 
     // group tabs
-    const groupTabEl = containerEl.createDiv({ cls: "gazer-group-tabs" });
-    const tabBarEl = groupTabEl.createDiv({ cls: "gazer-group-tab-bar" });
+    const groupTabEl = containerEl.createDiv({ cls: "glimpse-group-tabs" });
+    const tabBarEl = groupTabEl.createDiv({ cls: "glimpse-group-tab-bar" });
     const allGroups = ["默认", ...(config.groups || [])];
     allGroups.forEach(g => {
-      const tabEl = tabBarEl.createEl("span", { cls: "gazer-group-tab", text: g });
+      const tabEl = tabBarEl.createEl("span", { cls: "glimpse-group-tab", text: g });
       if (g === this.activeGroup) tabEl.addClass("active");
       tabEl.addEventListener("click", () => {
         this.activeGroup = g;
@@ -240,7 +240,7 @@ export class SettingTab extends PluginSettingTab {
     });
 
     // group action buttons: add, delete, rename
-    const groupActionsEl = groupTabEl.createDiv({ cls: "gazer-group-actions" });
+    const groupActionsEl = groupTabEl.createDiv({ cls: "glimpse-group-actions" });
 
     const addGroupBtn = new ButtonComponent(groupActionsEl);
     addGroupBtn.setIcon("plus").setClass("clickable-icon").setTooltip("新建分组").onClick(() => {

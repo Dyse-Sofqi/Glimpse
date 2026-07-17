@@ -1,4 +1,4 @@
-## Gazer
+## Glimpse
 
 Obsidian 插件，根据选中内容或搜索关键词动态高亮文本。
 
@@ -93,6 +93,14 @@ Obsidian 插件，根据选中内容或搜索关键词动态高亮文本。
 
 
 ### 更新日志
+
+#### 0.5.0 (2026-07-18)
+
+- TypeScript: 所有类属性添加 definite assignment 断言，移除未使用的 `customCSS` 属性及接口
+- 修复 `updateConfig` 中 `reconfigureSelectionHighlighter` 类型不匹配问题
+- tsconfig: 移除已弃用的 `baseUrl`，启用 `strict`，`moduleResolution` 改为 `bundler`
+- 新增 `.clickable-icon:hover` 反主题渗透样式，使用 `--icon-color-hover` 和 `--background-modifier-hover`
+- 新建高亮器时父行/开始/结束开关默认关闭
 
 #### 0.4.0 (2026-07-17)
 

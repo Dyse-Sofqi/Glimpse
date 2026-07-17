@@ -12,32 +12,37 @@
 
 /* #region settings tab */
 
-.gazer-settings {
+.glimpse-settings {
   position: relative;
 }
 
-.gazer-settings button.action-button {
+.glimpse-settings button.action-button {
   display: grid;
   place-content: center;
   padding: 6px 10px;
   margin-right: 6px;
 }
 
-.gazer-settings h3.persistent-highlights {
+.glimpse-settings h3.persistent-highlights {
   margin: 0;
 }
 
 /* #region toolbar */
 
-.gazer-settings .gazer-toolbar {
+.glimpse-settings .glimpse-toolbar {
   display: flex;
   gap: 8px;
   padding: 12px 0;
 }
 
+.glimpse-settings.glimpse-settings.glimpse-settings.glimpse-settings .clickable-icon:hover {
+  color: var(--icon-color-hover);
+  background-color: var(--background-modifier-hover);
+}
+
 /* #region group tabs */
 
-.gazer-settings .gazer-group-tabs {
+.glimpse-settings .glimpse-group-tabs {
   display: flex;
   align-items: flex-end;
   padding: 0;
@@ -49,13 +54,13 @@
   margin-bottom: 8px;
 }
 
-.gazer-settings .gazer-group-tab-bar {
+.glimpse-settings .glimpse-group-tab-bar {
   display: flex;
   gap: 1px;
   flex-wrap: wrap;
 }
 
-.gazer-settings .gazer-group-tab {
+.glimpse-settings .glimpse-group-tab {
   padding: 6px 16px;
   border-radius: 4px 4px 0 0;
   cursor: pointer;
@@ -64,19 +69,19 @@
   background: var(--background-primary-alt);
 }
 
-.gazer-settings .gazer-group-tab.active {
+.glimpse-settings .glimpse-group-tab.active {
   color: var(--text-accent);
   background: var(--background-primary-alt);
   border-bottom: 2px solid var(--text-accent);
 }
 
-.gazer-settings .gazer-group-actions {
+.glimpse-settings .glimpse-group-actions {
   display: flex;
   gap: 2px;
   margin-left: auto;
 }
 
-.gazer-settings .gazer-group-tab.drag-hover {
+.glimpse-settings .glimpse-group-tab.drag-hover {
   background: var(--text-accent);
   color: var(--text-on-accent);
   transform: scale(1.08);
@@ -86,11 +91,11 @@
 
 /* #endregion group tabs */
 
-.gazer-settings .highlighter-definition {
+.glimpse-settings .highlighter-definition {
   display: block;
 }
 
-.gazer-settings .highlighter-definition .setting-item-control {
+.glimpse-settings .highlighter-definition .setting-item-control {
   align-content: center;
   align-items: flex-end;
   /* TODO: switch to using grid with columns and rows */
@@ -102,22 +107,22 @@
 
 /* #region color selection */
 
-/* .gazer-settings .highlighter-name {
+/* .glimpse-settings .highlighter-name {
   width: 20ch;
 } */
 
-.gazer-settings .color-wrapper {
+.glimpse-settings .color-wrapper {
   display: flex;
   align-items: flex-end;
   align-self: center;
 }
 
-.gazer-settings .pickr {
+.glimpse-settings .pickr {
   /* display: flex; */
 }
 
-.modal.mod-settings .gazer-settings .pcr-button,
-.modal.mod-settings .gazer-settings .color-wrapper {
+.modal.mod-settings .glimpse-settings .pcr-button,
+.modal.mod-settings .glimpse-settings .color-wrapper {
   margin: 0;
   padding: 0;
   /* fixing a weird primary style that caused the picker to be oblong */
@@ -126,7 +131,7 @@
   --scale-2-4: 0;
 }
 
-.modal.mod-settings .gazer-settings .setting-item .pickr button.pcr-button {
+.modal.mod-settings .glimpse-settings .setting-item .pickr button.pcr-button {
   border-radius: 50px;
   overflow: hidden;
   border: 2px solid var(--background-modifier-border);
@@ -138,23 +143,23 @@
 
 /* #region search term & save */
 
-.gazer-settings .query-wrapper {
+.glimpse-settings .query-wrapper {
   display: flex;
   align-items: flex-end;
   flex-grow: 100;
 }
 
-.gazer-settings .query-wrapper input {
+.glimpse-settings .query-wrapper input {
   flex-grow: 100;
 }
 
-.gazer-settings .highlighter-settings-regex {
+.glimpse-settings .highlighter-settings-regex {
   /* TODO: fix the fact that this gets squashed on mobile */
   align-self: center;
   margin: 1px 4px 0;
 }
 
-.gazer-settings .action-button.action-button-save {
+.glimpse-settings .action-button.action-button-save {
   align-self: center;
 }
 
@@ -162,23 +167,23 @@
 
 /* #region mark toggles (definition area) */
 
-.gazer-settings .mark-wrapper {
+.glimpse-settings .mark-wrapper {
   display: grid;
   width: 100%;
   align-items: center;
   grid-template-columns: repeat(10, auto);
 }
 
-.gazer-settings .mark-wrapper > div {
+.glimpse-settings .mark-wrapper>div {
   display: flex;
   align-items: center;
 }
 
-.gazer-settings .mark-wrapper .checkbox-container {
+.glimpse-settings .mark-wrapper .checkbox-container {
   margin: 0px 18px 0 8px;
 }
 
-.is-mobile .gazer-settings .mark-wrapper {
+.is-mobile .glimpse-settings .mark-wrapper {
   white-space: nowrap;
   grid-template-columns: repeat(2, auto);
 }
@@ -187,24 +192,24 @@
 
 /* #region match toggle (per-item) */
 
-.gazer-settings .match-toggle-wrapper {
+.glimpse-settings .match-toggle-wrapper {
   display: flex;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
 }
 
-.gazer-settings .match-toggle-wrapper .checkbox-container {
+.glimpse-settings .match-toggle-wrapper .checkbox-container {
   margin: 0;
 }
 
-.gazer-settings .highlighter-details.match-disabled {
+.glimpse-settings .highlighter-details.match-disabled {
   opacity: 0.45;
 }
 
 /* #endregion match toggle */
 
-.gazer-settings .group-wrapper {
+.glimpse-settings .group-wrapper {
   display: grid;
   align-items: center;
   grid-template-columns: repeat(2, auto);
@@ -212,18 +217,18 @@
 
 /* #region custom css editor */
 
-/* .gazer-settings .custom-css {
+/* .glimpse-settings .custom-css {
   width: 100%;
   height: 10em;
 } */
 
-.gazer-settings .custom-css-wrapper {
+.glimpse-settings .custom-css-wrapper {
   flex-grow: 100;
   text-align: left;
   width: 100%;
 }
 
-.gazer-settings .custom-css-wrapper .cm-editor {
+.glimpse-settings .custom-css-wrapper .cm-editor {
   border: 1px solid var(--background-modifier-border);
   background-color: var(--background-primary-alt);
   max-height: 15em;
@@ -231,15 +236,15 @@
   resize: vertical;
 }
 
-.gazer-settings .custom-css-wrapper .cm-editor[style*="height"] {
+.glimpse-settings .custom-css-wrapper .cm-editor[style*="height"] {
   max-height: unset;
 }
 
-.gazer-settings .custom-css-wrapper .cm-gutters {
+.glimpse-settings .custom-css-wrapper .cm-gutters {
   background-color: var(--background-primary-alt);
 }
 
-.gazer-settings .cm-line {
+.glimpse-settings .cm-line {
   font-family: var(--font-monospace);
 }
 
@@ -247,25 +252,25 @@
 
 /* #region mobile specific styles */
 
-.is-mobile .gazer-settings .setting-item-control button.action-button-save,
-.is-mobile .gazer-settings .query-wrapper input {
+.is-mobile .glimpse-settings .setting-item-control button.action-button-save,
+.is-mobile .glimpse-settings .query-wrapper input {
   width: unset;
 }
 
-.is-mobile .gazer-settings .setting-item-control input.highlighter-name {
+.is-mobile .glimpse-settings .setting-item-control input.highlighter-name {
   width: fit-content;
 }
 
-.is-mobile .gazer-settings .query-wrapper {
+.is-mobile .glimpse-settings .query-wrapper {
   display: grid;
   grid-template-columns: 1fr auto auto;
   place-items: center;
 }
 
-.is-mobile .gazer-settings .setting-item-control select,
-.is-mobile .gazer-settings .setting-item-control input,
-.is-mobile .gazer-settings .setting-item-control textarea,
-.is-mobile .gazer-settings .setting-item-control button {
+.is-mobile .glimpse-settings .setting-item-control select,
+.is-mobile .glimpse-settings .setting-item-control input,
+.is-mobile .glimpse-settings .setting-item-control textarea,
+.is-mobile .glimpse-settings .setting-item-control button {
   width: 100%;
   margin: 0 4px;
 }
@@ -274,25 +279,25 @@
 
 /* #region persistent highlighter listing */
 
-.gazer-settings .highlighter-container {
+.glimpse-settings .highlighter-container {
   /* allow for copy and paste */
   user-select: text;
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.gazer-settings .highlighter-container .highlighter-details {
+.glimpse-settings .highlighter-container .highlighter-details {
   display: flex;
   padding: 8px;
   border-top: none;
 }
 
-.gazer-settings .highlighter-container .highlighter-details .setting-item-control {
+.glimpse-settings .highlighter-container .highlighter-details .setting-item-control {
   flex-wrap: nowrap;
   flex-grow: 0;
 }
 
 /* 高亮样式预览 — 以规则颜色渲染"预览"文本 */
-.gazer-settings .highlighter-style-preview {
+.glimpse-settings .highlighter-style-preview {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -308,7 +313,7 @@
 
 /* #region selection highlighter settings */
 
-.gazer-settings .ignored-words-input {
+.glimpse-settings .ignored-words-input {
   width: 25rem;
   height: 10em;
   resize: vertical;
@@ -318,7 +323,7 @@
 
 /* #region persistent highlighters sortable ui */
 
-.gazer-settings .highlighter-item-draggable {
+.glimpse-settings .highlighter-item-draggable {
   cursor: initial;
   display: grid;
   grid-gap: 8px;
@@ -327,34 +332,34 @@
   border-top: 1px solid var(--background-modifier-border);
 }
 
-.gazer-settings .highlighter-setting-icon-drag {
+.glimpse-settings .highlighter-setting-icon-drag {
   cursor: grab;
   margin-inline-end: 0;
   display: flex;
   align-items: center;
 }
 
-.gazer-settings .highlighter-sortable-fallback {
+.glimpse-settings .highlighter-sortable-fallback {
   cursor: grabbing;
   box-shadow: 0px 3px 32px rgb(31 38 135 / 15%);
 }
 
-.gazer-settings .highlighter-sortable-grab {
+.glimpse-settings .highlighter-sortable-grab {
   cursor: grabbing;
 }
 
-.gazer-settings .highlighter-sortable-ghost {
+.glimpse-settings .highlighter-sortable-ghost {
   opacity: 0.4;
   cursor: grabbing;
 }
 
-.gazer-settings .highlighter-sortable-chosen {
+.glimpse-settings .highlighter-sortable-chosen {
   cursor: grabbing;
   border-radius: var(--setting-items-radius);
   box-shadow: 0px 3px 32px rgb(31 38 135 / 15%);
 }
 
-.gazer-settings .highlighter-sortable-drag {
+.glimpse-settings .highlighter-sortable-drag {
   cursor: grabbing;
 }
 
@@ -364,20 +369,20 @@
 
 /* #region style settings import/export */
 
-.modal-gazer {
+.modal-glimpse {
   height: 70vh;
   display: flex;
   flex-direction: column;
 }
 
-.modal-gazer .modal-content {
+.modal-glimpse .modal-content {
   flex-grow: 1;
   margin: 0;
   display: flex;
   flex-direction: column;
 }
 
-.modal-gazer textarea {
+.modal-glimpse textarea {
   display: block;
   width: 100%;
   height: 100%;
@@ -389,24 +394,24 @@
   margin-bottom: 5px;
 }
 
-.modal-gazer .setting-item {
+.modal-glimpse .setting-item {
   align-items: flex-start;
 }
 
-.modal-gazer .setting-item .setting-item-control a {
+.modal-glimpse .setting-item .setting-item-control a {
   margin-left: 4px;
 }
 
-.modal-gazer button {
+.modal-glimpse button {
   margin: 10px 0 0;
 }
 
-.modal-gazer .style-settings-import-error {
+.modal-glimpse .style-settings-import-error {
   display: none;
   color: var(--text-error);
 }
 
-.modal-gazer .style-settings-import-error.active {
+.modal-glimpse .style-settings-import-error.active {
   display: block;
 }
 
@@ -434,8 +439,7 @@
   cursor: pointer;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
   border-radius: 0.15em;
-  background: url('data:image/svg+xml;utf8, <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke="%2342445A" stroke-width="5px" stroke-linecap="round"><path d="M45,45L5,5"></path><path d="M45,5L5,45"></path></svg>')
-    no-repeat center;
+  background: url('data:image/svg+xml;utf8, <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke="%2342445A" stroke-width="5px" stroke-linecap="round"><path d="M45,45L5,5"></path><path d="M45,5L5,45"></path></svg>') no-repeat center;
   background-size: 0;
   transition: all 0.3s;
 }
@@ -558,7 +562,7 @@
   }
 }
 
-.pcr-app .pcr-swatches > button {
+.pcr-app .pcr-swatches>button {
   font-size: 1em;
   position: relative;
   width: calc(1.75em - 5px);
@@ -574,7 +578,7 @@
   z-index: 1;
 }
 
-.pcr-app .pcr-swatches > button::before {
+.pcr-app .pcr-swatches>button::before {
   position: absolute;
   content: "";
   top: 0;
@@ -587,7 +591,7 @@
   z-index: -1;
 }
 
-.pcr-app .pcr-swatches > button::after {
+.pcr-app .pcr-swatches>button::after {
   content: "";
   position: absolute;
   top: 0;
@@ -600,11 +604,11 @@
   box-sizing: border-box;
 }
 
-.pcr-app .pcr-swatches > button:hover {
+.pcr-app .pcr-swatches>button:hover {
   filter: brightness(1.05);
 }
 
-.pcr-app .pcr-swatches > button:not(.pcr-active) {
+.pcr-app .pcr-swatches>button:not(.pcr-active) {
   box-shadow: none;
 }
 
@@ -615,7 +619,7 @@
   margin: 0 -0.2em 0 -0.2em;
 }
 
-.pcr-app .pcr-interaction > * {
+.pcr-app .pcr-interaction>* {
   margin: 0 0.2em;
 }
 

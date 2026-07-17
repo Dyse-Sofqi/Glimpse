@@ -1,25 +1,19 @@
-import { Extension, StateEffect } from "@codemirror/state";
+import { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { debounce, MarkdownView, Plugin } from "obsidian";
-import { highlightSelectionMatches, reconfigureSelectionHighlighter } from "./highlighters/selection";
+import { highlightSelectionMatches, reconfigureSelectionHighlighter, SelectionHighlightOptions } from "./highlighters/selection";
 import { buildStyles, staticHighlighterExtension } from "./highlighters/static";
-import { DEFAULT_SETTINGS, GazerSettings, HighlighterOptions } from "./settings/settings";
+import { DEFAULT_SETTINGS, GlimpseSettings, HighlighterOptions } from "./settings/settings";
 import { SettingTab } from "./settings/ui";
 
-interface CustomCSS {
-  css: string;
-  enabled: boolean;
-}
-
-export default class GazerPlugin extends Plugin {
-  settings: GazerSettings;
-  extensions: Extension[];
-  styles: Extension;
-  staticHighlighter: Extension;
-  selectionHighlighter: Extension;
-  customCSS: Record<string, CustomCSS>;
-  styleEl: HTMLElement;
-  settingsTab: SettingTab;
+export default class GlimpsePlugin extends Plugin {
+  settings!: GlimpseSettings;
+  extensions!: Extension[];
+  styles!: Extension;
+  staticHighlighter!: Extension;
+  selectionHighlighter!: Extension;
+  styleEl!: HTMLElement;
+  settingsTab!: SettingTab;
 
   async onload() {
     await this.loadSettings();
@@ -47,7 +41,7 @@ export default class GazerPlugin extends Plugin {
   }
 
   initCSS() {
-    let styleEl = (this.styleEl = document.createElement("style"));
+    const styleEl = (this.styleEl = document.createElement("style"));
     styleEl.setAttribute("type", "text/css");
     document.head.appendChild(styleEl);
     this.register(() => styleEl.detach());
@@ -92,15 +86,10 @@ export default class GazerPlugin extends Plugin {
 
   updateConfig = debounce(
     (type: string, config: HighlighterOptions) => {
-      let reconfigure: (config: HighlighterOptions) => StateEffect<unknown>;
-      if (type === "selection") {
-        reconfigure = reconfigureSelectionHighlighter;
-      } else {
-        return;
-      }
+      if (type !== "selection") return;
       this.iterateCM6(view => {
         view.dispatch({
-          effects: reconfigure(config),
+          effects: reconfigureSelectionHighlighter(config as SelectionHighlightOptions),
         });
       });
     },
