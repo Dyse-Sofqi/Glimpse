@@ -4,12 +4,14 @@ import { combineConfig, Compartment, Extension, Facet } from "@codemirror/state"
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
 import { cloneDeep } from "lodash";
 import { debounce, Debouncer } from "obsidian";
+import { setMatchPositions } from "./scrollbar-markers";
 
 export type SelectionHighlightOptions = {
   highlightSelectedText: boolean;
   minSelectionLength: number;
   maxMatches: number;
   highlightDelay: number;
+  minimapEnabled: boolean;
 };
 
 const defaultHighlightOptions: SelectionHighlightOptions = {
@@ -17,6 +19,7 @@ const defaultHighlightOptions: SelectionHighlightOptions = {
   minSelectionLength: 1,
   maxMatches: 100,
   highlightDelay: 0,
+  minimapEnabled: true,
 };
 
 export const highlightConfig = Facet.define<SelectionHighlightOptions, Required<SelectionHighlightOptions>>({
@@ -26,6 +29,7 @@ export const highlightConfig = Facet.define<SelectionHighlightOptions, Required<
       minSelectionLength: Math.min,
       maxMatches: Math.min,
       highlightDelay: Math.min,
+      minimapEnabled: (a, b) => a ?? b,
     });
   },
 });
@@ -49,6 +53,7 @@ const matchHighlighter = ViewPlugin.fromClass(
     decorations: DecorationSet;
     highlightDelay!: number;
     delayedGetDeco!: Debouncer<[view: EditorView]>;
+    matchLines: Set<number> = new Set();
 
     constructor(view: EditorView) {
       this.updateDebouncer(view);
@@ -74,6 +79,17 @@ const matchHighlighter = ViewPlugin.fromClass(
         (view: EditorView) => {
           this.decorations = this.getDeco(view);
           view.update([]); // force a view update so that the decorations we just set get applied
+
+          const doc = view.state.doc;
+          const docLength = doc.length;
+          let ratios: number[];
+          if (this.matchLines.size > 0 && docLength > 0) {
+            ratios = [...this.matchLines].map(ln => doc.line(ln).from / docLength);
+          } else {
+            ratios = [];
+          }
+          this.matchLines.clear();
+          view.dispatch({ effects: setMatchPositions.of(ratios) });
         },
         this.highlightDelay,
         true
@@ -106,12 +122,14 @@ const matchHighlighter = ViewPlugin.fromClass(
               attributes: { "data-contents": string },
             });
             deco.push(mainMatchDeco.range(from, to));
+            this.matchLines.add(state.doc.lineAt(from).number);
           } else if (from >= range.to || to <= range.from) {
             const matchDeco = Decoration.mark({
               class: `cm-matched-${matchType}`,
               attributes: { "data-contents": string },
             });
             deco.push(matchDeco.range(from, to));
+            this.matchLines.add(state.doc.lineAt(from).number);
           }
           if (deco.length > conf.maxMatches) return Decoration.none;
         }

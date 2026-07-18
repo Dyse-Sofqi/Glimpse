@@ -3,6 +3,8 @@ import { EditorView } from "@codemirror/view";
 import { debounce, MarkdownView, Plugin } from "obsidian";
 import { highlightSelectionMatches, reconfigureSelectionHighlighter, SelectionHighlightOptions } from "./highlighters/selection";
 import { buildStyles, staticHighlighterExtension } from "./highlighters/static";
+import { minimapExtension } from "./highlighters/minimap";
+import { scrollbarMarkersExtension } from "./highlighters/scrollbar-markers";
 import { DEFAULT_SETTINGS, GlimpseSettings, HighlighterOptions } from "./settings/settings";
 import { SettingTab } from "./settings/ui";
 
@@ -12,6 +14,7 @@ export default class GlimpsePlugin extends Plugin {
   styles!: Extension;
   staticHighlighter!: Extension;
   selectionHighlighter!: Extension;
+  minimapExtension!: Extension;
   styleEl!: HTMLElement;
   settingsTab!: SettingTab;
 
@@ -22,6 +25,8 @@ export default class GlimpsePlugin extends Plugin {
     this.staticHighlighter = staticHighlighterExtension(this);
     this.extensions = [];
     this.updateSelectionHighlighter();
+    this.updateMinimap();
+    this.extensions.push(scrollbarMarkersExtension());
     this.updateStaticHighlighter();
     this.updateStyles();
     this.registerEditorExtension(this.extensions);
@@ -73,7 +78,16 @@ export default class GlimpsePlugin extends Plugin {
     this.extensions.remove(this.selectionHighlighter);
     this.selectionHighlighter = highlightSelectionMatches(this.settings.selectionHighlighter)
     this.extensions.push(this.selectionHighlighter);
+    this.updateMinimap();
     this.app.workspace.updateOptions();
+  }
+
+  updateMinimap() {
+    this.extensions.remove(this.minimapExtension);
+    if (this.settings.selectionHighlighter.minimapEnabled) {
+      this.minimapExtension = minimapExtension({ enabled: true, width: 80 });
+      this.extensions.push(this.minimapExtension);
+    }
   }
 
   iterateCM6(callback: (editor: EditorView) => unknown) {
