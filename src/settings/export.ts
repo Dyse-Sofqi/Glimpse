@@ -1,15 +1,15 @@
 // Adapted from https://github.com/mgmeyers/obsidian-style-setting
 
 import { App, Modal, Setting, TextAreaComponent } from "obsidian";
-import GazerPlugin from "../main";
+import GlimpsePlugin from "../main";
 
 
 export class ExportModal extends Modal {
-  plugin: GazerPlugin;
+  plugin: GlimpsePlugin;
   section: string;
   exportData: object;
 
-  constructor(app: App, plugin: GazerPlugin, section: string, exportData: object) {
+  constructor(app: App, plugin: GlimpsePlugin, section: string, exportData: object) {
     super(app);
     this.plugin = plugin;
     this.exportData = exportData;
@@ -20,7 +20,7 @@ export class ExportModal extends Modal {
     let { contentEl, modalEl } = this;
 
     modalEl.addClass("modal-style-settings");
-    modalEl.addClass("modal-gazer");
+    modalEl.addClass("modal-glimpse");
 
 
     new Setting(contentEl).setName(`导出设置: ${this.section}`).then(setting => {
@@ -62,7 +62,7 @@ export class ExportModal extends Modal {
         cls: "style-settings-download",
         text: "下载",
         attr: {
-          download: "gazer.json",
+          download: "glimpse.json",
           href: `data:application/json;charset=utf-8,${encodeURIComponent(output)}`,
         },
       });

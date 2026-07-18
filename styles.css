@@ -105,6 +105,20 @@
   margin-top: 12px;
 }
 
+.glimpse-settings .highlighter-name {
+  background-color: var(--picker-bg);
+  color: var(--text-normal);
+}
+
+.glimpse-settings .glimpse-modal-input {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.glimpse-settings .glimpse-modal-input:focus {
+  box-shadow: 0 0 0 2px var(--text-accent);
+}
+
 /* #region color selection */
 
 /* .glimpse-settings .highlighter-name {

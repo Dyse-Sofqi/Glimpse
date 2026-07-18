@@ -3,7 +3,7 @@
 import Ajv from "ajv";
 import { App, ButtonComponent, Modal, Setting, TextAreaComponent } from "obsidian";
 import { queriesSchema } from "../schema/queries";
-import GazerPlugin from "../main";
+import GlimpsePlugin from "../main";
 
 interface ImportPayload {
   queries: Record<string, any>;
@@ -11,9 +11,9 @@ interface ImportPayload {
 }
 
 export class ImportModal extends Modal {
-  plugin: GazerPlugin;
+  plugin: GlimpsePlugin;
 
-  constructor(app: App, plugin: GazerPlugin) {
+  constructor(app: App, plugin: GlimpsePlugin) {
     super(app);
     this.plugin = plugin;
   }
@@ -22,7 +22,7 @@ export class ImportModal extends Modal {
     let { contentEl, modalEl } = this;
 
     modalEl.addClass("modal-style-settings");
-    modalEl.addClass("modal-gazer");
+    modalEl.addClass("modal-glimpse");
 
     new Setting(contentEl)
       .setName("导入高亮器")

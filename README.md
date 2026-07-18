@@ -94,6 +94,17 @@ Obsidian 插件，根据选中内容或搜索关键词动态高亮文本。
 
 ### 更新日志
 
+#### 0.6.0 (2026-07-18)
+
+- **插件重命名**：从 GazerPlugin 统一改为 GlimpsePlugin，更新所有文件中的类型引用、CSS 类名和导出文件名
+- **修复新建高亮器不生效的 Bug**：`static.ts` 中错误使用了非标准数组方法 `.contains()`（返回 `undefined`），导致新保存的高亮器 `mark` 数组虽包含 `"match"` 却无法激活替换为 `.includes()`
+- **设置 UI 全面 CSS 重构**：遵循 Obsidian 插件审核规范，移除所有内联 `setAttribute("style")`，改用 CSS 自定义属性（`--picker-bg`）和样式类（`.glimpse-modal-input`、`.highlighter-name`）；新增 `styles.css` 规则
+- **新增从剪贴板导入**：保存按钮前添加带 `clipboard-copy` 图标的导入按钮，解析剪贴板 JSON 填充表单全部字段（名称、颜色、查询、正则、标记开关、自定义 CSS），自动适配暗/亮主题编辑器
+- **新增单个高亮器导出**：编辑和删除按钮之间添加带 `clipboard-paste` 图标的导出按钮，可单独导出某个自定义样式的 JSON
+- **新建表单增加"匹配"开关**：新建高亮器时默认开启，直观显示该样式保存后将处于激活状态；父行/开始/结束/捕获组默认关闭
+- **工具栏按钮更名**："导入" → "一键导入"，"导出" → "一键导出"
+- **代码清理**：`regexp-cursor.ts` 统一空白和格式风格
+
 #### 0.5.0 (2026-07-18)
 
 - TypeScript: 所有类属性添加 definite assignment 断言，移除未使用的 `customCSS` 属性及接口

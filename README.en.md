@@ -93,6 +93,17 @@ Thanks to @chetachiezikeuzor for the settings UI code, inspired by https://githu
 
 ### Changelog
 
+#### 0.6.0 (2026-07-18)
+
+- **Plugin rename**: Consolidated `GazerPlugin` → `GlimpsePlugin` across all files, CSS classes (`modal-gazer` → `modal-glimpse`), and export filenames (`gazer.json` → `glimpse.json`)
+- **Fixed new highlighters not activating after save**: `static.ts` used non-standard `Array.prototype.contains()` (returned `undefined`) causing saved highlighters with explicit `mark: ["match"]` to silently fail — replaced all 7 occurrences with `.includes()`
+- **Settings UI inline style → CSS refactoring**: Removed all `setAttribute("style")` calls per Obsidian plugin review guidelines; using CSS custom properties (`--picker-bg`) and classes (`.glimpse-modal-input`, `.highlighter-name`); added corresponding rules in `styles.css`
+- **Import from clipboard**: New button before Save (clipboard-copy icon) — pastes JSON from clipboard and populates the entire form (name, color, query, regex, mark toggles, custom CSS editor with automatic dark/light theme)
+- **Per-highlighter export**: New button between Edit and Delete (clipboard-paste icon) — exports a single highlighter as JSON via ExportModal
+- **New "match" toggle in creation form**: Defaults to ON, giving clear visual feedback that the highlighter will be active after saving; line/start/end/group toggles remain OFF by default
+- **Toolbar button rename**: "导入" → "一键导入" (One-click Import), "导出" → "一键导出" (One-click Export)
+- **Code cleanup**: `regexp-cursor.ts` whitespace and formatting normalization
+
 #### 0.5.0 (2026-07-18)
 
 - TypeScript: added definite assignment assertions to all class props, removed unused `customCSS` prop/interface

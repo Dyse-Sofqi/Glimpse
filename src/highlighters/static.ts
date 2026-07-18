@@ -5,7 +5,7 @@ import { syntaxTree, tokenClassNodeProp } from "@codemirror/language";
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetType } from "@codemirror/view";
 import { cloneDeep } from "lodash";
 import type { RegExpExecArray } from "regexp-match-indices/types";
-import GazerPlugin from "../main";
+import GlimpsePlugin from "../main";
 import { SearchQueries, SearchQuery } from "../settings/settings";
 import { StyleSpec } from "style-mod";
 import { RegExpCursor } from "./regexp-cursor";
@@ -33,7 +33,7 @@ export const staticHighlightConfig = Facet.define<StaticHighlightOptions, Requir
 
 const staticHighlighterCompartment = new Compartment();
 
-export function staticHighlighterExtension(plugin: GazerPlugin): Extension {
+export function staticHighlighterExtension(plugin: GlimpsePlugin): Extension {
   const ext: Extension[] = [staticHighlighter];
   const options = plugin.settings.staticHighlighter;
   ext.push(staticHighlightConfig.of(cloneDeep(options)));
@@ -44,7 +44,7 @@ export interface Styles {
   [selector: string]: StyleSpec;
 }
 
-export function buildStyles(plugin: GazerPlugin) {
+export function buildStyles(plugin: GlimpsePlugin) {
   const queries: SearchQuery[] = Object.values(plugin.settings.staticHighlighter.queries);
   const styles: Styles = {};
   for (const query of queries) {
@@ -134,21 +134,21 @@ const staticHighlighter = ViewPlugin.fromClass(
                 nodeProps?.split(" ").includes(token)
               );
             if (excludedSection) continue;
-            if (query.mark?.contains("line")) {
+            if (query.mark?.includes("line")) {
               if (!lineClasses[linePos]) lineClasses[linePos] = [];
               lineClasses[linePos].push(query.class);
             }
-            if (!query.mark || query.mark?.contains("match")) {
+            if (!query.mark || query.mark?.includes("match")) {
               const markDeco = Decoration.mark({ class: query.class, attributes: { "data-contents": string } });
               tokenDecos.push(markDeco.range(from, to));
             }
-            if (query.mark?.contains("start") || query.mark?.contains("end")) {
+            if (query.mark?.includes("start") || query.mark?.includes("end")) {
               const startDeco = Decoration.widget({ widget: new IconWidget(query.class + "-start") });
               const endDeco = Decoration.widget({ widget: new IconWidget(query.class + "-end") });
-              if (query.mark?.contains("start")) widgetDecos.push(startDeco.range(from, from));
-              if (query.mark?.contains("end")) widgetDecos.push(endDeco.range(to, to));
+              if (query.mark?.includes("start")) widgetDecos.push(startDeco.range(from, from));
+              if (query.mark?.includes("end")) widgetDecos.push(endDeco.range(to, to));
             }
-            if (query.mark?.contains("group")) {
+            if (query.mark?.includes("group")) {
               let groups;
               if (cursor instanceof RegExpCursor) {
                 const match = cursor.value?.match as RegExpExecArray;

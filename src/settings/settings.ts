@@ -29,12 +29,12 @@ export interface SearchQueries {
 
 export type HighlighterOptions = SelectionHighlightOptions | StaticHighlightOptions;
 
-export interface GazerSettings {
+export interface GlimpseSettings {
   selectionHighlighter: SelectionHighlightOptions;
   staticHighlighter: StaticHighlightOptions;
 }
 
-export const DEFAULT_SETTINGS: GazerSettings = {
+export const DEFAULT_SETTINGS: GlimpseSettings = {
   selectionHighlighter: {
     highlightSelectedText: true,
     maxMatches: 100,

@@ -82,13 +82,15 @@ export class SettingTab extends PluginSettingTab {
       pickrInstance
         .on("clear", (instance: Pickr) => {
           instance.hide();
-          classInput.inputEl.setAttribute("style", "background-color: none; color: var(--text-normal);");
+          classInput.inputEl.style.removeProperty("--picker-bg");
+          classInput.inputEl.style.removeProperty("color");
         })
         .on("cancel", (instance: Pickr) => instance.hide())
         .on("change", (color: Pickr.HSVaColor) => {
           const colorHex = color?.toHEXA().toString() || "";
           const newColor = colorHex && colorHex.length === 6 ? `${colorHex}A6` : colorHex;
-          classInput.inputEl.setAttribute("style", `background-color: ${newColor}; color: var(--text-normal);`);
+          classInput.inputEl.style.setProperty("--picker-bg", newColor);
+          classInput.inputEl.style.setProperty("color", "var(--text-normal)");
         })
         .on("save", (color: Pickr.HSVaColor, instance: Pickr) => instance.hide());
     });
@@ -102,15 +104,15 @@ export class SettingTab extends PluginSettingTab {
     queryTypeInput.toggleEl.addClass("highlighter-settings-regex");
     queryTypeInput.toggleEl.ariaLabel = "启用正则";
 
-    // mark toggles: group, line, start, end
+    // mark toggles: match, line, start, end, group
     const marksWrapper = defineQueryUI.controlEl.createDiv({ cls: "mark-wrapper" });
     const marks: { [key: string]: { container: HTMLDivElement; toggle: ToggleComponent } } = {};
-    const toggleLabels: Record<string, string> = { line: "父行", start: "开始", end: "结束", group: "捕获组" };
+    const toggleLabels: Record<string, string> = { match: "匹配", line: "父行", start: "开始", end: "结束", group: "捕获组" };
     Object.entries(toggleLabels).forEach(([key, label]) => {
       const item = marksWrapper.createDiv();
       item.createSpan({ text: label });
       const toggle = new ToggleComponent(item);
-      toggle.setValue(key === "group");
+      toggle.setValue(key === "match");
       marks[key] = { container: item, toggle };
     });
 
@@ -126,6 +128,43 @@ export class SettingTab extends PluginSettingTab {
     const customCSSEl = new TextAreaComponent(customCSSWrapper);
     this.editor = editorFromTextArea(customCSSEl.inputEl, basicSetup);
     customCSSEl.inputEl.addClass("custom-css");
+
+    const importBtn = new ButtonComponent(queryWrapper);
+    importBtn
+      .setClass("action-button")
+      .setClass("action-button-save")
+      .setClass("mod-cta")
+      .setIcon("clipboard-copy")
+      .setTooltip("从剪贴板导入")
+      .onClick(async () => {
+        try {
+          const text = await navigator.clipboard.readText();
+          const data = JSON.parse(text);
+          const entry = Object.entries(data?.queries || {})[0];
+          if (!entry) { new Notice("剪贴板数据格式无效"); return; }
+          const [name, opts] = entry;
+          classInput.inputEl.value = name;
+          if (opts.color) pickrInstance.setColor(opts.color);
+          queryInput.inputEl.value = opts.query || "";
+          queryTypeInput.setValue(!!opts.regex);
+          Object.entries(marks).forEach(([key, m]) => {
+            m.toggle.setValue(opts.mark?.includes(key) ?? false);
+          });
+          const extensions = [...basicSetup];
+          if (document.body.hasClass("theme-dark")) {
+            extensions.push(materialPalenight);
+          } else {
+            extensions.push(basicLightTheme);
+          }
+          this.editor.setState(EditorState.create({
+            doc: opts.css ?? "",
+            extensions,
+          }));
+          new Notice(`已导入: ${name}`);
+        } catch (e) {
+          new Notice("剪贴板读取或解析失败");
+        }
+      });
 
     const saveButton = new ButtonComponent(queryWrapper);
     saveButton
@@ -154,7 +193,7 @@ export class SettingTab extends PluginSettingTab {
             color: hexValue ?? "",
             regex: queryTypeValue,
             query: queryValue,
-            mark: enabledMarks.length ? enabledMarks : ["match"],
+            mark: enabledMarks,
             css: customCss,
             group: this.activeGroup === "默认" ? undefined : this.activeGroup,
           };
@@ -194,11 +233,11 @@ export class SettingTab extends PluginSettingTab {
       this.display();
     });
 
-    new ButtonComponent(toolbarEl).setClass("action-button").setButtonText("导入").onClick(() => {
+    new ButtonComponent(toolbarEl).setClass("action-button").setButtonText("一键导入").onClick(() => {
       new ImportModal(this.plugin.app, this.plugin).open();
     });
 
-    new ButtonComponent(toolbarEl).setClass("action-button").setButtonText("导出").onClick(() => {
+    new ButtonComponent(toolbarEl).setClass("action-button").setButtonText("一键导出").onClick(() => {
       new ExportModal(this.plugin.app, this.plugin, "全部", {
         queries: config.queries,
         groups: config.groups,
@@ -247,8 +286,7 @@ export class SettingTab extends PluginSettingTab {
       const modal = new Modal(this.app);
       modal.titleEl.setText("新建分组");
       const input = new TextComponent(modal.contentEl);
-      input.inputEl.style.width = "100%";
-      input.inputEl.style.marginBottom = "12px";
+      input.inputEl.addClass("glimpse-modal-input");
       input.setPlaceholder("输入分组名称");
       input.inputEl.focus();
       new Setting(modal.contentEl)
@@ -274,8 +312,7 @@ export class SettingTab extends PluginSettingTab {
       const modal = new Modal(this.app);
       modal.titleEl.setText(`重命名分组"${this.activeGroup}"`);
       const input = new TextComponent(modal.contentEl);
-      input.inputEl.style.width = "100%";
-      input.inputEl.style.marginBottom = "12px";
+      input.inputEl.addClass("glimpse-modal-input");
       input.setValue(this.activeGroup);
       input.inputEl.focus();
       input.inputEl.select();
@@ -395,6 +432,16 @@ export class SettingTab extends PluginSettingTab {
               }
               this.editor.setState(EditorState.create({ doc: options.css ?? "", extensions }));
               containerEl.scrollTop = 0;
+            });
+        })
+        .addButton(button => {
+          button
+            .setClass("clickable-icon")
+            .setIcon("clipboard-paste")
+            .setTooltip("导出")
+            .onClick(() => {
+              const data = { queries: { [highlighter]: config.queries[highlighter] }, groups: [] };
+              new ExportModal(this.plugin.app, this.plugin, highlighter, data).open();
             });
         })
         .addButton(button => {
