@@ -33,6 +33,10 @@ class ScrollbarMarkerView {
   update(update: ViewUpdate) {
     if (update.docChanged || update.selectionSet || update.viewportChanged || update.heightChanged) {
       this.render();
+      return;
+    }
+    if (update.startState.field(matchPositionsField) !== update.state.field(matchPositionsField)) {
+      this.render();
     }
   }
 
