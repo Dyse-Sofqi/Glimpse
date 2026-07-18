@@ -59,6 +59,11 @@ class ScrollbarMarkerView {
     const scrollHeight = scroller.scrollHeight;
     if (clientHeight <= 0 || scrollHeight <= 0) return;
 
+    // 动态定位到 scrollDOM 右边缘（原生滚动条轨道位置）
+    // 不与 minimap（marginRight 偏移）冲突
+    const right = this.view.dom.offsetWidth - (scroller.offsetLeft + scroller.offsetWidth);
+    canvas.style.right = `${right}px`;
+
     const dpr = devicePixelRatio;
     const width = 8; // 滚动条标记宽度（CSS 像素）
 

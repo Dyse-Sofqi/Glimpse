@@ -12504,6 +12504,8 @@ var ScrollbarMarkerView = class {
     const scrollHeight = scroller.scrollHeight;
     if (clientHeight <= 0 || scrollHeight <= 0)
       return;
+    const right = this.view.dom.offsetWidth - (scroller.offsetLeft + scroller.offsetWidth);
+    canvas.style.right = `${right}px`;
     const dpr = devicePixelRatio;
     const width = 8;
     canvas.style.width = `${width}px`;
