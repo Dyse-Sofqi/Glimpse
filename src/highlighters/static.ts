@@ -3,7 +3,6 @@ import { SearchCursor } from "@codemirror/search";
 import { combineConfig, Compartment, Extension, Facet, Range } from "@codemirror/state";
 import { syntaxTree, tokenClassNodeProp } from "@codemirror/language";
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetType } from "@codemirror/view";
-import { cloneDeep } from "lodash";
 import type { RegExpExecArray } from "regexp-match-indices/types";
 import GlimpsePlugin from "../main";
 import { SearchQueries, SearchQuery } from "../settings/settings";
@@ -36,7 +35,7 @@ const staticHighlighterCompartment = new Compartment();
 export function staticHighlighterExtension(plugin: GlimpsePlugin): Extension {
   const ext: Extension[] = [staticHighlighter];
   const options = plugin.settings.staticHighlighter;
-  ext.push(staticHighlightConfig.of(cloneDeep(options)));
+  ext.push(staticHighlightConfig.of({...options}));
   return ext;
 }
 

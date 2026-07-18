@@ -2,7 +2,6 @@
 import { SearchCursor } from "@codemirror/search";
 import { combineConfig, Compartment, Extension, Facet } from "@codemirror/state";
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
-import { cloneDeep } from "lodash";
 import { debounce, Debouncer } from "obsidian";
 import { setMatchPositions } from "./scrollbar-markers";
 
@@ -42,14 +41,14 @@ export const highlightCompartment = new Compartment();
 export function highlightSelectionMatches(options?: SelectionHighlightOptions): Extension {
   const ext: Extension[] = [matchHighlighter];
   if (options) {
-    ext.push(highlightConfig.of(cloneDeep(options)));
+    ext.push(highlightConfig.of({...options}));
   }
   return ext;
 }
 
 // 重建高亮扩展（用于运行时更新配置）
 export function reconfigureSelectionHighlighter(options: SelectionHighlightOptions) {
-  return highlightCompartment.reconfigure(highlightConfig.of(cloneDeep(options)));
+  return highlightCompartment.reconfigure(highlightConfig.of({...options}));
 }
 
 // 核心高亮插件
