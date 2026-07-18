@@ -37,9 +37,10 @@ export interface GlimpseSettings {
 export const DEFAULT_SETTINGS: GlimpseSettings = {
   selectionHighlighter: {
     highlightSelectedText: true,
-    maxMatches: 100,
-    minSelectionLength: 1,
+    maxMatches: 1000,
+    minSelectionLength: 2,
     highlightDelay: 200,
+    minimapEnabled: true,
   },
   staticHighlighter: {
     queries: {},
@@ -49,7 +50,7 @@ export const DEFAULT_SETTINGS: GlimpseSettings = {
 };
 
 export function setAttributes(element: any, attributes: any) {
-  for (let key in attributes) {
+  for (const key in attributes) {
     element.setAttribute(key, attributes[key]);
   }
 }

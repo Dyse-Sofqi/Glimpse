@@ -94,7 +94,17 @@ Obsidian 插件，根据选中内容或搜索关键词动态高亮文本。
 
 ### 更新日志
 
-#### 0.6.0 (2026-07-18)
+#### 0.7.0 (2026-07-18)
+
+- **滚动条标记**：选中文本时在滚动条上显示匹配位置矩形，使用主题强调色 `--interactive-accent`，canvas 实现
+- **缩略图（Minimap）**：编辑器右侧显示文档缩略图（类似 VS Code minimap），支持拖拽滑块滚动、点击跳转、滚轮同步，可独立开关
+- **全文档搜索**：选中匹配不再限于可见区域，使用 `SearchCursor` 遍历全文
+- **匹配行采集与装饰限制分离**：先采集所有匹配行号再限制装饰数量，滚动条标记覆盖全文不受 `maxMatches` 限制
+- **反向选区修复**：从锚点拖选到光标左侧时（`from > to`），规范化边界确保 `sliceDoc` 不返回空串
+- **防抖修复**：默认延迟 200→0 的问题，`highlightDelay` 的 Facet combine 策略 `Math.min` → `Math.max`
+- **过期 setTimeout 防护**：`clearVersion` 计数器避免旧 `setTimeout` 擦除新装饰
+- **设置持久化**：`minSelectionLength`、`maxMatches` 强制跟随 `DEFAULT_SETTINGS`，data.json 残留值自动写回
+- **中英文注释**：`selection.ts`、`scrollbar-markers.ts` 添加完整中文注释
 
 - **插件重命名**：从 GazerPlugin 统一改为 GlimpsePlugin，更新所有文件中的类型引用、CSS 类名和导出文件名
 - **修复新建高亮器不生效的 Bug**：`static.ts` 中错误使用了非标准数组方法 `.contains()`（返回 `undefined`），导致新保存的高亮器 `mark` 数组虽包含 `"match"` 却无法激活替换为 `.includes()`

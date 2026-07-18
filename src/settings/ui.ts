@@ -29,6 +29,7 @@ export class SettingTab extends PluginSettingTab {
   pickrInstance!: Pickr;
   activeGroup: string = "默认";
   _dragItemId: string | undefined;
+  activeMainTab = "persistent";
 
   constructor(app: App, plugin: GlimpsePlugin) {
     super(app, plugin);
@@ -43,11 +44,24 @@ export class SettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    const config = this.plugin.settings.staticHighlighter;
-    containerEl.createEl("h3", { text: "持久高亮" }).addClass("persistent-highlights");
     containerEl.addClass("glimpse-settings");
 
-    const defineQueryUI = new Setting(containerEl);
+    // main tab bar: 持久高亮 | 选择高亮
+    const mainTabBarEl = containerEl.createDiv({ cls: "glimpse-main-tab-bar" });
+    const persistentTab = mainTabBarEl.createEl("span", { cls: "glimpse-main-tab", text: "持久高亮" });
+    const selectionTab = mainTabBarEl.createEl("span", { cls: "glimpse-main-tab", text: "选择高亮" });
+    if (this.activeMainTab === "persistent") persistentTab.addClass("active");
+    else selectionTab.addClass("active");
+    persistentTab.addEventListener("click", () => { this.activeMainTab = "persistent"; this.display(); });
+    selectionTab.addEventListener("click", () => { this.activeMainTab = "selection"; this.display(); });
+
+    // ── persistent highlight tab content ──
+    const persistentContent = containerEl.createDiv({ cls: "glimpse-tab-content" });
+    if (this.activeMainTab !== "persistent") persistentContent.style.display = "none";
+
+    const config = this.plugin.settings.staticHighlighter;
+
+    const defineQueryUI = new Setting(persistentContent);
     defineQueryUI
       .setName("定义持久高亮器")
       .setClass("highlighter-definition")
@@ -214,7 +228,7 @@ export class SettingTab extends PluginSettingTab {
       });
 
     // toolbar: toggle all, import, export
-    const toolbarEl = containerEl.createDiv({ cls: "glimpse-toolbar" });
+    const toolbarEl = persistentContent.createDiv({ cls: "glimpse-toolbar" });
 
     const allMatchOn = config.queryOrder.every(h => config.queries[h]?.mark?.includes("match") ?? true);
     new ButtonComponent(toolbarEl).setClass("action-button").setButtonText(allMatchOn ? "全部禁止" : "全部启用").onClick(async () => {
@@ -245,7 +259,7 @@ export class SettingTab extends PluginSettingTab {
     });
 
     // group tabs
-    const groupTabEl = containerEl.createDiv({ cls: "glimpse-group-tabs" });
+    const groupTabEl = persistentContent.createDiv({ cls: "glimpse-group-tabs" });
     const tabBarEl = groupTabEl.createDiv({ cls: "glimpse-group-tab-bar" });
     const allGroups = ["默认", ...(config.groups || [])];
     allGroups.forEach(g => {
@@ -362,7 +376,7 @@ export class SettingTab extends PluginSettingTab {
       this.display();
     });
 
-    const highlightersContainer = containerEl.createEl("div", { cls: "highlighter-container" });
+    const highlightersContainer = persistentContent.createEl("div", { cls: "highlighter-container" });
 
     const filteredOrder = config.queryOrder.filter(h => {
       const q = config.queries[h];
@@ -498,15 +512,18 @@ export class SettingTab extends PluginSettingTab {
       },
     });
 
-    containerEl.createEl("h3", { text: "选择高亮" });
-    new Setting(containerEl).setName("高亮当前选中文本的所有出现位置").addToggle(toggle => {
+    // ── selection highlight tab content ──
+    const selectionContent = containerEl.createDiv({ cls: "glimpse-tab-content" });
+    if (this.activeMainTab !== "selection") selectionContent.style.display = "none";
+
+    new Setting(selectionContent).setName("高亮当前选中文本的所有出现位置").addToggle(toggle => {
       toggle.setValue(this.plugin.settings.selectionHighlighter.highlightSelectedText).onChange(value => {
         this.plugin.settings.selectionHighlighter.highlightSelectedText = value;
         this.plugin.saveSettings();
         this.plugin.updateSelectionHighlighter();
       });
     });
-    new Setting(containerEl)
+    new Setting(selectionContent)
       .setName("高亮延迟")
       .setDesc("高亮出现的延迟时间（毫秒），需大于 200ms")
       .addText(text => {
@@ -517,6 +534,19 @@ export class SettingTab extends PluginSettingTab {
           this.plugin.saveSettings();
           this.plugin.updateSelectionHighlighter();
         });
+      });
+
+    new Setting(selectionContent)
+      .setName("缩略图")
+      .setDesc("在编辑器右侧显示缩略图（类似 VS Code minimap），可拖动滑块滚动文档")
+      .addToggle(toggle => {
+        toggle
+          .setValue(this.plugin.settings.selectionHighlighter.minimapEnabled)
+          .onChange(async value => {
+            this.plugin.settings.selectionHighlighter.minimapEnabled = value;
+            await this.plugin.saveSettings();
+            this.plugin.updateSelectionHighlighter();
+          });
       });
   }
 }

@@ -35,10 +35,21 @@ export default class GlimpsePlugin extends Plugin {
 
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    // 强制对齐项目默认值并写回磁盘，避免 data.json 残留旧值
+    let changed = false;
+    if (this.settings.selectionHighlighter.minSelectionLength !== DEFAULT_SETTINGS.selectionHighlighter.minSelectionLength) {
+      this.settings.selectionHighlighter.minSelectionLength = DEFAULT_SETTINGS.selectionHighlighter.minSelectionLength;
+      changed = true;
+    }
+    if (this.settings.selectionHighlighter.maxMatches !== DEFAULT_SETTINGS.selectionHighlighter.maxMatches) {
+      this.settings.selectionHighlighter.maxMatches = DEFAULT_SETTINGS.selectionHighlighter.maxMatches;
+      changed = true;
+    }
     if (this.settings.selectionHighlighter.highlightDelay < 200) {
       this.settings.selectionHighlighter.highlightDelay = 200;
-      this.saveSettings;
+      changed = true;
     }
+    if (changed) await this.saveSettings();
   }
 
   async saveSettings() {

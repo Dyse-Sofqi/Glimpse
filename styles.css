@@ -2,7 +2,7 @@
 
 .cm-current-string, 
 .cm-matched-string {
-  text-decoration: underline var(--text-accent);
+  text-decoration: underline double var(--text-accent);
 }
 
 /* #endregion selection highlighter styles */

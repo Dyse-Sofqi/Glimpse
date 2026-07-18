@@ -93,7 +93,17 @@ Thanks to @chetachiezikeuzor for the settings UI code, inspired by https://githu
 
 ### Changelog
 
-#### 0.6.0 (2026-07-18)
+#### 0.7.0 (2026-07-18)
+
+- **Scrollbar markers**: Rectangular match position indicators on scrollbar when text is selected, using theme accent color `--interactive-accent`, canvas-based rendering
+- **Minimap**: Document minimap on the right side of the editor (similar to VS Code minimap), supports drag-to-scroll, click-to-jump, wheel sync, independently toggleable
+- **Full-document search**: Selection matching no longer limited to visible viewport, uses `SearchCursor` to scan entire document
+- **Match line collection decoupled from decoration limit**: All match line numbers collected before decoration cap, scrollbar markers cover entire document regardless of `maxMatches`
+- **Reverse selection fix**: Normalize `from`/`to` boundaries for leftward drags (anchor > head), preventing `sliceDoc` from returning empty
+- **Debounce fix**: Fixed delay stuck at 0ms — `highlightDelay` Facet combine strategy changed from `Math.min` to `Math.max`
+- **Stale setTimeout guard**: `clearVersion` counter prevents old `setTimeout` callbacks from wiping fresh decorations
+- **Settings persistence**: `minSelectionLength` and `maxMatches` forcibly aligned with `DEFAULT_SETTINGS`, stale data.json values auto-written back on load
+- **Chinese + English comments**: Added comprehensive comments in `selection.ts` and `scrollbar-markers.ts`
 
 - **Plugin rename**: Consolidated `GazerPlugin` → `GlimpsePlugin` across all files, CSS classes (`modal-gazer` → `modal-glimpse`), and export filenames (`gazer.json` → `glimpse.json`)
 - **Fixed new highlighters not activating after save**: `static.ts` used non-standard `Array.prototype.contains()` (returned `undefined`) causing saved highlighters with explicit `mark: ["match"]` to silently fail — replaced all 7 occurrences with `.includes()`
