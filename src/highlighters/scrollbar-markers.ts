@@ -65,7 +65,6 @@ class ScrollbarMarkerView {
       .trim() || "#5b5bd6";
 
     // Calculate marker height per match
-    const totalDocHeight = this.view.state.doc.length;
     const lineHeightEstimate = scrollHeight / this.view.state.doc.lines;
 
     for (const ratio of positions) {
