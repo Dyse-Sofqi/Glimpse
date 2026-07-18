@@ -1,7 +1,7 @@
 {
   "id": "glimpse",
   "name": "Glimpse",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "minAppVersion": "0.15.0",
   "description": "Dynamically highlight text based on cursor selection or search query with full regex, mobile, and live preview support",
   "author": "Sofqi",

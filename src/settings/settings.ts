@@ -40,7 +40,7 @@ export const DEFAULT_SETTINGS: GlimpseSettings = {
     maxMatches: 1000,
     minSelectionLength: 2,
     highlightDelay: 200,
-    minimapEnabled: true,
+    minimapEnabled: false,
   },
   staticHighlighter: {
     queries: {},

@@ -19,7 +19,7 @@ const defaultHighlightOptions: SelectionHighlightOptions = {
   minSelectionLength: 2,
   maxMatches: 1000,
   highlightDelay: 200,
-  minimapEnabled: true,
+  minimapEnabled: false,
 };
 
 // Facet — 合并多个配置源，取各字段的极值

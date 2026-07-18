@@ -93,6 +93,17 @@ Thanks to @chetachiezikeuzor for the settings UI code, inspired by https://githu
 
 ### Changelog
 
+#### 0.7.1 (2026-07-19)
+
+- **Minimap rewrite**: Fixed 120px width, font size & line-wrapping adapt to editor's chars-per-line, per-character pixel-width wrapping with CJK/Latin mixed text support
+- **HiDPI support**: `ctx.scale(dpr, dpr)` normalizes coordinate system to CSS pixels — font size, wrapping, and line height unaffected by device pixel ratio
+- **Scroll offset rendering**: Minimap content follows editor scroll position, last document line visible when scrolled to bottom; drag indicator also mapped by visual content height
+- **Instant re-render**: Scroll events trigger full repaint with offset, eliminating scroll lag
+- **Performance**: Per-character `measureText` replaced with width lookup table (half/full-width measured once, integer accumulation) — drastically reduces lag on large documents
+- **Default off**: Minimap now defaults to `false` in settings, must be manually enabled
+- **Line height fix**: Text rows `fontSize × 1.3`, blank rows `fontSize × 0.65`, preventing overlap
+- Translation: all comments in `src/highlighters/minimap.ts` changed to Chinese
+
 #### 0.7.0 (2026-07-18)
 
 - **Scrollbar markers**: Rectangular match position indicators on scrollbar when text is selected, using theme accent color `--interactive-accent`, canvas-based rendering
