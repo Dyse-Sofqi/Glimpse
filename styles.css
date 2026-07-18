@@ -1,20 +1,112 @@
 /* #region selection highlighter styles */
 
+.cm-current-string, 
 .cm-matched-string {
-  text-decoration: underline dashed var(--text-accent);
-}
-
-.cm-current-string {
-  text-decoration: underline dotted var(--text-accent);
+  text-decoration: underline var(--text-accent);
 }
 
 /* #endregion selection highlighter styles */
+
+/* #region minimap */
+
+.glimpse-minimap {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+  overflow: hidden;
+  border-left: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  z-index: 5;
+  -webkit-user-select: none;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.glimpse-minimap-canvas {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.glimpse-minimap-indicator {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: rgba(128, 128, 128, 0.1);
+  border-top: 1px solid rgba(128, 128, 128, 0.3);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+  pointer-events: auto;
+  cursor: grab;
+  box-sizing: border-box;
+}
+
+.glimpse-minimap-indicator:hover {
+  background: rgba(128, 128, 128, 0.2);
+}
+
+.glimpse-minimap-indicator.dragging {
+  background: rgba(128, 128, 128, 0.3);
+}
+
+/* #endregion minimap */
+
+/* #region scrollbar markers */
+
+.glimpse-scrollbar-markers {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 8px;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* #endregion scrollbar markers */
 
 /* #region settings tab */
 
 .glimpse-settings {
   position: relative;
 }
+
+/* #region main tab bar (persistent / selection) */
+
+.glimpse-settings .glimpse-main-tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--background-modifier-border);
+  margin-bottom: 16px;
+}
+
+.glimpse-settings .glimpse-main-tab {
+  padding: 8px 20px;
+  cursor: pointer;
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-semibold);
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.glimpse-settings .glimpse-main-tab:hover {
+  color: var(--text-normal);
+}
+
+.glimpse-settings .glimpse-main-tab.active {
+  color: var(--text-accent);
+  border-bottom-color: var(--text-accent);
+}
+
+.glimpse-settings .glimpse-tab-content {
+  display: block;
+}
+
+/* #endregion main tab bar */
 
 .glimpse-settings button.action-button {
   display: grid;
