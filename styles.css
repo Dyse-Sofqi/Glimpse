@@ -965,3 +965,94 @@
 }
 
 /* #endregion pickr vendored styles */
+
+/* #region highlight index view */
+
+.glimpse-index-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  user-select: text;
+}
+
+.glimpse-index-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.glimpse-index-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  color: var(--text-muted);
+}
+
+.glimpse-index-card {
+  background: var(--background-primary-alt);
+  border-radius: 10px;
+  padding: 4px 10px;
+  position: relative;
+  transition: background 0.08s, box-shadow 0.08s, -webkit-backdrop-filter 0.08s, backdrop-filter 0.08s;
+  -webkit-user-select: text;
+  user-select: text;
+  border: none;
+}
+
+.glimpse-index-card:hover {
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  background: color-mix(in srgb, var(--background-primary-alt) 70%, transparent);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.glimpse-index-card-content {
+  cursor: default;
+}
+
+.glimpse-index-copy {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.glimpse-index-card:hover .glimpse-index-copy {
+  opacity: 1;
+}
+
+.glimpse-index-copy:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+.glimpse-index-text {
+  font-family: var(--font-text);
+  font-size: calc(var(--font-text-size) * 0.8);
+  line-height: var(--line-height-normal);
+  color: var(--text-normal);
+  -webkit-user-select: text;
+  user-select: text;
+  word-break: break-word;
+}
+
+.glimpse-index-empty {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  padding: 16px;
+  text-align: center;
+}
+
+/* #endregion highlight index view */

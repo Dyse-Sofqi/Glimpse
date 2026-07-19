@@ -1,6 +1,6 @@
 {
   "name": "glimpse",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "An Obsidian plugin that dynamically highlights text based on selection or search query",
   "main": "main.js",
   "scripts": {

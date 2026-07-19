@@ -32,6 +32,11 @@ export type HighlighterOptions = SelectionHighlightOptions | StaticHighlightOpti
 export interface GlimpseSettings {
   selectionHighlighter: SelectionHighlightOptions;
   staticHighlighter: StaticHighlightOptions;
+  highlightIndex: HighlightIndexSettings;
+}
+
+export interface HighlightIndexSettings {
+  autoOpenRightLeaf: boolean;
 }
 
 export const DEFAULT_SETTINGS: GlimpseSettings = {
@@ -46,6 +51,9 @@ export const DEFAULT_SETTINGS: GlimpseSettings = {
     queries: {},
     queryOrder: [],
     groups: [],
+  },
+  highlightIndex: {
+    autoOpenRightLeaf: true,
   },
 };
 

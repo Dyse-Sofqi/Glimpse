@@ -93,6 +93,19 @@ Thanks to @chetachiezikeuzor for the settings UI code, inspired by https://githu
 
 ### Changelog
 
+#### 0.7.2 (2026-07-19)
+
+- **Highlight Index**: New sidebar view that scans `==...==` wrapped Obsidian standard highlights in the active document
+- **Frosted glass cards**: Highlights displayed as rounded frosted glass cards with hover-enhanced blur effect (0.08s fast transition)
+- **One-click copy**: Copy button (lucide clipboard-paste) on each card's top-right corner, copies text and shows a Notice toast
+- **Auto-refresh**: Re-scans on document switch; keeps previous results when the new active document has no highlights
+- **Blur-focus preservation**: Continues showing the last document's highlights when focus leaves the Markdown editor
+- **Command palette**: Registers "打开高亮索引" command to summon the index view
+- **Selectable text**: Card text uses body font at 0.8× body size, user-selectable
+- **Settings toggle**: "默认打开高亮索引" setting — auto-opens the highlight index on plugin load
+- **Single instance**: Guarantees only one highlight index leaf exists; properly cleans up on reload via `onunload()`
+- **Settings UI refactor**: Three-tab layout (persistent / selection / highlight index), code split into standalone modules
+
 #### 0.7.1 (2026-07-19)
 
 - **Minimap rewrite**: Fixed 120px width, font size & line-wrapping adapt to editor's chars-per-line, per-character pixel-width wrapping with CJK/Latin mixed text support
