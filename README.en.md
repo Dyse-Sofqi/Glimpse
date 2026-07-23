@@ -68,6 +68,19 @@ Highlights double spaces, empty list markers, duplicate list markers, leading wh
 }
 ```
 
+### Highlight Index
+
+Automatically scans the active document for `==...==` wrapped Obsidian standard highlights and organizes them in a sidebar view grouped by heading hierarchy.
+
+- **Heading grouping**: Highlights grouped under their nearest preceding heading; orphans (before any heading) shown first under the document title
+- **Level icons & colors**: h1-h6 headings display matching lucide heading icons via `setIcon`, colored by `--h1-color` through `--h6-color` CSS variables
+- **Ancestor breadcrumbs**: Shared ancestor headings rendered as standalone rows before the first entry in each subtree, using the same icon and color styling as direct headings
+- **Frosted glass cards**: Highlights displayed as rounded frosted glass cards with hover-enhanced blur effect (0.08s fast transition)
+- **One-click copy**: Copy button (lucide clipboard-paste) on each card, copies text and shows a Notice toast
+- **Auto-refresh**: Re-scans on document switch; keeps previous results when the new active document has no highlights
+- **Command palette**: Registers "打开高亮索引" command to summon the index view
+- **Settings toggle**: Auto-open on plugin load option available in settings
+
 ### Settings
 
 #### Delay
@@ -92,6 +105,17 @@ Thanks to @chetachiezikeuzor for the settings UI code, inspired by https://githu
 ---
 
 ### Changelog
+
+#### 0.8.0 (2026-07-23)
+
+- **Highlight index code extraction**: `HighlightIndexView` moved from monolithic `main.ts` into standalone `src/highlight-index-view.ts`, reducing main file bloat
+- **Heading hierarchy grouping**: Highlights grouped under their nearest preceding heading in document order
+- **Ancestor breadcrumb trail**: Each heading's parent chain displayed; shared common ancestors rendered as standalone rows before the first entry in each subtree
+- **Heading level icons & colors**: h1-h6 rendering uses `setIcon(heading-1~6)` with lucide icons, colored via `--h1-color` through `--h6-color` CSS variables; ancestor headings reuse identical styling
+- **Document title**: Current document name displayed centered at the top of the index
+- **Orphan match placement**: Highlights before any heading shown first under the document name as group header
+- **Tab switch fix**: Clicking an index entry no longer reverts to the previous document's index due to focus race condition
+- **README update**: Added "Highlight Index" feature documentation
 
 #### 0.7.2 (2026-07-19)
 

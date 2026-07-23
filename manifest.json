@@ -1,9 +1,9 @@
 {
   "id": "glimpse",
   "name": "Glimpse",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "minAppVersion": "0.15.0",
-  "description": "Dynamically highlight text based on cursor selection or search query with full regex, mobile, and live preview support",
+  "description": "Dynamically highlight text based on search query with full regex, mobile, and live preview support",
   "author": "Sofqi",
   "authorUrl": "https://github.com/Dyse-Sofqi/ziping/blob/main/zanshang.jpg",
   "isDesktopOnly": false
