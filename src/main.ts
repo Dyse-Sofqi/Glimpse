@@ -112,6 +112,12 @@ export default class GlimpsePlugin extends Plugin {
   }
 
   updateStaticHighlighter() {
+    // Update extensions array (used by registerEditorExtension for new editors)
+    this.extensions.remove(this.staticHighlighter);
+    this.staticHighlighter = staticHighlighterExtension(this);
+    this.extensions.push(this.staticHighlighter);
+    this.app.workspace.updateOptions();
+    // Dispatch compartment reconfigure to open editors
     const options = this.settings.staticHighlighter;
     this.iterateCM6(view => {
       view.dispatch({
