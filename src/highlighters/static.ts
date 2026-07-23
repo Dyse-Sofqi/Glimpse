@@ -96,11 +96,7 @@ const staticHighlighter = ViewPlugin.fromClass(
     }
 
     update(update: ViewUpdate) {
-      const newConfig = update.state.facet(staticHighlightConfig);
-      const oldConfig = update.startState.facet(staticHighlightConfig);
-      const reconfigured = oldConfig !== newConfig;
-      console.log("[Glimpse] update called, reconfigured:", reconfigured, "docChanged:", update.docChanged, "viewportChanged:", update.viewportChanged,
-        "old queries:", Object.keys(oldConfig.queries).length, "new queries:", Object.keys(newConfig.queries).length);
+      const reconfigured = update.startState.facet(staticHighlightConfig) !== update.state.facet(staticHighlightConfig);
       if (update.docChanged || update.viewportChanged || reconfigured) {
         const { token, line, group, widget } = this.getDeco(update.view);
         this.decorations = token;
