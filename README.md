@@ -120,9 +120,11 @@ Obsidian 插件，根据选中内容或搜索关键词动态高亮文本。
 
 #### 0.8.1 (2026-07-24)
 
-- **修复捕获组不生效**：`regexp-cursor.ts` 正则 flags 缺 `d`（`hasIndices`），导致 `match.indices.groups` 永远为空，命名捕获组装饰跳过
-- **修复自定义样式保存后不生效**：静态高亮器更新流程从 `extensions.push/remove` + `updateOptions()` 改为 `staticHighlighterCompartment.reconfigure()` + per-view `view.dispatch({effects})`，与选择高亮器更新方式统一，运行时修改配置即时生效
-- **README 完善**：持久高亮章节补充标记类型说明（匹配/父行/开始/结束/捕获组）、自定义 CSS、命名捕获组功能介绍
+- **修复捕获组不生效**：`regexp-cursor.ts` 正则 flags 缺 `d`（`hasIndices`），导致 `match.indices.groups` 永远为空，命名捕获组装饰跳过。改用原生 `this.re.exec()` 替代 `regexp-match-indices` polyfill（该 polyfill 的 `getPolyfill` 用无 `d` flag 正则做能力检测，始终返回 implementation，其 lazy getter 触发 `regexp-tree.parse('/regex/gdmu')` → `SyntaxError: Invalid flags: dgmu`）
+- **修复捕获组位置偏移错误**：原代码 `linePos + groupFrom` 仅适用于单行正则（`RegExpCursor`），多行正则（`MultilineRegExpCursor`）的 indices 相对于 `flat.text`（起点 `flat.from`），偏移错误导致 `RangeError: Selection points outside of document`。改为 `(from - match.index) + groupFrom`，`from` 和 `match.index` 同基准，单行/多行通用
+- **修复自定义样式保存后不生效**：静态高亮器更新走 `extensions.push/remove` + `updateOptions()`，CM6 在运行时修改配置不触发重绘。改为 `staticHighlighterCompartment.reconfigure()` + per-view `view.dispatch({effects})`，同时保留 `extensions` 数组更新（覆盖设置页无活动编辑器场景）
+- **升级 esbuild**：`0.13.12` → `0.25.12`，移除 `watch` 选项避免 VS Code 进程阻塞
+- **README 完善**：持久高亮章节补充标记类型（匹配/父行/开始/结束/捕获组）、自定义 CSS、命名捕获组功能说明
 
 #### 0.8.0 (2026-07-23)
 

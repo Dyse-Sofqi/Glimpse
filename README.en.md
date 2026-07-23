@@ -119,8 +119,10 @@ Thanks to @chetachiezikeuzor for the settings UI code, inspired by https://githu
 
 #### 0.8.1 (2026-07-24)
 
-- **Fixed capture groups not working**: `regexp-cursor.ts` regex flags were missing `d` (`hasIndices`), causing `match.indices.groups` to always be empty and named capture group decorations to be silently skipped
-- **Fixed saved highlighters not taking effect**: Static highlighter update flow changed from `extensions.push/remove` + `updateOptions()` to `staticHighlighterCompartment.reconfigure()` + per-view `view.dispatch({effects})`, aligning with the selection highlighter pattern — runtime config changes now apply immediately
+- **Fixed capture groups not working**: `regexp-cursor.ts` regex flags were missing `d` (`hasIndices`), causing `match.indices.groups` to always be empty. Switched from `regexp-match-indices` polyfill to native `this.re.exec()` — the polyfill's `getPolyfill` uses a regex without `d` flag for capability detection, always returning the implementation, whose lazy getter triggers `regexp-tree.parse('/regex/gdmu')` → `SyntaxError: Invalid flags: dgmu`
+- **Fixed group offset crash**: Original `linePos + groupFrom` only worked for single-line cursors (`RegExpCursor`). Multiline cursors (`MultilineRegExpCursor`) have indices relative to `flat.text` (base `flat.from`), causing `RangeError: Selection points outside of document`. Changed to `(from - match.index) + groupFrom` — `from` and `match.index` share the same base for both cursor types
+- **Fixed saved highlighters not taking effect**: Static highlighter update flow changed from `extensions.push/remove` + `updateOptions()` to `staticHighlighterCompartment.reconfigure()` + per-view `view.dispatch({effects})`, aligning with the selection highlighter pattern. Also keeps `extensions` array update for scenarios without active editors open
+- **Upgraded esbuild**: `0.13.12` → `0.25.12`, removed `watch` option from build() to prevent hanging in VS Code task environments
 - **README enhancement**: Persistent Highlight section expanded with mark type descriptions (match/line/start/end/group), custom CSS, and named capture group feature docs
 
 #### 0.8.0 (2026-07-23)

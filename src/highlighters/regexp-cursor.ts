@@ -1,7 +1,6 @@
 // from https://github.com/codemirror/search/blob/main/src/regexp.ts
 
 import { Text, TextIterator } from "@codemirror/text"
-import execWithIndices from 'regexp-match-indices';
 
 const empty = { from: -1, to: -1, match: /.*/.exec("")! }
 
@@ -61,7 +60,7 @@ export class RegExpCursor implements Iterator<{ from: number, to: number, match:
   next() {
     for (let off = this.matchPos - this.curLineStart; ;) {
       this.re.lastIndex = off
-      const match = this.matchPos <= this.to && execWithIndices(this.re, this.curLine)
+      const match = this.matchPos <= this.to && this.re.exec(this.curLine)
       if (match) {
         const from = this.curLineStart + match.index, to = from + match[0].length
         this.matchPos = to + (from == to ? 1 : 0)
@@ -135,11 +134,11 @@ class MultilineRegExpCursor implements Iterator<{ from: number, to: number, matc
   next() {
     for (; ;) {
       const off = this.re.lastIndex = this.matchPos - this.flat.from
-      let match = execWithIndices(this.re, this.flat.text)
+      let match = this.re.exec(this.flat.text)
       // Skip empty matches directly after the last match
       if (match && !match[0] && match.index == off) {
         this.re.lastIndex = off + 1
-        match = execWithIndices(this.re, this.flat.text)
+        match = this.re.exec(this.flat.text)
       }
       // If a match goes almost to the end of a noncomplete chunk, try
       // again, since it'll likely be able to match more

@@ -3,7 +3,6 @@ import { SearchCursor } from "@codemirror/search";
 import { combineConfig, Compartment, Extension, Facet, Range } from "@codemirror/state";
 import { syntaxTree, tokenClassNodeProp } from "@codemirror/language";
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetType } from "@codemirror/view";
-import type { RegExpExecArray } from "regexp-match-indices/types";
 import GlimpsePlugin from "../main";
 import { SearchQueries, SearchQuery } from "../settings/settings";
 import { StyleSpec } from "style-mod";
@@ -156,21 +155,25 @@ const staticHighlighter = ViewPlugin.fromClass(
               if (query.mark?.includes("end")) widgetDecos.push(endDeco.range(to, to));
             }
             if (query.mark?.includes("group")) {
-              let groups;
               if (cursor instanceof RegExpCursor) {
-                const match = cursor.value?.match as RegExpExecArray;
-                groups = match.indices?.groups;
-              }
-              groups &&
-                Object.entries(groups).forEach(group => {
-                  try {
-                    const [groupName, [groupFrom, groupTo]] = group;
+                const match = cursor.value?.match;
+                // match.indices only exists when regex has 'd' (hasIndices)
+                // flag. baseFlags = "gmd" ensures this for both single-line
+                // and multiline RegExp cursors.
+                const groups = match?.indices?.groups;
+                if (groups) {
+                  // indices.groups values are relative to the start of the
+                  // string passed to .exec() (curLine/linePos or
+                  // flat.text/flat.from). from = base + match.index, so:
+                  const basePos = from - match.index;
+                  Object.entries(groups).forEach(([groupName, range]) => {
+                    if (!range) return;
+                    const [groupFrom, groupTo] = range;
                     const groupDeco = Decoration.mark({ class: groupName });
-                    groupDecos.push(groupDeco.range(linePos + groupFrom, linePos + groupTo));
-                  } catch (err) {
-                    console.debug(err);
-                  }
-                });
+                    groupDecos.push(groupDeco.range(basePos + groupFrom, basePos + groupTo));
+                  });
+                }
+              }
             }
           }
         }

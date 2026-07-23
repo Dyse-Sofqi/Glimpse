@@ -29,11 +29,12 @@ export default class GlimpsePlugin extends Plugin {
     this.registerView(HIGHLIGHT_INDEX_VIEW, (leaf) => new HighlightIndexView(leaf, this));
     this.settingsTab = new SettingTab(this.app, this);
     this.addSettingTab(this.settingsTab);
+    this.staticHighlighter = staticHighlighterExtension(this);
     this.extensions = [];
     this.updateSelectionHighlighter();
     this.updateMinimap();
     this.extensions.push(scrollbarMarkersExtension());
-    this.initStaticHighlighter();
+    this.extensions.push(this.staticHighlighter);
     this.updateStyles();
     this.registerEditorExtension(this.extensions);
     this.initCSS();
@@ -117,11 +118,6 @@ export default class GlimpsePlugin extends Plugin {
         effects: reconfigureStaticHighlighter(options),
       });
     });
-  }
-
-  initStaticHighlighter() {
-    this.staticHighlighter = staticHighlighterExtension(this);
-    this.extensions.push(this.staticHighlighter);
   }
 
   updateSelectionHighlighter() {
