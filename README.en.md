@@ -16,7 +16,7 @@ When text is selected, highlights all occurrences of the selected text:
 
 Define search queries with associated CSS class names and colors to create persistent highlights. Matched strings are automatically tagged with the corresponding CSS class and background color. Each highlighter's style and color is cached in the index; match toggles can be enabled/disabled at any time without re-creating the highlighter.
 
-Supports regex queries (enable the toggle for regex mode). In regex mode, **named capture groups** (e.g., `(?<groupName>…)`) can be used to highlight sub-matches with precision.
+Supports regex queries (enable the toggle for regex mode). In regex mode, **named capture groups** (e.g., `(?<groupName>…)`) or **unnamed capture groups** (e.g., `(…)`) can be used to highlight sub-matches with precision.
 
 #### Mark Types
 
@@ -25,7 +25,7 @@ Each highlighter can combine multiple mark modes:
 - **Match**: Highlight the full matched text (enabled by default)
 - **Line**: Apply the CSS class to the entire line containing the match, enabling whole-line styling instead of word-level
 - **Start / End**: Insert zero-width widget elements at match boundaries — use with CSS for prefix/suffix icons
-- **Group**: In regex mode, highlight named capture group `(?<name>…)` content instead of the full match. The group name becomes the CSS class
+- **Group**: In regex mode, highlight capture group sub-matches instead of the full match. Sub-matches use the highlighter's own color. Supports both named `(?<name>…)` and unnamed `(…)` capture groups. When "Group" is toggled on, full-match decoration is automatically skipped.
 
 #### Custom CSS
 
@@ -124,6 +124,13 @@ Thanks to @chetachiezikeuzor for the settings UI code, inspired by https://githu
 ---
 
 ### Changelog
+
+#### 0.8.3 (2026-07-24)
+
+- **Fixed capture groups not applying for multiline regexes**: `cursor instanceof RegExpCursor` guard in `getDeco()` fails when `RegExpCursor` constructor returns a `MultilineRegExpCursor` (for patterns containing `\s`/`\n` etc.), which is a standalone class that does not extend `RegExpCursor`. Removed type guard; now uses `match?.indices?.groups` duck-type check.
+- **Added unnamed capture group support**: Group decorations now use the highlighter's own `query.class` instead of the group name. Unnamed groups `(…)` are supported via `match.indices[1..N]` — no need to write `(?<name>…)`.
+- **Fixed group/line/start/end decorations bypassing the on/off toggle**: These four mark types each independently checked `mark.includes("x")`, but the toggle only adds/removes `"match"`. Introduced an `enabled` flag that controls all decorations uniformly.
+- **Fixed match + group coexistence**: When "Group" is toggled on, full-match decoration is automatically skipped — the two modes are now mutually exclusive.
 
 #### 0.8.2 (2026-07-24)
 

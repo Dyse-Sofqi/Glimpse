@@ -140,38 +140,49 @@ const staticHighlighter = ViewPlugin.fromClass(
                 nodeProps?.split(" ").includes(token)
               );
             if (excludedSection) continue;
-            if (query.mark?.includes("line")) {
+            const enabled = !query.mark || query.mark.length === 0 || query.mark.includes("match");
+            if (enabled && query.mark?.includes("line")) {
               if (!lineClasses[linePos]) lineClasses[linePos] = [];
               lineClasses[linePos].push(query.class);
             }
-            if (!query.mark || query.mark?.includes("match")) {
+            if (enabled && !query.mark?.includes("group") && (!query.mark || query.mark.includes("match"))) {
               const markDeco = Decoration.mark({ class: query.class, attributes: { "data-contents": string } });
               tokenDecos.push(markDeco.range(from, to));
             }
-            if (query.mark?.includes("start") || query.mark?.includes("end")) {
+            if (enabled && (query.mark?.includes("start") || query.mark?.includes("end"))) {
               const startDeco = Decoration.widget({ widget: new IconWidget(query.class + "-start") });
               const endDeco = Decoration.widget({ widget: new IconWidget(query.class + "-end") });
               if (query.mark?.includes("start")) widgetDecos.push(startDeco.range(from, from));
               if (query.mark?.includes("end")) widgetDecos.push(endDeco.range(to, to));
             }
-            if (query.mark?.includes("group")) {
-              if (cursor instanceof RegExpCursor) {
-                const match = cursor.value?.match;
-                // match.indices only exists when regex has 'd' (hasIndices)
-                // flag. baseFlags = "gmd" ensures this for both single-line
-                // and multiline RegExp cursors.
-                const groups = match?.indices?.groups;
-                if (groups) {
-                  // indices.groups values are relative to the start of the
-                  // string passed to .exec() (curLine/linePos or
-                  // flat.text/flat.from). from = base + match.index, so:
-                  const basePos = from - match.index;
-                  Object.entries(groups).forEach(([groupName, range]) => {
+            if (enabled && query.mark?.includes("group")) {
+              const match = cursor.value?.match;
+              // match.indices exists when regex has 'd' (hasIndices) flag.
+              // baseFlags = "gmd" ensures this for both RegExpCursor and
+              // MultilineRegExpCursor paths.
+              if (match?.indices) {
+                const basePos = from - match.index;
+                const seen = new Set<string>();
+                // Named groups: (?<name>…)  →  match.indices.groups
+                if (match.indices.groups) {
+                  Object.entries(match.indices.groups).forEach(([_, range]) => {
                     if (!range) return;
-                    const [groupFrom, groupTo] = range;
-                    const groupDeco = Decoration.mark({ class: groupName });
-                    groupDecos.push(groupDeco.range(basePos + groupFrom, basePos + groupTo));
+                    const key = `${range[0]},${range[1]}`;
+                    if (seen.has(key)) return;
+                    seen.add(key);
+                    const groupDeco = Decoration.mark({ class: query.class });
+                    groupDecos.push(groupDeco.range(basePos + range[0], basePos + range[1]));
                   });
+                }
+                // Unnamed groups: (…)  →  match.indices[1..N]
+                for (let i = 1; i < match.indices.length; i++) {
+                  const range = match.indices[i];
+                  if (!range) continue;
+                  const key = `${range[0]},${range[1]}`;
+                  if (seen.has(key)) continue;
+                  seen.add(key);
+                  const groupDeco = Decoration.mark({ class: query.class });
+                  groupDecos.push(groupDeco.range(basePos + range[0], basePos + range[1]));
                 }
               }
             }
