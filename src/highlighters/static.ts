@@ -40,10 +40,9 @@ export function staticHighlighterExtension(plugin: GlimpsePlugin): Extension {
 }
 
 export function reconfigureStaticHighlighter(options: StaticHighlightOptions) {
-  return staticHighlighterCompartment.reconfigure([
-    staticHighlighter,
+  return staticHighlighterCompartment.reconfigure(
     staticHighlightConfig.of({...options}),
-  ]);
+  );
 }
 
 export interface Styles {
