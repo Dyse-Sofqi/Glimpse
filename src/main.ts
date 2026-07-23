@@ -6,7 +6,7 @@ import {
   Plugin,
 } from "obsidian";
 import { highlightSelectionMatches, reconfigureSelectionHighlighter, SelectionHighlightOptions } from "./highlighters/selection";
-import { buildStyles, staticHighlighterExtension } from "./highlighters/static";
+import { buildStyles, staticHighlighterExtension, reconfigureStaticHighlighter, StaticHighlightOptions } from "./highlighters/static";
 import { minimapExtension } from "./highlighters/minimap";
 import { scrollbarMarkersExtension } from "./highlighters/scrollbar-markers";
 import { DEFAULT_SETTINGS, GlimpseSettings, HighlighterOptions } from "./settings/settings";
@@ -29,12 +29,11 @@ export default class GlimpsePlugin extends Plugin {
     this.registerView(HIGHLIGHT_INDEX_VIEW, (leaf) => new HighlightIndexView(leaf, this));
     this.settingsTab = new SettingTab(this.app, this);
     this.addSettingTab(this.settingsTab);
-    this.staticHighlighter = staticHighlighterExtension(this);
     this.extensions = [];
     this.updateSelectionHighlighter();
     this.updateMinimap();
     this.extensions.push(scrollbarMarkersExtension());
-    this.updateStaticHighlighter();
+    this.initStaticHighlighter();
     this.updateStyles();
     this.registerEditorExtension(this.extensions);
     this.initCSS();
@@ -112,10 +111,17 @@ export default class GlimpsePlugin extends Plugin {
   }
 
   updateStaticHighlighter() {
-    this.extensions.remove(this.staticHighlighter);
+    const options = this.settings.staticHighlighter;
+    this.iterateCM6(view => {
+      view.dispatch({
+        effects: reconfigureStaticHighlighter(options),
+      });
+    });
+  }
+
+  initStaticHighlighter() {
     this.staticHighlighter = staticHighlighterExtension(this);
     this.extensions.push(this.staticHighlighter);
-    this.app.workspace.updateOptions();
   }
 
   updateSelectionHighlighter() {

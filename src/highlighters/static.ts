@@ -30,13 +30,21 @@ export const staticHighlightConfig = Facet.define<StaticHighlightOptions, Requir
   },
 });
 
-const staticHighlighterCompartment = new Compartment();
+export const staticHighlighterCompartment = new Compartment();
 
 export function staticHighlighterExtension(plugin: GlimpsePlugin): Extension {
-  const ext: Extension[] = [staticHighlighter];
   const options = plugin.settings.staticHighlighter;
-  ext.push(staticHighlightConfig.of({...options}));
-  return ext;
+  return staticHighlighterCompartment.of([
+    staticHighlighter,
+    staticHighlightConfig.of({...options}),
+  ]);
+}
+
+export function reconfigureStaticHighlighter(options: StaticHighlightOptions) {
+  return staticHighlighterCompartment.reconfigure([
+    staticHighlighter,
+    staticHighlightConfig.of({...options}),
+  ]);
 }
 
 export interface Styles {

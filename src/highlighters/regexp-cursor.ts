@@ -5,7 +5,7 @@ import execWithIndices from 'regexp-match-indices';
 
 const empty = { from: -1, to: -1, match: /.*/.exec("")! }
 
-const baseFlags = "gm" + (/x/.unicode == null ? "" : "u")
+const baseFlags = "gmd" + (/x/.unicode == null ? "" : "u")
 
 /// This class is similar to [`SearchCursor`](#search.SearchCursor)
 /// but searches for a regular expression pattern instead of a plain

@@ -16,9 +16,20 @@ When text is selected, highlights all occurrences of the selected text:
 
 Define search queries with associated CSS class names and colors to create persistent highlights. Matched strings are automatically tagged with the corresponding CSS class and background color.
 
-Supports regex queries (enable the toggle for regex mode).
+Supports regex queries (enable the toggle for regex mode). In regex mode, **named capture groups** (e.g., `(?<groupName>…)`) can be used to highlight sub-matches with precision.
 
-You can define any number of independent highlighters; class names must be unique. Be mindful of performance with many complex regex queries.
+#### Mark Types
+
+Each highlighter can combine multiple mark modes:
+
+- **Match**: Highlight the full matched text (enabled by default)
+- **Line**: Apply the CSS class to the entire line containing the match, enabling whole-line styling instead of word-level
+- **Start / End**: Insert zero-width widget elements at match boundaries — use with CSS for prefix/suffix icons
+- **Group**: In regex mode, highlight named capture group `(?<name>…)` content instead of the full match. The group name becomes the CSS class
+
+#### Custom CSS
+
+Each highlighter can include its own CSS rules, automatically injected into the page. Supports dark/light theme adaptation.
 
 #### Examples
 
@@ -105,6 +116,12 @@ Thanks to @chetachiezikeuzor for the settings UI code, inspired by https://githu
 ---
 
 ### Changelog
+
+#### 0.8.1 (2026-07-24)
+
+- **Fixed capture groups not working**: `regexp-cursor.ts` regex flags were missing `d` (`hasIndices`), causing `match.indices.groups` to always be empty and named capture group decorations to be silently skipped
+- **Fixed saved highlighters not taking effect**: Static highlighter update flow changed from `extensions.push/remove` + `updateOptions()` to `staticHighlighterCompartment.reconfigure()` + per-view `view.dispatch({effects})`, aligning with the selection highlighter pattern — runtime config changes now apply immediately
+- **README enhancement**: Persistent Highlight section expanded with mark type descriptions (match/line/start/end/group), custom CSS, and named capture group feature docs
 
 #### 0.8.0 (2026-07-23)
 
