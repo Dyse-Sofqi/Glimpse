@@ -6,7 +6,7 @@ import {
   Plugin,
 } from "obsidian";
 import { highlightSelectionMatches, reconfigureSelectionHighlighter, SelectionHighlightOptions } from "./highlighters/selection";
-import { buildStyles, staticHighlighterExtension, reconfigureStaticHighlighter, StaticHighlightOptions } from "./highlighters/static";
+import { buildStyles, reconfigureStaticHighlighter, staticHighlighterExtension } from "./highlighters/static";
 import { minimapExtension } from "./highlighters/minimap";
 import { scrollbarMarkersExtension } from "./highlighters/scrollbar-markers";
 import { DEFAULT_SETTINGS, GlimpseSettings, HighlighterOptions } from "./settings/settings";
@@ -112,12 +112,11 @@ export default class GlimpsePlugin extends Plugin {
   }
 
   updateStaticHighlighter() {
-    // Update extensions array (used by registerEditorExtension for new editors)
     this.extensions.remove(this.staticHighlighter);
     this.staticHighlighter = staticHighlighterExtension(this);
     this.extensions.push(this.staticHighlighter);
     this.app.workspace.updateOptions();
-    // Dispatch compartment reconfigure to open editors
+    // Dispatch compartment reconfigure to already-open editors
     const options = this.settings.staticHighlighter;
     this.iterateCM6(view => {
       view.dispatch({

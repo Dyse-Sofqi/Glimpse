@@ -14,7 +14,7 @@ Obsidian 插件，根据选中内容或搜索关键词动态高亮文本。
 
 ### 持久高亮
 
-定义搜索查询并关联 CSS 类名和颜色来创建持久高亮。匹配的字符串会自动标记对应 CSS 类并应用所选背景色。
+定义搜索查询并关联 CSS 类名和颜色来创建持久高亮。匹配的字符串会自动标记对应 CSS 类并应用所选背景色。每条样式与颜色缓存于索引，标记可随时开关控制匹配表现。
 
 支持正则表达式查询（需开启对应选项），正则模式下可使用**命名捕获组**（如 `(?<groupName>…)`）精确高亮子匹配内容。
 
@@ -29,7 +29,15 @@ Obsidian 插件，根据选中内容或搜索关键词动态高亮文本。
 
 #### 自定义 CSS
 
-每条样式可编写独立 CSS 规则，自动注入页面。支持深色/浅色主题适配。
+每条样式可编写独立 CSS 规则，自动注入页面 `<style>` 元素。编辑器内通过 CodeMirror 实例高亮渲染，支持深色/浅色主题适配。CSS 变更随保存即时生效。
+
+#### 标签组
+
+样式支持分组管理：新建、重命名、删除分组，拖拽样式至标签页即可归类。「全部启用/禁止」工具栏按钮统一控制当前分组匹配开关状态。
+
+#### 导入导出
+
+支持一键导入（从剪贴板 JSON）、一键导出（批量导出所有样式含分组信息）、单条样式导出。兼容旧格式数据（无分组 → 归入"默认"）。
 
 #### 示例
 
@@ -118,14 +126,17 @@ Obsidian 插件，根据选中内容或搜索关键词动态高亮文本。
 
 ### 更新日志
 
+#### 0.8.2 (2026-07-24)
+
+- **修复保存自定义样式不生效**：`updateStaticHighlighter` 重构时移除了 `Compartment` 和 `iterateCM6` 调度，导致已打开编辑器中的 Facet 值未更新，ViewPlugin 不会重绘；恢复完整 compartment 架构
+- **修复开关切换样式不立即生效**：`reconfigureStaticHighlighter` 仅传入 Facet 配置遗漏了 `staticHighlighter` ViewPlugin，compartment 替换时 ViewPlugin 丢失 → 需重启生效；现在 reconfigure 同时包含 ViewPlugin 和 Facet
+- **完善自定义样式功能介绍**：补充标记类型、自定义 CSS 注入机制、分组管理、导入导出等详细说明
+
 #### 0.8.1 (2026-07-24)
 
 - **修复捕获组不生效**：`regexp-cursor.ts` 正则 flags 缺 `d`（`hasIndices`），改用原生 `this.re.exec()` 替代 `regexp-match-indices` polyfill
 - **修复捕获组位置偏移错误**：`linePos + groupFrom` 改为 `(from - match.index) + groupFrom`，单行/多行光标通用
-- **修复 compartment 重复注册**：`reconfigure` 中只更新 Facet 值，不重复注册 ViewPlugin，确保 `view.dispatch({effects})` 能成功重配
-- **修复自定义样式保存后不生效**：`updateStaticHighlighter` 通过 compartment reconfigure 即时更新已打开的编辑器
-- **升级 esbuild**：`0.13.12` → `0.25.12`
-- **README 完善**：持久高亮章节补充标记类型、自定义 CSS、命名捕获组功能说明
+- **修复编译阻塞**：`esbuild.config.mjs` 移除 `watch` 选项，升级 esbuild 至 `0.25.12`
 
 #### 0.8.0 (2026-07-23)
 

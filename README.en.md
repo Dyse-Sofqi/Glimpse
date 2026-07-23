@@ -14,7 +14,7 @@ When text is selected, highlights all occurrences of the selected text:
 
 ### Persistent Highlighting
 
-Define search queries with associated CSS class names and colors to create persistent highlights. Matched strings are automatically tagged with the corresponding CSS class and background color.
+Define search queries with associated CSS class names and colors to create persistent highlights. Matched strings are automatically tagged with the corresponding CSS class and background color. Each highlighter's style and color is cached in the index; match toggles can be enabled/disabled at any time without re-creating the highlighter.
 
 Supports regex queries (enable the toggle for regex mode). In regex mode, **named capture groups** (e.g., `(?<groupName>…)`) can be used to highlight sub-matches with precision.
 
@@ -29,7 +29,15 @@ Each highlighter can combine multiple mark modes:
 
 #### Custom CSS
 
-Each highlighter can include its own CSS rules, automatically injected into the page. Supports dark/light theme adaptation.
+Each highlighter can include its own CSS rules, automatically injected into the page via a `<style>` element. Renders through the editor's CodeMirror instance, supporting dark/light theme adaptation. CSS changes take effect immediately on save.
+
+#### Group Management
+
+Organize highlighters with groups: create, rename, delete groups; drag highlighters onto group tabs to categorize. The "Enable All / Disable All" toolbar button controls match toggles for the current group at once.
+
+#### Import & Export
+
+Supports one-click import from clipboard (JSON), batch export of all highlighters with group metadata, and per-highlighter single export. Backward compatible with legacy data format (no groups → defaults to "默认").
 
 #### Examples
 
@@ -117,14 +125,17 @@ Thanks to @chetachiezikeuzor for the settings UI code, inspired by https://githu
 
 ### Changelog
 
+#### 0.8.2 (2026-07-24)
+
+- **Fixed custom styles not applying after save**: `updateStaticHighlighter` refactor removed `Compartment` + `iterateCM6` dispatch, causing Facet values to go stale in already-open editors — ViewPlugin never re-decorated. Restored full compartment architecture + dispatch loop.
+- **Fixed toggle not taking effect until restart**: `reconfigureStaticHighlighter` only passed Facet config into `compartment.reconfigure()`, dropping the `staticHighlighter` ViewPlugin. After toggle ON, facet updates but ViewPlugin is missing → no decorations. Now reconfigure includes both ViewPlugin and Facet.
+- **Improved custom styles documentation**: Added detailed sections on mark types, custom CSS injection, group management, import/export, and examples.
+
 #### 0.8.1 (2026-07-24)
 
 - **Fixed capture groups not working**: `regexp-cursor.ts` regex flags missing `d` flag. Switched from `regexp-match-indices` polyfill to native `this.re.exec()`
-- **Fixed group offset crash**: `linePos + groupFrom` → `(from - match.index) + groupFrom`, works for both single-line and multiline cursors
-- **Fixed compartment double-registration**: `reconfigure` now updates only the Facet value, not re-registering the ViewPlugin
-- **Fixed saved highlighters not taking effect**: `updateStaticHighlighter` uses compartment reconfigure + `view.dispatch({effects})` for immediate updates
-- **Upgraded esbuild**: `0.13.12` → `0.25.12`
-- **README enhancement**: Persistent Highlight section expanded with mark type descriptions, custom CSS, and named capture group docs
+- **Fixed group offset crash**: `linePos + groupFrom` → `(from - match.index) + groupFrom`. Works for both single-line and multiline cursors.
+- **Fixed build hanging**: removed `watch` option from esbuild `build()`, upgraded esbuild to `0.25.12`
 
 #### 0.8.0 (2026-07-23)
 
