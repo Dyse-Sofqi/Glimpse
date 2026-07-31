@@ -317,6 +317,9 @@ export class HighlightIndexView extends ItemView {
       e.preventDefault();
       activeView.editor.setCursor(m.line - 1, 0);
       activeView.editor.scrollIntoView({ from: { line: m.line - 1, ch: 0 }, to: { line: m.line - 1, ch: 0 } }, true);
+      // 提词器：绑定卡片文档并切换高亮模式（步骤 2）
+      const file = activeView.file;
+      if (file) this.plugin.teleprompterManager.handleCardClick(file.path, m.text);
     });
   }
 }

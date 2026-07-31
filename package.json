@@ -1,11 +1,11 @@
 {
   "name": "glimpse",
-  "version": "0.8.3",
+  "version": "0.9.0",
   "description": "An Obsidian plugin that dynamically highlights text based on selection or search query",
   "main": "main.js",
   "scripts": {
-    "dev": "node esbuild.config.mjs",
-    "build": "node esbuild.config.mjs production"
+    "dev": "tsc --noEmit && node esbuild.config.mjs",
+    "build": "tsc --noEmit && node esbuild.config.mjs production"
   },
   "keywords": [],
   "author": "",
@@ -40,7 +40,7 @@
     "stylelint-config-recommended": "^6.0.0",
     "stylelint-config-standard": "^24.0.0",
     "tslib": "2.3.1",
-    "typescript": "4.4.4",
+    "typescript": "^7.0.2",
     "typescript-json-schema": "^0.53.0"
   }
 }

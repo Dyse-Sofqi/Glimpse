@@ -12,7 +12,8 @@
     "importHelpers": true,
     "lib": [
       "DOM",
-      "ES2017"
+      "ES2017",
+      "ES2022"
     ],
     "skipLibCheck": true
   },

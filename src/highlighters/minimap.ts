@@ -93,7 +93,7 @@ class MinimapView {
   }
 
   update(update: ViewUpdate) {
-    if (update.docChanged || update.heightChanged || update.configurationChanged || update.selectionSet) {
+    if (update.docChanged || update.heightChanged || update.geometryChanged || update.selectionSet) {
       this.render();
     } else if (update.viewportChanged) {
       // 滚动时即时重绘（含偏移映射），不额外更新指示器

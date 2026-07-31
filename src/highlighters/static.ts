@@ -156,7 +156,9 @@ const staticHighlighter = ViewPlugin.fromClass(
               if (query.mark?.includes("end")) widgetDecos.push(endDeco.range(to, to));
             }
             if (enabled && query.mark?.includes("group")) {
-              const match = cursor.value?.match;
+              const value = cursor.value;
+              // cursor.value 为 RegExpMatch | PreciseMatch 联合类型，match 仅在 RegExpMatch 分支上
+              const match = value && "match" in value ? value.match : undefined;
               // match.indices exists when regex has 'd' (hasIndices) flag.
               // baseFlags = "gmd" ensures this for both RegExpCursor and
               // MultilineRegExpCursor paths.

@@ -1152,3 +1152,188 @@
 }
 
 /* #endregion highlight index heading tree */
+
+/* #region teleprompter */
+
+.glimpse-teleprompter {
+  position: fixed;
+  z-index: 2147483647; /* 置于 Obsidian 全部面板之上（ADRs/0001） */
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 240px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* 未锁定时悬停显背景，穿透锁定期间始终透明。
+   背景色 = 主题背景色 rgba(--tp-bg-rgb, --tp-bg-opacity)，透明度由设置控制 */
+.glimpse-teleprompter:not(.is-locked):hover,
+.glimpse-teleprompter.is-dragging,
+.glimpse-teleprompter.is-resizing {
+  background: rgba(var(--tp-bg-rgb, 27, 27, 27), var(--tp-bg-opacity, 0.5));
+  border-color: var(--background-modifier-border);
+  box-shadow: var(--shadow-s);
+}
+
+/* 穿透锁定：整窗鼠标事件穿透，仅保留交互按钮，不显示背景 */
+.glimpse-teleprompter.is-locked {
+  pointer-events: none;
+}
+
+.glimpse-teleprompter.is-locked .glimpse-tp-btn {
+  display: none;
+}
+
+.glimpse-teleprompter.is-locked .glimpse-tp-btn.is-interactive {
+  display: flex;
+  pointer-events: auto;
+}
+
+.glimpse-teleprompter.is-locked .glimpse-tp-resize {
+  display: none;
+}
+
+/* 工具栏：默认隐藏，悬停/拖拽/锁定（仅交互按钮）时显示 */
+.glimpse-tp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--background-secondary);
+  border-radius: 10px 10px 0 0;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.glimpse-teleprompter:hover .glimpse-tp-toolbar,
+.glimpse-teleprompter.is-dragging .glimpse-tp-toolbar,
+.glimpse-teleprompter.is-resizing .glimpse-tp-toolbar,
+.glimpse-teleprompter.is-locked .glimpse-tp-toolbar {
+  opacity: 1;
+}
+
+.glimpse-teleprompter.is-dragging .glimpse-tp-toolbar,
+.glimpse-teleprompter.is-dragging .glimpse-tp-content {
+  cursor: grabbing;
+}
+
+.glimpse-tp-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.glimpse-tp-btn:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.glimpse-tp-btn.is-active {
+  color: var(--text-accent);
+}
+
+.glimpse-tp-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* 文档绑定：文本按钮，显示文件名，宽度自适应 + 超长省略 */
+.glimpse-tp-btn.glimpse-tp-bind {
+  width: auto;
+  min-width: 48px;
+  max-width: 160px;
+  padding: 0 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 内容区 —— 字体透明度由 --tp-font-opacity 控制（根元素内联，步骤 3 接入设置） */
+.glimpse-tp-content {
+  padding: 6px 16px 12px;
+  font-size: 50px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--text-normal);
+  opacity: var(--tp-font-opacity, 0.25);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 70vh;
+  overflow-y: auto;
+  cursor: grab;
+}
+
+/* 空内容占位（上一项文本）：透明度再减半 */
+.glimpse-tp-content.is-placeholder {
+  opacity: calc(var(--tp-font-opacity, 0.25) / 2);
+}
+
+/* 状态栏「打开提词器」按钮：悬停复用状态栏 Editor Status 同款样式
+   （背景 var(--background-modifier-hover)，图标色 var(--text-normal)） */
+.glimpse-tp-statusbar-btn .clickable-icon {
+  color: var(--text-muted);
+}
+.glimpse-tp-statusbar-btn .clickable-icon:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* 复用主题 markdown 样式，但覆盖阅读视图的版心约束，保持提词器自由宽度 */
+.glimpse-tp-content.markdown-rendered {
+  max-width: none;
+  margin: 0;
+}
+
+/* 右缘宽度拖拽把手 */
+.glimpse-tp-resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+/* 视口中心吸附辅助线 */
+.glimpse-tp-guide {
+  position: fixed;
+  pointer-events: none;
+  background: var(--text-accent);
+  opacity: 0.5;
+  z-index: 2147483646;
+}
+
+.glimpse-tp-guide-x {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  left: calc(50% - 0.5px);
+}
+
+.glimpse-tp-guide-y {
+  left: 0;
+  right: 0;
+  height: 1px;
+  top: calc(50% - 0.5px);
+}
+
+/* #endregion teleprompter */
