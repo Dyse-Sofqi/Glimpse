@@ -280,16 +280,26 @@ export class TeleprompterWindow extends Component {
   /** 测量内容与工具栏的自然宽度（最宽行）。
       不能在容器上直接量 scrollWidth —— block 子元素（MarkdownRenderer 的 <p> 等）填满容器，
       量到的是容器自身宽度，再加内边距会逐次膨胀。改为克隆到隐藏 nowrap 测量容器，
-      由 max-content 折叠出单行自然宽度（nowrap 亦消除 CJK 折行机会） */
+      由 max-content 折叠出单行自然宽度（nowrap 亦消除 CJK 折行机会）。
+      内容子元素需包一层真实渲染类（markdown-rendered/markdown-preview-view）——
+      列表符号等伪元素由这些类渲染，裸 probe 量不到其宽度，会导致宽度自适应偏窄、末字符换行 */
   private measureNaturalWidth(): number {
     const probe = document.createElement("div");
     probe.style.cssText =
-      "position:fixed;left:-99999px;top:0;visibility:hidden;white-space:nowrap;width:max-content;";
+      "position:fixed;left:-99999px;top:0;visibility:hidden;white-space:nowrap;width:max-content;" +
+      "padding:0;margin:0;";
     probe.style.fontSize = getComputedStyle(this.contentEl).fontSize;
-    for (const el of [this.contentEl, this.toolbarEl]) {
-      for (const child of Array.from(el.children)) {
-        probe.appendChild(child.cloneNode(true));
-      }
+    // 内容克隆进带真实渲染类的容器（inline 覆盖 padding/margin 避免计入容器自身留白）
+    const contentWrap = probe.createDiv();
+    contentWrap.className = this.contentEl.className;
+    contentWrap.style.cssText =
+      "width:max-content;white-space:nowrap;padding:0;margin:0;text-align:left;";
+    for (const child of Array.from(this.contentEl.children)) {
+      contentWrap.appendChild(child.cloneNode(true));
+    }
+    // 工具栏按钮不走 markdown 类上下文，保持裸 probe
+    for (const child of Array.from(this.toolbarEl.children)) {
+      probe.appendChild(child.cloneNode(true));
     }
     document.body.appendChild(probe);
     const w = probe.scrollWidth;
@@ -621,8 +631,18 @@ export class TeleprompterWindow extends Component {
       return;
     }
     this.contentEl.toggleClass("is-placeholder", false);
+    // 行首缩进（tab/空格）会让单行被 Markdown 判为缩进代码块，嵌套列表项尤甚。
+    // 去缩进后以列表标记开头 → 按顶层列表（无缩进）展示，lastText 存归一化版本
+    text = this.flattenIndentedLine(text);
     this.lastText = text;
     this.renderMarkdown(text);
+  }
+
+  /** 单行提词归一化：行首缩进一律去掉。
+      缩进会被 Markdown 判为缩进代码块，列表/引用等语义丢失；围栏代码跨行，单行提词本就渲染不全，
+      故统一去缩进，按无缩进行展示 */
+  private flattenIndentedLine(text: string): string {
+    return text.replace(/^[\t ]+/, "");
   }
 
   /** 渲染内容；异步渲染防竞态，失败/同步抛错一律回退纯文本，完成后按内容适配宽度 */
@@ -723,9 +743,9 @@ export class TeleprompterWindow extends Component {
     this.guideYEl.style.display = "none";
   }
 
-  /** 右缘拖宽：仅未锁定时可用 */
+  /** 右缘拖宽：穿透锁定时不可用；宽度锁定仍可拖，拖完新宽度继承为锁定宽度 */
   private startResize(e: MouseEvent) {
-    if (this.state.widthLocked || this.state.locked) return;
+    if (this.state.locked) return;
     e.preventDefault();
     this.rootEl.addClass("is-resizing");
     const move = (ev: MouseEvent) => {

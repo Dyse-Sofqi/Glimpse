@@ -1,5 +1,12 @@
 # Changelog
 
+#### 0.9.3 (2026-08-01)
+
+- **Resize works while width is locked**: the right-edge handle stays usable after width lock; the dragged width is adopted as the new locked value — no need to unlock first.
+- **New default opacities + reset buttons**: font opacity defaults to 80% (was 25%) and background opacity to 90% (was 50%); each setting now has a "Reset to initial value" button (lucide `rotate-ccw`) that restores the default and applies live to all windows.
+- **Leading-whitespace normalization**: leading tabs/spaces are stripped before a single line is rendered, so indented lines (e.g. nested list items) are no longer treated by Markdown as indented code blocks (`pre/code`) and render as unindented list/text.
+- **Width measurement now uses the real render context**: the auto-fit probe wraps content children in `markdown-rendered` / `markdown-preview-view` classes so pseudo-element widths (list markers, etc.) are measured correctly — fixes the last character wrapping on list items.
+
 #### 0.9.2 (2026-08-01)
 
 - **New "Hide Background" button**: placed after the width-lock button. When active, the teleprompter background becomes fully transparent (including hover/drag states); when inactive, the background color and opacity follow the background-opacity setting as before.
