@@ -1267,6 +1267,15 @@
   text-overflow: ellipsis;
 }
 
+/* 模式切换：文本按钮，显示当前模式（逐行提取 / 高亮提取），宽度自适应 */
+.glimpse-tp-btn.glimpse-tp-mode {
+  width: auto;
+  min-width: 56px;
+  padding: 0 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 /* 内容区 —— 字体透明度由 --tp-font-opacity 控制（根元素内联，步骤 3 接入设置） */
 .glimpse-tp-content {
   padding: 6px 16px 12px;

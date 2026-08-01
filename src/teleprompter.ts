@@ -1,5 +1,5 @@
 // 提词器 — 桌面歌词式浮动窗口（详见 docs/adr/0001-teleprompter-floating-overlay.md）
-import { ButtonComponent, Component, EditorPosition, MarkdownRenderer, MarkdownView, Notice, Platform, TFile } from "obsidian";
+import { ButtonComponent, Component, Editor, MarkdownRenderer, MarkdownView, Notice, Platform, TFile } from "obsidian";
 import GlimpsePlugin from "./main";
 
 const TP_SNAP_EDGE = 24; // px，贴近视口边缘的吸附距离
@@ -74,6 +74,9 @@ export class TeleprompterWindow extends Component {
   private lastText = ""; // 上一个非空内容（空内容占位回退）
   private selectionOverride = false; // 选中提取模式正在覆盖内容
   private renderSeq = 0; // 渲染序号：防异步渲染竞态（旧渲染不覆盖新内容）
+  private followEditor: Editor | null = null; // 跟随文档（绑定 > 活动）的编辑器缓存，轮询直接读
+  private pollTimer: number | null = null; // 行模式轮询定时器（事件不可靠时的兜底跟随）
+  private lastPollKey = ""; // 最近一次提取的键（"L:行号" / "S:选中文本"），事件与轮询共用
 
   constructor(plugin: GlimpsePlugin, manager: TeleprompterManager, state: TeleprompterWindowState) {
     super();
@@ -92,12 +95,14 @@ export class TeleprompterWindow extends Component {
     this.updateModeBtn();
     this.applySettings();
     this.ready = true;
-    this.refreshLine(); // 打开即提取当前行，不依赖光标移动事件
-    // 切换文档/叶子时刷新绑定按钮文本与行内容
+    this.refreshLine(); // 打开即提取当前行
+    this.startPolling(); // 行模式轮询跟随光标
+    // 切换文档/叶子时刷新绑定按钮文本、行内容并重启轮询（startPolling 内会重解析跟随编辑器）
     this.registerEvent(
       this.plugin.app.workspace.on("active-leaf-change", () => {
         this.updateBindBtn();
         this.refreshLine();
+        this.startPolling();
       })
     );
   }
@@ -149,22 +154,33 @@ export class TeleprompterWindow extends Component {
     this.bindBtnEl.buttonEl.addClass("is-interactive");
     this.bindBtnEl.setButtonText("—");
     this.bindBtnEl.onClick(() => this.toggleBinding());
-    this.modeBtnEl = addBtn("shuffle", "模式切换（行提取）", () =>
-      this.setMode(this.state.mode === "line" ? "highlight" : "line")
-    );
-    this.prevBtnEl = addBtn("chevron-up", "上一项", () => this.prevItem(), true);
-    this.nextBtnEl = addBtn("chevron-down", "下一项", () => this.nextItem(), true);
+    // 模式切换 —— 文本按钮，显示当前模式名，点击切换
+    this.modeBtnEl = new ButtonComponent(toolbar);
+    this.modeBtnEl.setClass("glimpse-tp-btn");
+    this.modeBtnEl.buttonEl.addClass("clickable-icon");
+    this.modeBtnEl.buttonEl.addClass("is-interactive");
+    this.modeBtnEl.buttonEl.addClass("glimpse-tp-mode");
+    this.modeBtnEl.onClick(() => this.setMode(this.state.mode === "line" ? "highlight" : "line"));
+    this.prevBtnEl = addBtn("arrow-big-left", "上一项", () => this.prevItem(), true);
+    this.nextBtnEl = addBtn("arrow-big-right", "下一项", () => this.nextItem(), true);
     this.fontBtnEl = addBtn("font", `字体大小 ${this.state.fontPx}px`, () => {
       const sizes = TP_FONT_SIZES;
       const next = sizes[(sizes.indexOf(this.state.fontPx) + 1 + sizes.length) % sizes.length] ?? sizes[0];
       this.setFontPx(next);
     });
-    this.widthLockBtnEl = addBtn("unlock", "宽度锁定", () =>
+    this.widthLockBtnEl = addBtn("move-horizontal", "宽度锁定", () =>
       this.setWidthLocked(!this.state.widthLocked)
     );
-    // 0.14.8 类型定义缺 App.setting，运行时存在
-    addBtn("settings", "设置", () => (this.plugin.app as any).setting.open());
-    this.lockBtnEl = addBtn("crosshair", "穿透锁定", () => {
+    // 设置：先 open() 打开设置弹窗，再 openTabById 切到插件 tab 触发 display()
+    // activeMainTab 预置为 teleprompter，display() 渲染「提词器」区
+    // 0.14.8 类型定义缺 App.setting / openTabById，运行时存在
+    addBtn("settings", "设置", () => {
+      this.plugin.settingsTab.activeMainTab = "teleprompter";
+      const setting = (this.plugin.app as any).setting;
+      setting.open();
+      setting.openTabById?.("glimpse");
+    });
+    this.lockBtnEl = addBtn("lock", "穿透锁定", () => {
       this.setLocked(!this.state.locked);
     }, true);
     addBtn("x", "关闭", () => this.close());
@@ -220,6 +236,7 @@ export class TeleprompterWindow extends Component {
   focus() {
     document.body.appendChild(this.rootEl);
     this.manager.lastFocused = this;
+    this.startPolling();
     this.updateBindBtn();
     this.refreshLine();
   }
@@ -232,6 +249,7 @@ export class TeleprompterWindow extends Component {
 
   /** 插件卸载时清理 DOM */
   destroy() {
+    this.stopPolling();
     this.rootEl?.detach();
     this.guideXEl?.detach();
     this.guideYEl?.detach();
@@ -289,6 +307,9 @@ export class TeleprompterWindow extends Component {
     this.state.fontPx = fontPx;
     this.contentEl.style.fontSize = fontPx + "px";
     this.fontBtnEl?.setTooltip(`字体大小 ${fontPx}px`);
+    // 图标随档位：档位 0..4 → heading-1..heading-5；非标准值回退 font
+    const idx = TP_FONT_SIZES.indexOf(fontPx);
+    this.fontBtnEl?.setIcon(idx >= 0 ? `heading-${idx + 1}` : "font");
     if (!this.state.widthLocked) this.autoFitWidth();
     this.persist();
   }
@@ -296,7 +317,6 @@ export class TeleprompterWindow extends Component {
   setWidthLocked(locked: boolean) {
     this.state.widthLocked = locked;
     this.widthLockBtnEl?.buttonEl.toggleClass("is-active", locked);
-    this.widthLockBtnEl?.setIcon(locked ? "lock" : "unlock");
     this.widthLockBtnEl?.setTooltip(locked ? "解锁宽度" : "宽度锁定");
     if (!locked) this.autoFitWidth();
     this.persist();
@@ -307,6 +327,7 @@ export class TeleprompterWindow extends Component {
     this.state.locked = locked;
     this.rootEl.toggleClass("is-locked", locked);
     this.lockBtnEl?.buttonEl.toggleClass("is-active", locked);
+    this.lockBtnEl?.setIcon(locked ? "lock" : "unlock");
     this.lockBtnEl?.setTooltip(locked ? "解除穿透" : "穿透锁定");
     this.persist();
   }
@@ -324,6 +345,7 @@ export class TeleprompterWindow extends Component {
     this.updateBindBtn();
     this.matches = [];
     this.matchDoc = null; // 绑定源变更，清空匹配缓存
+    this.startPolling(); // 跟随文档变化，重解析并轮询同步
     if (this.state.mode === "line") this.refreshLine();
     this.persist();
   }
@@ -348,8 +370,10 @@ export class TeleprompterWindow extends Component {
   }
 
   private updateModeBtn() {
-    this.modeBtnEl?.buttonEl.toggleClass("is-active", this.state.mode === "highlight");
-    this.modeBtnEl?.setTooltip(`模式切换（${this.state.mode === "line" ? "行提取" : "高亮提取"}）`);
+    const line = this.state.mode === "line";
+    this.modeBtnEl?.buttonEl.toggleClass("is-active", !line);
+    this.modeBtnEl?.setButtonText(line ? "逐行提取" : "高亮提取");
+    this.modeBtnEl?.setTooltip(`模式切换（${line ? "行提取" : "高亮提取"}）`);
   }
 
   /** 行模式：提取当前活动（或绑定）文档光标所在行 */
@@ -393,22 +417,13 @@ export class TeleprompterWindow extends Component {
 
   // ---------- 内容提取 ----------
 
-  /** 光标移动（manager 转发）：行模式跟随光标；选中非空时临时覆盖为选中文本 */
-  onCursorMove(_cursor: EditorPosition, view: MarkdownView) {
-    const bound = this.state.boundDoc;
-    if (bound) {
-      if (view.file?.path !== bound) return;
-    } else {
-      // 未绑定：仅跟随活动文档（路径比对比对象恒等更稳）
-      const active = this.plugin.app.workspace.getActiveFile();
-      if (!active || view.file?.path !== active.path) return;
-    }
-
-    const ed = view.editor;
-    // 选中提取模式（默认开启，步骤 3 接入设置开关）
+  /** 核心提取：有选中临时覆盖为选中文本，否则行模式提取光标所在行。
+      记录 lastPollKey 去重，光标行/选中未变不重复渲染 */
+  private extractFrom(ed: Editor) {
     const extractEnabled = this.plugin.settings.teleprompter?.selectionExtractEnabled !== false;
     if (extractEnabled && ed.somethingSelected()) {
       this.selectionOverride = true;
+      this.lastPollKey = "S:" + ed.getSelection();
       this.renderContent(ed.getSelection());
       return;
     }
@@ -417,7 +432,50 @@ export class TeleprompterWindow extends Component {
     }
     if (this.state.mode === "line") {
       const line = ed.getCursor().line;
+      this.lastPollKey = "L:" + line;
       this.showLine(line, ed.getLine(line));
+    }
+  }
+
+  // ---------- 行模式轮询跟随 ----------
+
+  /** 解析并缓存跟随文档（绑定 > 活动）的编辑器。
+      文档/叶子切换、绑定变化时重调；轮询直接读缓存，避免每 150ms 遍历叶子 */
+  private resyncFollow() {
+    const src = this.resolveDoc();
+    this.followEditor = src?.view?.editor ?? null;
+  }
+
+  /** 行模式轮询跟随：每 150ms 读一次跟随编辑器光标，键变化即重新提取。
+      光标行未变则不动 → 手动 prev/next 浏览的行不会被覆盖 */
+  private startPolling() {
+    this.stopPolling();
+    if (this.state.mode !== "line") return;
+    this.resyncFollow();
+    this.lastPollKey = ""; // 强制首轮同步到当前光标
+    this.pollTimer = window.setInterval(() => this.pollCursor(), 150);
+  }
+
+  private stopPolling() {
+    if (this.pollTimer !== null) {
+      window.clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
+
+  /** 轮询：跟随编辑器光标键变化才提取；编辑器销毁（叶子重建）时重解析再等下一轮 */
+  private pollCursor() {
+    const ed = this.followEditor;
+    if (!ed) return;
+    try {
+      const extractEnabled = this.plugin.settings.teleprompter?.selectionExtractEnabled !== false;
+      const key = extractEnabled && ed.somethingSelected()
+        ? "S:" + ed.getSelection()
+        : "L:" + ed.getCursor().line;
+      if (key === this.lastPollKey) return;
+      this.extractFrom(ed);
+    } catch {
+      this.resyncFollow(); // 编辑器已销毁，重解析
     }
   }
 
@@ -435,6 +493,9 @@ export class TeleprompterWindow extends Component {
 
   async setMode(mode: TeleprompterMode) {
     this.state.mode = mode;
+    // 行模式启轮询跟随光标；高亮模式关（prev/next 手动浏览，不跟光标）
+    if (mode === "line") this.startPolling();
+    else this.stopPolling();
     this.updateModeBtn();
     if (mode === "highlight") {
       await this.ensureMatches();
@@ -637,13 +698,7 @@ export class TeleprompterManager {
       // 规范化：清掉非法/重复状态，保持与已恢复窗口一致
       plugin.settings.teleprompter.windows = this.windows.map(w => w.state);
     }
-    // 光标/选中移动 → 转发各窗口（仅桌面端有命令入口，事件本身无害）
-    // 0.14.8 类型定义缺 cursor-move 事件名，运行时存在
-    plugin.registerEvent(
-      (plugin.app.workspace.on as any)("cursor-move", (cursor: EditorPosition, view: MarkdownView) => {
-        for (const w of this.windows) w.onCursorMove(cursor, view);
-      })
-    );
+    // 光标跟随由各窗口行模式轮询自管，无需 manager 转发事件
   }
 
   /** 持久化所有窗口状态到 data.json */
