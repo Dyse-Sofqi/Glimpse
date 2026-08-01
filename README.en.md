@@ -1,8 +1,18 @@
 ## Glimpse
 
-Dynamically highlights text based on cursor selection or search query.
+[![Release](https://img.shields.io/github/v/release/Dyse-Sofqi/Glimpse?style=flat-square&label=Release)](https://github.com/Dyse-Sofqi/Glimpse/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Dyse-Sofqi/Glimpse/total?style=flat-square&label=Downloads)](https://github.com/Dyse-Sofqi/Glimpse/releases)
+[![Stars](https://img.shields.io/github/stars/Dyse-Sofqi/Glimpse?style=flat-square&label=Stars)](https://github.com/Dyse-Sofqi/Glimpse)
+[![License](https://img.shields.io/github/license/Dyse-Sofqi/Glimpse?style=flat-square&label=License)](LICENSE)
 
-Currently only supports Source mode and Live Preview mode. Reading mode and legacy editor are not supported.
+An Obsidian plugin that dynamically highlights text based on cursor selection or search query. Key features:
+
+- **Selection highlighting**: instantly highlights all occurrences of the selected text, with scrollbar markers and a minimap
+- **Persistent highlighting**: mark text persistently via regex/keyword queries, with capture groups, line/start/end widgets, custom CSS, and group management
+- **Highlight index**: auto-scans `==highlighted==` text and organizes it into a sidebar index by heading hierarchy
+- **Teleprompter (desktop only)**: karaoke-style floating teleprompter windows that follow the document/cursor in real time, with multi-instance support
+
+Currently supports Source mode and Live Preview mode. Reading mode and the legacy editor are not supported.
 
 ### Selection Highlighting
 
@@ -11,6 +21,7 @@ When text is selected, highlights all occurrences of the selected text:
 - Current selection marked as `.cm-selection`
 - Other matching strings in the document marked as `.cm-matched-string`
 - All matches include `data-contents` attribute with the selected string value
+- **Scrollbar markers / minimap**: match positions shown on the scrollbar when text is selected; an optional minimap on the editor's right edge (draggable to scroll)
 
 ### Persistent Highlighting
 
@@ -125,19 +136,22 @@ Karaoke-style floating teleprompter windows that follow document content in real
 
 ### Settings
 
-#### Delay
+The settings dialog is organized into four tabs:
 
-Delay in milliseconds before selection highlighting kicks in after cursor movement.
-
-#### Ignored Words
-
-Comma-separated list of words to exclude from highlighting.
-
-Default word list: https://gist.github.com/sebleier/554280
+- **Selection**: toggle highlighting all occurrences of the selected text; highlight delay in milliseconds (≥200); minimap toggle
+- **Persistent**: create, edit, and delete highlighters, group management, one-click import/export
+- **Highlight index**: "Auto-open highlight index" toggle — enables the index tab on plugin load
+- **Teleprompter**: font opacity (default 80%) and background opacity (default 90%), each with a "Reset to initial value" button; selection-extract mode and status-bar button toggles
 
 ### Limitations
 
-- Reading/Live Preview mode does not support dynamic selection highlighting
+- Reading mode does not support dynamic selection highlighting
+
+### Sponsorship
+
+If Glimpse helps you, consider supporting the author:
+
+![Sponsor](https://github.com/Dyse-Sofqi/Glimpse/zanshang.jpg)
 
 ### Acknowledgments
 

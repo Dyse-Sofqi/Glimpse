@@ -1,6 +1,16 @@
 ## Glimpse
 
-根据选中内容或搜索关键词动态高亮文本。
+[![Release](https://img.shields.io/github/v/release/Dyse-Sofqi/Glimpse?style=flat-square&label=Release)](https://github.com/Dyse-Sofqi/Glimpse/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Dyse-Sofqi/Glimpse/total?style=flat-square&label=Downloads)](https://github.com/Dyse-Sofqi/Glimpse/releases)
+[![Stars](https://img.shields.io/github/stars/Dyse-Sofqi/Glimpse?style=flat-square&label=Stars)](https://github.com/Dyse-Sofqi/Glimpse)
+[![License](https://img.shields.io/github/license/Dyse-Sofqi/Glimpse?style=flat-square&label=License)](LICENSE)
+
+根据选中内容或搜索关键词动态高亮文本的 Obsidian 插件，主要功能：
+
+- **选择高亮**：选中文本后即时高亮全文所有匹配，附滚动条标记与缩略图
+- **持久高亮**：按正则/关键词查询持久标记，支持捕获组、父行、开始/结束 widget、自定义 CSS 与标签组管理
+- **高亮索引**：自动检索 `==高亮==` 文本，按文档标题层级组织为侧边栏索引
+- **提词器（桌面端）**：歌词式浮动提词窗口，跟随文档/光标实时显示，支持多实例
 
 目前仅支持源码模式（Source）和实时预览模式（Live Preview）。阅读模式（Reading）和旧版编辑器暂不支持。
 
@@ -11,6 +21,7 @@
 - 当前选中文本默认标记为 `.cm-selection`
 - 文档中其他位置匹配的字符串标记为 `.cm-matched-string`
 - 所有匹配项附带 `data-contents` 属性存储当前选中字符串值
+- **滚动条标记 / 缩略图**：选中时滚动条显示匹配位置标记；可选在编辑器右侧显示缩略图（类似 VS Code minimap，可拖动滚动）
 
 ### 持久高亮
 
@@ -92,13 +103,22 @@
 
 ### 设置
 
-#### 延迟（Delay）
+设置界面按功能分为四个页签：
 
-光标移动后高亮应用的延迟时间
+- **选择高亮**：高亮选中文本出现位置开关；高亮延迟（毫秒，需 ≥200）；缩略图开关
+- **持久高亮**：自定义样式的创建、编辑、删除，标签组管理与一键导入导出
+- **高亮索引**：「默认打开高亮索引」开关，开启后插件启动时自动启用索引标签页
+- **提词器**：字体透明度（默认 80%）、背景透明度（默认 90%），均带「重置为初始值」按钮；选中提取模式与状态栏按钮开关
 
 ### 限制
 
-- 阅读/预览模式暂不支持动态高亮
+- 阅读（Reading）模式暂不支持动态高亮
+
+### 赞助
+
+如果 Glimpse 对你有帮助，欢迎赞助支持～
+
+![赞助](https://github.com/Dyse-Sofqi/Glimpse/zanshang.jpg)
 
 ### 致谢
 
