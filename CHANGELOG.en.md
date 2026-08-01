@@ -1,5 +1,17 @@
 # Changelog
 
+#### 0.9.2 (2026-08-01)
+
+- **New "Hide Background" button**: placed after the width-lock button. When active, the teleprompter background becomes fully transparent (including hover/drag states); when inactive, the background color and opacity follow the background-opacity setting as before.
+- **Background always visible**: the background color and border are now always shown (opacity from settings) instead of only on hover; hover/drag only adds a shadow.
+- **Click-through lock no longer forces transparency**: the lock now only passes pointer events through; full background transparency is handled solely by the "Hide Background" button.
+- **Toolbar layout improvements**: the click-through lock button moved before the font-size button; the toolbar background now fits the button area and centers instead of stretching across the window.
+- **Trimmed toolbar when locked**: only interactive buttons (prev/next, click-through lock, close) remain — the document-bind and mode-switch buttons are hidden.
+- **Panel visuals moved**: border/radius/background/shadow/transition moved from the window root onto an outer content container, separating the panel from the toolbar.
+- **Custom button tooltips**: replaced Obsidian's native tooltip; defaults to popping above the button and flips below only when there is no room above. Tooltip text simplified (parenthetical notes removed).
+- **Document binding refined**: after binding a document, switching to another document and clicking the bind button now always unbinds instead of binding the new document.
+- **Fixed dragging the teleprompter moving the cursor in the document behind**: the content element carries the `markdown-preview-view` class, which Obsidian's reading-view CSS sets to `user-select: text`, so the browser's native text selection during a window drag leaked into the editor behind. The drag now calls `preventDefault` to stop native selection and the content is explicitly set to `user-select: none`.
+
 #### 0.9.1 (2026-08-01)
 
 - **Fixed line-extract mode not following the cursor**: `cursor-move` events (workspace-level and editor-level) proved unreliable in some environments; replaced with **poll-based following** — every 150ms the followed document's (bound > active) editor cursor is read, and the line is re-extracted whenever the line number or selection changes. When the cursor line is unchanged, manual prev/next browsing is never overridden.

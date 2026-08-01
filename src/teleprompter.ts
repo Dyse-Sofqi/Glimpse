@@ -17,6 +17,7 @@ export interface TeleprompterWindowState {
   width: number;
   widthLocked: boolean;
   locked: boolean;
+  bgHidden: boolean;
   fontPx: number;
   mode: TeleprompterMode;
   boundDoc: string | null;
@@ -50,6 +51,7 @@ export class TeleprompterWindow extends Component {
 
   rootEl!: HTMLElement;
   toolbarEl!: HTMLElement;
+  private bodyEl!: HTMLElement;
   contentEl!: HTMLElement;
   private resizeEl!: HTMLElement;
   private guideXEl!: HTMLElement;
@@ -60,7 +62,10 @@ export class TeleprompterWindow extends Component {
   private nextBtnEl!: ButtonComponent;
   private fontBtnEl!: ButtonComponent;
   private widthLockBtnEl!: ButtonComponent;
+  private bgHideBtnEl!: ButtonComponent;
   private lockBtnEl!: ButtonComponent;
+  private tipEl: HTMLElement | null = null; // 工具栏按钮提示（自定义，默认上方弹出）
+  private tipText = new Map<HTMLElement, () => string>();
   private isDragging = false;
   private dragOffsetX = 0;
   private dragOffsetY = 0;
@@ -91,6 +96,7 @@ export class TeleprompterWindow extends Component {
     this.setFontPx(state.fontPx);
     this.setWidthLocked(state.widthLocked);
     this.setLocked(state.locked);
+    this.setBgHidden(state.bgHidden);
     this.updateBindBtn();
     this.updateModeBtn();
     this.applySettings();
@@ -142,7 +148,8 @@ export class TeleprompterWindow extends Component {
       btn.setClass("glimpse-tp-btn");
       btn.buttonEl.addClass("clickable-icon");
       if (interactive) btn.buttonEl.addClass("is-interactive");
-      btn.setIcon(icon).setTooltip(tooltip).onClick(() => onClick(btn.buttonEl));
+      btn.setIcon(icon).onClick(() => onClick(btn.buttonEl));
+      this.setTpTooltip(btn.buttonEl, () => tooltip);
       return btn;
     };
 
@@ -163,6 +170,9 @@ export class TeleprompterWindow extends Component {
     this.modeBtnEl.onClick(() => this.setMode(this.state.mode === "line" ? "highlight" : "line"));
     this.prevBtnEl = addBtn("arrow-big-left", "上一项", () => this.prevItem(), true);
     this.nextBtnEl = addBtn("arrow-big-right", "下一项", () => this.nextItem(), true);
+    this.lockBtnEl = addBtn("lock", "穿透锁定", () => {
+      this.setLocked(!this.state.locked);
+    }, true);
     this.fontBtnEl = addBtn("font", `字体大小 ${this.state.fontPx}px`, () => {
       const sizes = TP_FONT_SIZES;
       const next = sizes[(sizes.indexOf(this.state.fontPx) + 1 + sizes.length) % sizes.length] ?? sizes[0];
@@ -170,6 +180,10 @@ export class TeleprompterWindow extends Component {
     });
     this.widthLockBtnEl = addBtn("move-horizontal", "宽度锁定", () =>
       this.setWidthLocked(!this.state.widthLocked)
+    );
+    // 背景隐藏：激活后整窗背景全透明，未激活时背景透明度取自设置
+    this.bgHideBtnEl = addBtn("eye-off", "隐藏背景", () =>
+      this.setBgHidden(!this.state.bgHidden)
     );
     // 设置：先 open() 打开设置弹窗，再 openTabById 切到插件 tab 触发 display()
     // activeMainTab 预置为 teleprompter，display() 渲染「提词器」区
@@ -180,14 +194,13 @@ export class TeleprompterWindow extends Component {
       setting.open();
       setting.openTabById?.("glimpse");
     });
-    this.lockBtnEl = addBtn("lock", "穿透锁定", () => {
-      this.setLocked(!this.state.locked);
-    }, true);
     addBtn("x", "关闭", () => this.close());
 
-    // 内容区 —— MarkdownRenderer 渲染；挂 markdown-rendered 类复用主题/自定义 CSS 样式，
+    // 内容区 —— 外层 .glimpse-tp-body 承载面板视觉（边框/圆角/背景），
+    // 内层 MarkdownRenderer 渲染；挂 markdown-rendered 类复用主题/自定义 CSS 样式，
     // 字体大小单独由提词器 fontPx 控制（em 相对单位随基数缩放）
-    this.contentEl = root.createDiv("glimpse-tp-content markdown-rendered markdown-preview-view");
+    this.bodyEl = root.createDiv("glimpse-tp-body");
+    this.contentEl = this.bodyEl.createDiv("glimpse-tp-content markdown-rendered markdown-preview-view");
     this.contentEl.setText("Glimpse 提词器");
 
     // 右缘宽度拖拽把手
@@ -253,6 +266,8 @@ export class TeleprompterWindow extends Component {
     this.rootEl?.detach();
     this.guideXEl?.detach();
     this.guideYEl?.detach();
+    this.tipEl?.detach();
+    this.tipEl = null;
     this.unload();
   }
 
@@ -288,7 +303,7 @@ export class TeleprompterWindow extends Component {
     if (this.state.widthLocked) return;
     const ccs = getComputedStyle(this.contentEl);
     const padX = parseFloat(ccs.paddingLeft) + parseFloat(ccs.paddingRight);
-    const rcs = getComputedStyle(this.rootEl);
+    const rcs = getComputedStyle(this.bodyEl);
     const borderX = parseFloat(rcs.borderLeftWidth) + parseFloat(rcs.borderRightWidth);
     // +4 缓冲：吸收亚像素/字体度量误差，避免最宽行末尾溢出一个字符触发换行
     const w = this.clampWidth(
@@ -306,7 +321,7 @@ export class TeleprompterWindow extends Component {
   setFontPx(fontPx: number) {
     this.state.fontPx = fontPx;
     this.contentEl.style.fontSize = fontPx + "px";
-    this.fontBtnEl?.setTooltip(`字体大小 ${fontPx}px`);
+    this.setTpTooltip(this.fontBtnEl?.buttonEl ?? null, () => `字体大小 ${this.state.fontPx}px`);
     // 图标随档位：档位 0..4 → heading-1..heading-5；非标准值回退 font
     const idx = TP_FONT_SIZES.indexOf(fontPx);
     this.fontBtnEl?.setIcon(idx >= 0 ? `heading-${idx + 1}` : "font");
@@ -317,8 +332,21 @@ export class TeleprompterWindow extends Component {
   setWidthLocked(locked: boolean) {
     this.state.widthLocked = locked;
     this.widthLockBtnEl?.buttonEl.toggleClass("is-active", locked);
-    this.widthLockBtnEl?.setTooltip(locked ? "解锁宽度" : "宽度锁定");
+    this.setTpTooltip(this.widthLockBtnEl?.buttonEl ?? null, () =>
+      this.state.widthLocked ? "解锁宽度" : "宽度锁定"
+    );
     if (!locked) this.autoFitWidth();
+    this.persist();
+  }
+
+  /** 背景隐藏：激活后整窗背景全透明；未激活时背景透明度取自设置界面 */
+  private setBgHidden(hidden: boolean) {
+    this.state.bgHidden = hidden;
+    this.rootEl.toggleClass("is-bg-hidden", hidden);
+    this.bgHideBtnEl?.buttonEl.toggleClass("is-active", hidden);
+    this.setTpTooltip(this.bgHideBtnEl?.buttonEl ?? null, () =>
+      this.state.bgHidden ? "显示背景" : "隐藏背景"
+    );
     this.persist();
   }
 
@@ -328,20 +356,60 @@ export class TeleprompterWindow extends Component {
     this.rootEl.toggleClass("is-locked", locked);
     this.lockBtnEl?.buttonEl.toggleClass("is-active", locked);
     this.lockBtnEl?.setIcon(locked ? "lock" : "unlock");
-    this.lockBtnEl?.setTooltip(locked ? "解除穿透" : "穿透锁定");
+    this.setTpTooltip(this.lockBtnEl?.buttonEl ?? null, () =>
+      this.state.locked ? "解除穿透" : "穿透锁定"
+    );
     this.persist();
+  }
+
+  // ---------- 工具栏提示 ----------
+
+  /** 绑定按钮提示文案（hover 时实时取，支持动态更新）；默认在上方弹出，上方无空间才在下方 */
+  private setTpTooltip(btnEl: HTMLElement | null, getText: () => string) {
+    if (!btnEl) return;
+    if (!this.tipText.has(btnEl)) {
+      btnEl.addEventListener("mouseenter", () => this.showTip(btnEl));
+      btnEl.addEventListener("mouseleave", () => this.hideTip());
+    }
+    this.tipText.set(btnEl, getText);
+  }
+
+  private showTip(btnEl: HTMLElement) {
+    const text = this.tipText.get(btnEl)?.() ?? "";
+    if (!text) return;
+    if (!this.tipEl) this.tipEl = document.body.createDiv("glimpse-tp-tooltip");
+    const tip = this.tipEl;
+    tip.setText(text);
+    const r = btnEl.getBoundingClientRect();
+    const gap = 6;
+    const tipH = tip.offsetHeight;
+    // 上方放不下（贴近屏顶/窗口顶）才在下方弹出
+    const below = r.top - tipH - gap < 0;
+    tip.style.left = Math.max(Math.round(r.left + r.width / 2 - tip.offsetWidth / 2), 4) + "px";
+    tip.style.top = below
+      ? Math.round(r.bottom + gap) + "px"
+      : Math.round(r.top - tipH - gap) + "px";
+    tip.style.opacity = "1";
+  }
+
+  private hideTip() {
+    if (this.tipEl) this.tipEl.style.opacity = "0";
   }
 
   // ---------- 文档绑定 ----------
 
-  /** 绑定当前活动文档；已绑定时解除（回到跟随） */
+  /** 绑定当前活动文档；已锁定时点击始终解除（不转向锁定新文档） */
   toggleBinding() {
-    const file = this.plugin.app.workspace.getActiveFile();
-    if (!file) {
-      new Notice("没有活动文档");
-      return;
+    if (this.state.boundDoc) {
+      this.state.boundDoc = null;
+    } else {
+      const file = this.plugin.app.workspace.getActiveFile();
+      if (!file) {
+        new Notice("没有活动文档");
+        return;
+      }
+      this.state.boundDoc = file.path;
     }
-    this.state.boundDoc = this.state.boundDoc === file.path ? null : file.path;
     this.updateBindBtn();
     this.matches = [];
     this.matchDoc = null; // 绑定源变更，清空匹配缓存
@@ -359,12 +427,13 @@ export class TeleprompterWindow extends Component {
       // 已绑定：显示绑定文档文件名，提示点击解除
       const f = this.plugin.app.vault.getAbstractFileByPath(bound);
       btn.setButtonText(f instanceof TFile ? f.basename : active?.basename ?? "");
-      btn.setTooltip(`已锁定：${bound}（点击解除）`);
+      this.setTpTooltip(btn.buttonEl, () => `已锁定：${bound}`);
       btn.buttonEl.toggleClass("is-active", true);
     } else {
       // 未绑定：动态显示活动文档文件名，点击锁定
       btn.setButtonText(active ? active.basename : "未打开");
-      btn.setTooltip(active ? `锁定当前文档（${active.path}）` : "没有活动文档");
+      const cur = this.plugin.app.workspace.getActiveFile();
+      this.setTpTooltip(btn.buttonEl, () => (cur ? "锁定当前文档" : "没有活动文档"));
       btn.buttonEl.toggleClass("is-active", false);
     }
   }
@@ -373,7 +442,7 @@ export class TeleprompterWindow extends Component {
     const line = this.state.mode === "line";
     this.modeBtnEl?.buttonEl.toggleClass("is-active", !line);
     this.modeBtnEl?.setButtonText(line ? "逐行提取" : "高亮提取");
-    this.modeBtnEl?.setTooltip(`模式切换（${line ? "行提取" : "高亮提取"}）`);
+    this.setTpTooltip(this.modeBtnEl?.buttonEl ?? null, () => "模式切换");
   }
 
   /** 行模式：提取当前活动（或绑定）文档光标所在行 */
@@ -580,6 +649,9 @@ export class TeleprompterWindow extends Component {
 
   private startDrag(e: MouseEvent) {
     if (this.state.locked) return;
+    // 阻止浏览器原生文本选择/拖拽：内容区挂了 markdown-preview-view 会被 Obsidian 设为
+    // user-select: text，不阻止则拖窗时原生选择会延伸到背后编辑器，导致文档光标被移动
+    e.preventDefault();
     const startX = e.clientX;
     const startY = e.clientY;
     this.isDragging = false;
@@ -747,6 +819,7 @@ export class TeleprompterManager {
       width: TP_MIN_WIDTH,
       widthLocked: false,
       locked: false,
+      bgHidden: false,
       fontPx: 50,
       mode: "line",
       boundDoc: null,

@@ -109,13 +109,14 @@ Karaoke-style floating teleprompter windows that follow document content in real
   - **Highlight extract**: cycles through `==...==` matches in order — great for scripted reading
   - **Selection extract**: temporarily overrides the content with selected text, auto-restores on deselect
 - **Highlight index integration**: clicking an index card binds that document and switches to highlight-extract mode
-- **Document binding**: pin the window to a specific document instead of following the active one
-- **Click-through lock**: whole window becomes mouse-transparent (interactive buttons kept), never blocks the editor
+- **Document binding**: pin the window to a specific document instead of following the active one; once bound, clicking the bind button again always unbinds instead of binding the currently active document
+- **Click-through lock**: whole window becomes mouse-transparent (interactive buttons kept), never blocks the editor; the lock itself no longer changes the background — full background transparency is handled solely by the "Hide Background" button
+- **Hide Background**: when active, the window background becomes fully transparent (including hover/drag states); when inactive, the background color stays visible with the opacity set in the settings
 - **Width auto-fit**: width adapts to the content's widest line (prev/next never grows the window), clamped to the viewport so long text wraps without overflowing; right edge is draggable and auto-locks
 - **Drag snapping**: snaps to viewport edges and center lines with guide overlays
 - **Font size**: cycles 32/40/50/64/80px
-- **Toolbar**: the mode toggle is a text button showing the current mode (逐行提取 / 高亮提取); prev/next (`arrow-big-left`/`arrow-big-right`), width lock (`move-horizontal`), click-through lock (`lock`/`unlock`), and font-size slot icons (`heading-1`~`heading-5`) all use semantic lucide icons; the settings button jumps straight to the teleprompter settings page
-- **Opacity**: font opacity (default 25%) and background opacity (default 50%) adjustable in settings
+- **Toolbar**: the mode toggle is a text button showing the current mode (逐行提取 / 高亮提取); prev/next (`arrow-big-left`/`arrow-big-right`), width lock (`move-horizontal`), click-through lock (`lock`/`unlock`), hide background (`eye-off`), and font-size slot icons (`heading-1`~`heading-5`) all use semantic lucide icons; button tooltips default to popping above and flip below only when there is no room above; when locked, only interactive buttons (prev/next, lock, close) remain; the settings button jumps straight to the teleprompter settings page
+- **Opacity**: font opacity (default 25%) and background opacity (default 50%) adjustable in settings; the background color and border are always visible and the opacity applies live
 - **Theme / custom CSS styling**: content reuses theme and user CSS snippets (headings, code blocks, inline formatting); only font size is controlled by the teleprompter
 - **Status bar entry**: "Open teleprompter" button in the bottom-right status bar (lucide-presentation) for one-click open/focus, toggleable in settings
 - **State persistence**: window position, size, mode, and binding restored on restart
