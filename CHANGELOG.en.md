@@ -1,5 +1,14 @@
 # Changelog
 
+#### 0.9.1 (2026-08-01)
+
+- **Fixed line-extract mode not following the cursor**: `cursor-move` events (workspace-level and editor-level) proved unreliable in some environments; replaced with **poll-based following** — every 150ms the followed document's (bound > active) editor cursor is read, and the line is re-extracted whenever the line number or selection changes. When the cursor line is unchanged, manual prev/next browsing is never overridden.
+- **Followed-editor caching**: the followed editor is resolved and cached on document/leaf switch or binding change; polling reads the cached reference instead of iterating leaves every tick. Auto-reconnects if the editor is destroyed (leaf re-creation).
+- **Removed redundant event chain**: deleted the manager-level `cursor-move` forwarding and the `editor.on('cursor-move')` listener — a single polling path, no duplicate renders.
+- **Mode toggle button now shows text**: displays the current mode 「逐行提取」/「高亮提取」, click to switch, active state highlighted.
+- **Semantic toolbar icons**: prev/next now use `arrow-big-left` / `arrow-big-right`; click-through lock uses `lock`/`unlock` (same pattern as the width lock), width lock icon changed to `move-horizontal`; the font-size button icon tracks the size slot via `heading-1` ~ `heading-5`.
+- **Settings button goes straight to the teleprompter settings page**: opens the settings modal, navigates to the Glimpse plugin tab, and preselects the 提词器 section.
+
 #### 0.9.0 (2026-07-31)
 
 - **New Teleprompter (desktop only)**: karaoke-style floating teleprompter windows, multiple instances supported. See [docs/adr/0001-teleprompter-floating-overlay.md](docs/adr/0001-teleprompter-floating-overlay.md)

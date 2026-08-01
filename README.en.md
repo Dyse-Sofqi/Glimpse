@@ -105,7 +105,7 @@ Automatically scans the active document for `==...==` wrapped Obsidian standard 
 Karaoke-style floating teleprompter windows that follow document content in real time — for cue cards, reading aloud, or lectures. Desktop only.
 
 - **Three content modes**:
-  - **Line extract**: follows the editor cursor showing the current line; wheel/buttons step up/down one line
+  - **Line extract**: follows the editor cursor and auto-extracts the line as the cursor moves (poll-based detection, bound or active document); wheel/buttons step up/down one line manually
   - **Highlight extract**: cycles through `==...==` matches in order — great for scripted reading
   - **Selection extract**: temporarily overrides the content with selected text, auto-restores on deselect
 - **Highlight index integration**: clicking an index card binds that document and switches to highlight-extract mode
@@ -114,6 +114,7 @@ Karaoke-style floating teleprompter windows that follow document content in real
 - **Width auto-fit**: width adapts to the content's widest line (prev/next never grows the window), clamped to the viewport so long text wraps without overflowing; right edge is draggable and auto-locks
 - **Drag snapping**: snaps to viewport edges and center lines with guide overlays
 - **Font size**: cycles 32/40/50/64/80px
+- **Toolbar**: the mode toggle is a text button showing the current mode (逐行提取 / 高亮提取); prev/next (`arrow-big-left`/`arrow-big-right`), width lock (`move-horizontal`), click-through lock (`lock`/`unlock`), and font-size slot icons (`heading-1`~`heading-5`) all use semantic lucide icons; the settings button jumps straight to the teleprompter settings page
 - **Opacity**: font opacity (default 25%) and background opacity (default 50%) adjustable in settings
 - **Theme / custom CSS styling**: content reuses theme and user CSS snippets (headings, code blocks, inline formatting); only font size is controlled by the teleprompter
 - **Status bar entry**: "Open teleprompter" button in the bottom-right status bar (lucide-presentation) for one-click open/focus, toggleable in settings
