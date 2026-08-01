@@ -184,6 +184,11 @@
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
+.glimpse-settings .glimpse-group-tab-ghost {
+  opacity: 0.4;
+  background: var(--background-modifier-hover);
+}
+
 
 /* #endregion group tabs */
 
@@ -202,7 +207,6 @@
 }
 
 .glimpse-settings .highlighter-name {
-  background-color: var(--picker-bg);
   color: var(--text-normal);
 }
 
@@ -327,38 +331,33 @@
 
 /* #region custom css editor */
 
-/* .glimpse-settings .custom-css {
-  width: 100%;
-  height: 10em;
-} */
-
 .glimpse-settings .custom-css-wrapper {
   flex-grow: 100;
   text-align: left;
   width: 100%;
 }
 
-.glimpse-settings .custom-css-wrapper .cm-editor {
+/* 自定义 CSS 输入框：样式化纯 textarea（已从 CodeMirror 退回，规避环境问题） */
+.glimpse-settings .custom-css-wrapper textarea {
+  display: block;
+  width: 100%;
+  min-height: 10em;
+  max-height: 15em;
+  font-family: var(--font-monospace) !important;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  overflow-y: auto;
+  resize: vertical;
   border: 1px solid var(--background-modifier-border);
   background-color: var(--background-primary-alt);
-  max-height: 15em;
-  overflow: hidden;
-  resize: vertical;
+  box-sizing: border-box;
+  padding: 6px 8px;
 }
 
-.glimpse-settings .custom-css-wrapper .cm-editor[style*="height"] {
-  max-height: unset;
-}
-
-.glimpse-settings .custom-css-wrapper .cm-gutters {
-  background-color: var(--background-primary-alt);
-}
-
-.glimpse-settings .cm-line {
-  font-family: var(--font-monospace);
-}
-
-/* #region custom css editor */
+/* #endregion custom css editor */
 
 /* #region mobile specific styles */
 
@@ -480,7 +479,6 @@
 /* #region style settings import/export */
 
 .modal-glimpse {
-  height: 70vh;
   display: flex;
   flex-direction: column;
 }
@@ -523,6 +521,50 @@
 
 .modal-glimpse .style-settings-import-error.active {
   display: block;
+}
+
+/* 导入/导出配置框：样式化纯 textarea（已从 CodeMirror 退回，规避环境问题）。
+   导入与导出共用同一组类，保证风格一致。
+   显式高度而非 flex-grow 链——Obsidian 1.13 起 modal-content 布局变化，
+   依赖 flex 撑高会塌陷成空编辑区。 */
+.modal-glimpse .glimpse-config-editor {
+  display: flex;
+}
+
+/* 文本框高度随内容自适应（field-sizing: content），下限 6em、上限 40vh，
+   超出滚动——小配置时盒子贴合内容、无大片空白 */
+.modal-glimpse .glimpse-config-editor .glimpse-config-textarea {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: auto;
+  min-height: 6em;
+  max-height: 40vh;
+  field-sizing: content;
+  box-sizing: border-box;
+  margin: 0;
+  resize: vertical;
+  font-family: var(--font-monospace) !important;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary-alt);
+  color: var(--text-normal);
+  padding: 6px 8px;
+}
+
+.modal-glimpse .glimpse-config-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px; /* 按钮在文本框上方，下方留间距 */
+}
+
+.modal-glimpse .glimpse-config-actions button {
+  margin: 0;
 }
 
 /* #endregion style settings import/export */

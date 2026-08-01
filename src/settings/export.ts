@@ -1,8 +1,26 @@
 // Adapted from https://github.com/mgmeyers/obsidian-style-setting
 
-import { App, Modal, Setting, TextAreaComponent } from "obsidian";
+import { App, ButtonComponent, Modal, Notice, Setting, TextAreaComponent } from "obsidian";
 import GlimpsePlugin from "../main";
 
+/** 复制文本到剪贴板：优先异步 Clipboard API，失败降级临时 textarea + execCommand */
+async function copyText(str: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(str);
+    return true;
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = str;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, 999999);
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  }
+}
 
 export class ExportModal extends Modal {
   plugin: GlimpsePlugin;
@@ -19,54 +37,41 @@ export class ExportModal extends Modal {
   onOpen() {
     let { contentEl, modalEl } = this;
 
-    modalEl.addClass("modal-style-settings");
+    // 仅用 modal-glimpse：不带 modal-style-settings，避免 style-settings 插件的
+    // `.modal-style-settings { height: 70vh }` 撑高弹窗
     modalEl.addClass("modal-glimpse");
 
+    new Setting(contentEl).setName(`导出设置: ${this.section}`);
 
-    new Setting(contentEl).setName(`导出设置: ${this.section}`).then(setting => {
-      const output = JSON.stringify(this.exportData, null, 2);
+    const output = JSON.stringify(this.exportData, null, 2);
 
-      // Build a copy to clipboard link
-      setting.controlEl.createEl(
-        "a",
-        {
-          cls: "style-settings-copy",
-          text: "复制到剪贴板",
-          href: "#",
-        },
-        copyButton => {
-          new TextAreaComponent(contentEl).setValue(output).then(textarea => {
-            copyButton.addEventListener("click", e => {
-              e.preventDefault();
+    // 按钮行在文本框上方：导出到文件 + 导出到粘贴板
+    const actionsEl = contentEl.createDiv({ cls: "glimpse-config-actions" });
 
-              // Select the textarea contents and copy them to the clipboard
-              textarea.inputEl.select();
-              textarea.inputEl.setSelectionRange(0, 99999);
-              document.execCommand("copy");
-
-              copyButton.addClass("success");
-
-              setTimeout(() => {
-                // If the button is still in the dom, remove the success class
-                if (copyButton.parentNode) {
-                  copyButton.removeClass("success");
-                }
-              }, 2000);
-            });
-          });
-        }
-      );
-
-      // Build a download link
-      setting.controlEl.createEl("a", {
-        cls: "style-settings-download",
-        text: "下载",
-        attr: {
-          download: "glimpse.json",
-          href: `data:application/json;charset=utf-8,${encodeURIComponent(output)}`,
-        },
+    new ButtonComponent(actionsEl)
+      .setButtonText("导出到文件")
+      .onClick(() => {
+        const a = document.createElement("a");
+        a.href = `data:application/json;charset=utf-8,${encodeURIComponent(output)}`;
+        a.download = "glimpse.json";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
       });
-    });
+
+    new ButtonComponent(actionsEl)
+      .setButtonText("导出到粘贴板")
+      .setCta()
+      .onClick(async () => {
+        const ok = await copyText(output);
+        new Notice(ok ? "配置已复制到剪贴板" : "复制失败，请手动选择编辑器文本复制");
+      });
+
+    // JSON 展示框：样式化纯 textarea（与导入共用 glimpse-config-* 类）
+    const editorWrapper = contentEl.createDiv({ cls: "glimpse-config-editor" });
+    const ta = new TextAreaComponent(editorWrapper);
+    ta.setValue(output);
+    ta.inputEl.addClass("glimpse-config-textarea");
   }
 
   onClose() {

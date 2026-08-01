@@ -1,5 +1,3 @@
-import { EditorState, Extension } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
 import Pickr from "@simonwep/pickr";
 import {
   ButtonComponent,
@@ -12,9 +10,6 @@ import {
   ToggleComponent,
 } from "obsidian";
 import Sortable from "sortablejs";
-import { basicSetup } from "../../editor/extensions";
-import { materialPalenight } from "../../editor/theme-dark";
-import { basicLightTheme } from "../../editor/theme-light";
 import GlimpsePlugin from "../../main";
 import { ExportModal } from "../export";
 import { ImportModal } from "../import";
@@ -102,7 +97,7 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
   const customCSSWrapper = defineQueryUI.controlEl.createDiv("custom-css-wrapper");
   customCSSWrapper.createSpan("setting-item-name").setText("自定义 CSS");
   const customCSSEl = new TextAreaComponent(customCSSWrapper);
-  tab.editor = editorFromTextArea(customCSSEl.inputEl, basicSetup);
+  tab.editor = customCSSEl;
   customCSSEl.inputEl.addClass("custom-css");
 
   const importBtn = new ButtonComponent(queryWrapper);
@@ -126,16 +121,7 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
         Object.entries(marks).forEach(([key, m]) => {
           m.toggle.setValue(opts.mark?.includes(key) ?? false);
         });
-        const extensions = [...basicSetup];
-        if (document.body.hasClass("theme-dark")) {
-          extensions.push(materialPalenight);
-        } else {
-          extensions.push(basicLightTheme);
-        }
-        tab.editor.setState(EditorState.create({
-          doc: opts.css ?? "",
-          extensions,
-        }));
+        tab.editor.setValue(opts.css ?? "");
         new Notice(`已导入: ${name}`);
       } catch (e) {
         new Notice("剪贴板读取或解析失败");
@@ -154,7 +140,7 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
       const hexValue = pickrInstance.getSelectedColor()?.toHEXA().toString();
       const queryValue = queryInput.inputEl.value;
       const queryTypeValue = queryTypeInput.getValue();
-      const customCss = tab.editor.state.doc.toString();
+      const customCss = tab.editor.getValue();
 
       const enabledMarks = Object.entries(marks)
         .filter(([, m]) => m.toggle.getValue())
@@ -254,6 +240,24 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
     });
   });
 
+  // 分组拖动排序：默认分组固定首位不可拖；onMove 禁止相邻默认插入（默认恒在首位）
+  Sortable.create(tabBarEl, {
+    animation: 150,
+    ghostClass: "glimpse-group-tab-ghost",
+    dragoverBubble: true,
+    filter: ".glimpse-group-tab:first-child", // 默认分组不可拖动
+    onMove: evt =>
+      evt.related && (evt.related as HTMLElement).textContent === "默认" ? false : undefined,
+    onEnd: () => {
+      const order = Array.from(tabBarEl.children)
+        .map(el => (el as HTMLElement).textContent || "")
+        .filter(g => g !== "默认");
+      if (JSON.stringify(order) === JSON.stringify(config.groups)) return;
+      config.groups = order;
+      plugin.saveSettings();
+    },
+  });
+
   // group action buttons: add, delete, rename
   const groupActionsEl = groupTabEl.createDiv({ cls: "glimpse-group-actions" });
 
@@ -317,7 +321,7 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
 
   // delete group button
   const delGroupBtn = new ButtonComponent(groupActionsEl);
-  delGroupBtn.setIcon("delete").setClass("clickable-icon").onClick(async () => {
+  delGroupBtn.setIcon("delete").setClass("clickable-icon").setTooltip("删除分组").onClick(async () => {
     if (tab.activeGroup === "默认") return;
     const groupHighlighters = config.queryOrder.filter(h => config.queries[h]?.group === tab.activeGroup);
     if (groupHighlighters.length > 0) {
@@ -400,13 +404,7 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
             Object.entries(marks).forEach(([key, m]) => {
               m.toggle.setValue(options.mark?.includes(key) ?? true);
             });
-            const extensions = basicSetup;
-            if (document.body.hasClass("theme-dark")) {
-              extensions.push(materialPalenight);
-            } else {
-              extensions.push(basicLightTheme);
-            }
-            tab.editor.setState(EditorState.create({ doc: options.css ?? "", extensions }));
+            tab.editor.setValue(options.css ?? "");
             containerEl.scrollTop = 0;
           });
       })
@@ -473,17 +471,4 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
       await plugin.saveSettings();
     },
   });
-}
-
-function editorFromTextArea(textarea: HTMLTextAreaElement, extensions: Extension) {
-  const view = new EditorView({
-    state: EditorState.create({ doc: textarea.value, extensions }),
-  });
-  textarea.parentNode!.insertBefore(view.dom, textarea);
-  textarea.style.display = "none";
-  if (textarea.form)
-    textarea.form.addEventListener("submit", () => {
-      textarea.value = view.state.doc.toString();
-    });
-  return view;
 }

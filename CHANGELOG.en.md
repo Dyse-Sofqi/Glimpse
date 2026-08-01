@@ -1,5 +1,14 @@
 # Changelog
 
+#### 0.9.4 (2026-08-02)
+
+- **Import / export / custom-CSS editors switched to styled plain textareas**: the CodeMirror editors had cursor, input, and theme-compatibility issues in multi-plugin environments. They are now plain textareas (monospace, no-wrap `pre`, bordered, resizable); the box height auto-fits its content (with a min/max clamp, scrolling when longer) to sidestep those environment problems.
+- **One-click export UI**: buttons moved above the box (Export to file / Export to clipboard); the JSON box auto-fits its height.
+- **One-click import UI reworked**: "Import from file" is now a button, the paste box auto-fits, buttons sit above the box, and the whole dialog shares one style set with the export dialog; dropped the `modal-style-settings` class so the Style Settings plugin's fixed 70vh no longer inflates the modal.
+- **Teleprompter theme switch adapts instantly**: the window background now updates immediately when toggling light/dark themes (a MutationObserver watches the body theme class, with a `css-change` event as fallback).
+- **Group tab drag-reorder**: persistent-highlight groups can be dragged to reorder; the default group stays first and cannot be dragged.
+- **Delete-group button tooltip**: added a "Delete group" tooltip to the delete button.
+
 #### 0.9.3 (2026-08-01)
 
 - **Resize works while width is locked**: the right-edge handle stays usable after width lock; the dragged width is adopted as the new locked value — no need to unlock first.

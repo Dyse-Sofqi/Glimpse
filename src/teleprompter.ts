@@ -111,6 +111,23 @@ export class TeleprompterWindow extends Component {
         this.startPolling();
       })
     );
+    // 主题切换立即重读背景色：MutationObserver 同步于 body 的 theme-dark/theme-light
+    // class 变化触发，无延迟。css-change 事件兜底 CSS 变量级变更（如片段改背景色）。
+    let lastTheme = document.body.hasClass("theme-dark") ? "dark" : "light";
+    const themeObserver = new MutationObserver(() => {
+      const now = document.body.hasClass("theme-dark") ? "dark" : "light";
+      if (now !== lastTheme) {
+        lastTheme = now;
+        this.applySettings();
+      }
+    });
+    themeObserver.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    this.register(() => themeObserver.disconnect());
+    this.registerEvent(
+      this.plugin.app.workspace.on("css-change", () => {
+        this.applySettings();
+      })
+    );
   }
 
   /** 状态变更后持久化到 data.json（构造期间跳过） */

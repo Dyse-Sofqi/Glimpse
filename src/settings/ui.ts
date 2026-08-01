@@ -1,5 +1,4 @@
-import { EditorView } from "@codemirror/view";
-import { App, PluginSettingTab } from "obsidian";
+import { App, PluginSettingTab, TextAreaComponent } from "obsidian";
 import Pickr from "@simonwep/pickr";
 import GlimpsePlugin from "../main";
 import { render as renderPersistent } from "./tabs/persistent-ui";
@@ -9,7 +8,7 @@ import { render as renderTeleprompter } from "./tabs/teleprompter-ui";
 
 export class SettingTab extends PluginSettingTab {
   plugin: GlimpsePlugin;
-  editor!: EditorView;
+  editor!: TextAreaComponent;
   pickrInstance!: Pickr;
   activeGroup: string = "默认";
   _dragItemId: string | undefined;
@@ -21,7 +20,6 @@ export class SettingTab extends PluginSettingTab {
   }
 
   hide() {
-    this.editor?.destroy();
     this.pickrInstance && this.pickrInstance.destroyAndRemove();
   }
 

@@ -44,11 +44,11 @@ Each highlighter can include its own CSS rules, automatically injected into the 
 
 #### Group Management
 
-Organize highlighters with groups: create, rename, delete groups; drag highlighters onto group tabs to categorize. The "Enable All / Disable All" toolbar button controls match toggles for the current group at once.
+Organize highlighters with groups: create, rename, delete groups; drag highlighters onto group tabs to categorize, and drag group tabs to reorder them (the default group stays first and cannot be dragged). The "Enable All / Disable All" toolbar button controls match toggles for the current group at once.
 
 #### Import & Export
 
-Supports one-click import from clipboard (JSON), batch export of all highlighters with group metadata, and per-highlighter single export. Backward compatible with legacy data format (no groups → defaults to "默认").
+Supports one-click import (from clipboard JSON or a file), batch export of all highlighters with group metadata, and per-highlighter single export. The import/export dialogs use styled plain textareas: buttons sit above the box (Export to file / Export to clipboard; Import from file / Import from the paste box below), the box auto-fits its content height, and both dialogs share one visual style. Backward compatible with legacy data format (no groups → defaults to "默认").
 
 #### Examples
 
@@ -128,6 +128,7 @@ Karaoke-style floating teleprompter windows that follow document content in real
 - **Font size**: cycles 32/40/50/64/80px
 - **Toolbar**: the mode toggle is a text button showing the current mode (逐行提取 / 高亮提取); prev/next (`arrow-big-left`/`arrow-big-right`), width lock (`move-horizontal`), click-through lock (`lock`/`unlock`), hide background (`eye-off`), and font-size slot icons (`heading-1`~`heading-5`) all use semantic lucide icons; button tooltips default to popping above and flip below only when there is no room above; when locked, only interactive buttons (prev/next, lock, close) remain; the settings button jumps straight to the teleprompter settings page
 - **Opacity**: font opacity (default 80%) and background opacity (default 90%) adjustable in settings, each with a "Reset to initial value" button (lucide `rotate-ccw`); the background color and border are always visible and the opacity applies live
+- **Theme adaptation**: the window background updates instantly when toggling light/dark themes — no restart needed
 - **Theme / custom CSS styling**: content reuses theme and user CSS snippets (headings, code blocks, inline formatting); only font size is controlled by the teleprompter. Leading tabs/spaces are stripped before rendering a single line, so indented content (e.g. nested list items) renders as unindented list/text instead of a code block
 - **Status bar entry**: "Open teleprompter" button in the bottom-right status bar (lucide-presentation) for one-click open/focus, toggleable in settings
 - **State persistence**: window position, size, mode, and binding restored on restart
