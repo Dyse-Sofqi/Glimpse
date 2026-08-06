@@ -21,6 +21,7 @@ export interface TeleprompterWindowState {
   fontPx: number;
   mode: TeleprompterMode;
   boundDoc: string | null;
+  trackCursor: boolean;
 }
 
 // 高亮提取模式的匹配项（line 为 0 基行号，text 为去除 == 后的展示文本）
@@ -58,6 +59,7 @@ export class TeleprompterWindow extends Component {
   private guideYEl!: HTMLElement;
   private bindBtnEl!: ButtonComponent;
   private modeBtnEl!: ButtonComponent;
+  private trackBtnEl!: ButtonComponent;
   private prevBtnEl!: ButtonComponent;
   private nextBtnEl!: ButtonComponent;
   private fontBtnEl!: ButtonComponent;
@@ -99,6 +101,7 @@ export class TeleprompterWindow extends Component {
     this.setBgHidden(state.bgHidden);
     this.updateBindBtn();
     this.updateModeBtn();
+    this.updateTrackBtn();
     this.applySettings();
     this.ready = true;
     this.refreshLine(); // 打开即提取当前行
@@ -185,6 +188,8 @@ export class TeleprompterWindow extends Component {
     this.modeBtnEl.buttonEl.addClass("is-interactive");
     this.modeBtnEl.buttonEl.addClass("glimpse-tp-mode");
     this.modeBtnEl.onClick(() => this.setMode(this.state.mode === "line" ? "highlight" : "line"));
+    // 跟踪光标 —— 行模式光标跟随开关（默认关，独立于模式）
+    this.trackBtnEl = addBtn("text-cursor", "跟踪光标", () => this.toggleTrackCursor(), true);
     this.prevBtnEl = addBtn("arrow-big-left", "上一项", () => this.prevItem(), true);
     this.nextBtnEl = addBtn("arrow-big-right", "下一项", () => this.nextItem(), true);
     this.lockBtnEl = addBtn("lock", "穿透锁定", () => {
@@ -475,6 +480,13 @@ export class TeleprompterWindow extends Component {
     this.modeBtnEl?.buttonEl.toggleClass("is-active", !line);
     this.modeBtnEl?.setButtonText(line ? "逐行提取" : "高亮提取");
     this.setTpTooltip(this.modeBtnEl?.buttonEl ?? null, () => "模式切换");
+  }
+
+  private updateTrackBtn() {
+    this.trackBtnEl?.buttonEl.toggleClass("is-active", this.state.trackCursor);
+    this.setTpTooltip(this.trackBtnEl?.buttonEl ?? null, () =>
+      this.state.trackCursor ? "跟踪光标（已开启）" : "跟踪光标"
+    );
   }
 
   /** 行模式：提取当前活动（或绑定）文档光标所在行 */
@@ -865,6 +877,7 @@ export class TeleprompterManager {
       fontPx: 50,
       mode: "line",
       boundDoc: null,
+      trackCursor: false,
     });
     this.windows.push(win);
     win.focus();
