@@ -753,6 +753,7 @@ export class TeleprompterWindow extends Component {
       document.execCommand("copy");
       ta.remove();
     }
+    new Notice("已复制");
   }
 
   private startDrag(e: MouseEvent) {
