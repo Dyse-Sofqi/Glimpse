@@ -224,6 +224,13 @@ export class TeleprompterWindow extends Component {
     this.bodyEl = root.createDiv("glimpse-tp-body");
     this.contentEl = this.bodyEl.createDiv("glimpse-tp-content markdown-rendered markdown-preview-view");
     this.contentEl.setText("Glimpse 提词器");
+    // 双击：光标跳到捕获文本所在行并聚焦编辑器（穿透锁定时事件穿透,天然失效）
+    this.contentEl.addEventListener("dblclick", () => this.jumpToCapturedLine());
+    // 右键：复制捕获文本的纯文本（渲染后 innerText,无 md 语法;抑制原生菜单）
+    this.contentEl.addEventListener("contextmenu", e => {
+      e.preventDefault();
+      this.copyCapturedText();
+    });
 
     // 右缘宽度拖拽把手
     this.resizeEl = root.createDiv("glimpse-tp-resize");
@@ -715,6 +722,36 @@ export class TeleprompterWindow extends Component {
         .catch(fallback);
     } catch {
       fallback();
+    }
+  }
+
+  /** 双击：光标跳到捕获文本所在行并聚焦编辑器。
+      高亮模式 → 当前匹配项行;行模式 → 当前显示行;选中覆盖 → 编辑器光标行 */
+  private jumpToCapturedLine() {
+    const src = this.resolveDoc();
+    const ed = src?.view?.editor ?? this.followEditor;
+    if (!ed) return;
+    const line = this.state.mode === "highlight"
+      ? (this.matches[this.currentIndex]?.line ?? ed.getCursor().line)
+      : (this.selectionOverride ? ed.getCursor().line : this.currentLine);
+    ed.setCursor({ line: Math.max(line, 0), ch: 0 });
+    ed.focus();
+  }
+
+  /** 右键：复制捕获文本的纯文本（渲染后 innerText 天然无 md 语法）。
+      clipboard API 失败回退 execCommand 隐藏 textarea */
+  private async copyCapturedText() {
+    const text = (this.contentEl.innerText ?? "").trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
     }
   }
 
