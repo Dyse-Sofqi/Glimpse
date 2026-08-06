@@ -735,6 +735,8 @@ export class TeleprompterWindow extends Component {
       ? (this.matches[this.currentIndex]?.line ?? ed.getCursor().line)
       : (this.selectionOverride ? ed.getCursor().line : this.currentLine);
     ed.setCursor({ line: Math.max(line, 0), ch: 0 });
+    // 目标行滚动到视口中央（0.14.8 类型缺 scrollIntoView,运行时存在,可选链兜底）
+    (ed as any).scrollIntoView?.({ from: { line: Math.max(line, 0), ch: 0 }, to: { line: Math.max(line, 0), ch: 0 } }, true);
     ed.focus();
   }
 
