@@ -576,15 +576,32 @@ export class TeleprompterWindow extends Component {
     }
   }
 
-  /** 轮询：跟随编辑器光标键变化才提取；编辑器销毁（叶子重建）时重解析再等下一轮 */
+  /** 跟踪光标开关：开启立即提取当前行并跟随光标；关闭保持原位（行模式静态化） */
+  private toggleTrackCursor() {
+    this.state.trackCursor = !this.state.trackCursor;
+    this.updateTrackBtn();
+    if (this.state.trackCursor) {
+      this.refreshLine(); // 立即提取当前光标行（行模式守卫在 refreshLine 内）
+      this.startPolling(); // 重解析跟随编辑器 + 强制首轮同步（内部置 lastPollKey = ""）
+    }
+    this.persist();
+  }
+
+  /** 轮询：选中提取始终生效；行跟随仅在「行模式 + 跟踪光标开启」时执行。
+      跟踪关闭 → 行模式静态，光标移动不覆盖（prev/next 手动浏览也不被覆盖） */
   private pollCursor() {
     const ed = this.followEditor;
     if (!ed) return;
     try {
       const extractEnabled = this.plugin.settings.teleprompter?.selectionExtractEnabled !== false;
-      const key = extractEnabled && ed.somethingSelected()
-        ? "S:" + ed.getSelection()
-        : "L:" + ed.getCursor().line;
+      if (extractEnabled && ed.somethingSelected()) {
+        const key = "S:" + ed.getSelection();
+        if (key === this.lastPollKey) return;
+        this.extractFrom(ed);
+        return;
+      }
+      if (!this.state.trackCursor || this.state.mode !== "line") return;
+      const key = "L:" + ed.getCursor().line;
       if (key === this.lastPollKey) return;
       this.extractFrom(ed);
     } catch {
