@@ -9,6 +9,7 @@ import { setMatchPositions } from "./scrollbar-markers";
 export type SelectionHighlightOptions = {
   highlightSelectedText: boolean;     // 是否启用高亮
   minSelectionLength: number;         // 高亮所需的最小选中字符数
+  maxSelectionLength: number;         // 高亮检索的选中字符串上限（超出不检索）
   maxMatches: number;                 // 文本高亮的最大匹配数（滚动条标记不受限）
   highlightDelay: number;             // 高亮更新的防抖延迟(ms)
   minimapEnabled: boolean;            // 是否启用 minimap
@@ -17,6 +18,7 @@ export type SelectionHighlightOptions = {
 const defaultHighlightOptions: SelectionHighlightOptions = {
   highlightSelectedText: true,
   minSelectionLength: 2,
+  maxSelectionLength: 30,
   maxMatches: 1000,
   highlightDelay: 200,
   minimapEnabled: false,
@@ -28,6 +30,7 @@ export const highlightConfig = Facet.define<SelectionHighlightOptions, Required<
     return combineConfig(options, defaultHighlightOptions, {
       highlightSelectedText: (a, b) => a ?? b,
       minSelectionLength: Math.min,
+      maxSelectionLength: Math.min,
       maxMatches: Math.min,
       highlightDelay: Math.max,
       minimapEnabled: (a, b) => a ?? b,
@@ -115,7 +118,7 @@ const matchHighlighter = ViewPlugin.fromClass(
       const selFrom = Math.min(sel.main.from, sel.main.to);
       const selTo = Math.max(sel.main.from, sel.main.to);
       const len = selTo - selFrom;
-      if (len < conf.minSelectionLength || len > 30) return Decoration.none;
+      if (len < conf.minSelectionLength || len > conf.maxSelectionLength) return Decoration.none;
       const query = state.sliceDoc(selFrom, selTo).trim();
       if (!query) return Decoration.none;
       const deco = [];

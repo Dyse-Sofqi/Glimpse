@@ -1260,6 +1260,12 @@
   display: none;
 }
 
+/* 穿透锁定时工具栏自身可命中：root pointer-events:none 下仅交互按钮可触发 hover，
+   工具栏打回 auto 后整条（含按钮间隙）悬停即显示，移出窗口即隐藏 */
+.glimpse-teleprompter.is-locked .glimpse-tp-toolbar {
+  pointer-events: auto;
+}
+
 /* 工具栏：默认隐藏，悬停/拖拽/锁定（仅交互按钮）时显示 */
 .glimpse-tp-toolbar {
   display: flex;
@@ -1278,7 +1284,8 @@
 .glimpse-teleprompter:hover .glimpse-tp-toolbar,
 .glimpse-teleprompter.is-dragging .glimpse-tp-toolbar,
 .glimpse-teleprompter.is-resizing .glimpse-tp-toolbar,
-.glimpse-teleprompter.is-locked .glimpse-tp-toolbar {
+/* 穿透锁定时同样悬停才显示（root 已 pointer-events:none，hover 由工具栏自身触发） */
+.glimpse-teleprompter.is-locked:hover .glimpse-tp-toolbar {
   opacity: 1;
 }
 
@@ -1357,10 +1364,14 @@
   transition: opacity 0.1s ease;
 }
 
-/* 内容区 —— 字体透明度由 --tp-font-opacity 控制（根元素内联，步骤 3 接入设置） */
+/* 内容区 —— 字体透明度由 --tp-font-opacity 控制（根元素内联，步骤 3 接入设置）。
+   grid + align-content safe center：行块在显示域内垂直居中；内容超高时 safe 回退
+   flex-start 正常滚动，避免居中溢出顶部不可达 */
 .glimpse-tp-content {
+  display: grid;
+  align-content: safe center;
   padding: 0px 12px;
-  min-height: 45px; /* 文本显示域最小高度，防内容过矮时面板塌缩 */
+  min-height: 100px; /* 文本显示域最小高度，防内容过矮时面板塌缩 */
   font-size: 50px;
   line-height: 1.4;
   text-align: center;

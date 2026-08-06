@@ -189,7 +189,8 @@ export class TeleprompterWindow extends Component {
     this.modeBtnEl.buttonEl.addClass("glimpse-tp-mode");
     this.modeBtnEl.onClick(() => this.setMode(this.state.mode === "line" ? "highlight" : "line"));
     // 跟踪光标 —— 行模式光标跟随开关（默认关，独立于模式）
-    this.trackBtnEl = addBtn("text-cursor", "跟踪光标", () => this.toggleTrackCursor(), true);
+    // 非交互按钮：穿透锁定时随其他非交互按钮一并隐藏
+    this.trackBtnEl = addBtn("text-cursor", "跟踪光标", () => this.toggleTrackCursor());
     this.prevBtnEl = addBtn("arrow-big-left", "上一项", () => this.prevItem(), true);
     this.nextBtnEl = addBtn("arrow-big-right", "下一项", () => this.nextItem(), true);
     this.lockBtnEl = addBtn("lock", "穿透锁定", () => {
@@ -284,6 +285,7 @@ export class TeleprompterWindow extends Component {
   }
 
   close() {
+    this.manager.stashClosed(this.state); // 暂存状态，重开恢复
     this.destroy();
     this.manager.remove(this);
     this.manager.persist();
@@ -867,6 +869,10 @@ export class TeleprompterManager {
   private windows: TeleprompterWindow[] = [];
   lastFocused: TeleprompterWindow | null = null;
   private nextId = 1;
+  /** 关闭未销毁的窗口状态：持久化到 data.json，重启后重开仍恢复位置/尺寸/模式等 */
+  private get closedStates(): TeleprompterWindowState[] {
+    return this.plugin.settings.teleprompter.closed;
+  }
 
   constructor(plugin: GlimpsePlugin) {
     this.plugin = plugin;
@@ -876,6 +882,11 @@ export class TeleprompterManager {
       let maxId = 0;
       for (const st of saved) {
         this.windows.push(new TeleprompterWindow(plugin, this, st));
+        const n = parseInt(st.id.replace(/^tp-/, ""), 10);
+        if (!isNaN(n) && n >= maxId) maxId = n;
+      }
+      // 已关闭的暂存状态也计入 id，避免重开恢复后新建窗口 id 撞车
+      for (const st of plugin.settings.teleprompter.closed ?? []) {
         const n = parseInt(st.id.replace(/^tp-/, ""), 10);
         if (!isNaN(n) && n >= maxId) maxId = n;
       }
@@ -894,6 +905,12 @@ export class TeleprompterManager {
 
   get all(): readonly TeleprompterWindow[] {
     return this.windows;
+  }
+
+  /** 关闭时暂存状态（后进先出，重开恢复最近关闭的窗口），持久化到 data.json */
+  stashClosed(state: TeleprompterWindowState) {
+    this.closedStates.push(state);
+    this.persist();
   }
 
   /** 打开提词器命令：已有窗口则聚焦最近活跃的，否则新建 */
@@ -925,19 +942,24 @@ export class TeleprompterManager {
   }
 
   createWindow(): TeleprompterWindow {
-    const win = new TeleprompterWindow(this.plugin, this, {
-      id: "tp-" + this.nextId++,
-      x: Math.max((window.innerWidth - TP_MIN_WIDTH) / 2, 0),
-      y: 24,
-      width: TP_MIN_WIDTH,
-      widthLocked: false,
-      locked: false,
-      bgHidden: false,
-      fontPx: 50,
-      mode: "line",
-      boundDoc: null,
-      trackCursor: false,
-    });
+    // 优先恢复最近关闭的窗口状态（位置/尺寸/模式/绑定等），无则新建默认
+    const saved = this.closedStates.pop();
+    if (saved) this.persist(); // 已弹出，写回移除
+    const win = saved
+      ? new TeleprompterWindow(this.plugin, this, saved)
+      : new TeleprompterWindow(this.plugin, this, {
+          id: "tp-" + this.nextId++,
+          x: Math.max((window.innerWidth - TP_MIN_WIDTH) / 2, 0),
+          y: 24,
+          width: TP_MIN_WIDTH,
+          widthLocked: false,
+          locked: false,
+          bgHidden: false,
+          fontPx: 50,
+          mode: "line",
+          boundDoc: null,
+          trackCursor: false,
+        });
     this.windows.push(win);
     win.focus();
     return win;
@@ -950,6 +972,7 @@ export class TeleprompterManager {
 
   /** 关闭全部并清除持久化（「关闭所有提词器」命令）；插件卸载时仅销毁 DOM，保留状态 */
   closeAll(persistState = true) {
+    if (persistState) [...this.windows].forEach(w => this.stashClosed(w.state));
     [...this.windows].forEach(w => w.destroy());
     this.windows = [];
     this.lastFocused = null;

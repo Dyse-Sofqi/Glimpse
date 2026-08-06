@@ -131,6 +131,10 @@ export default class GlimpsePlugin extends Plugin {
       this.settings.selectionHighlighter.minSelectionLength = DEFAULT_SETTINGS.selectionHighlighter.minSelectionLength;
       changed = true;
     }
+    if (this.settings.selectionHighlighter.maxSelectionLength === undefined) {
+      this.settings.selectionHighlighter.maxSelectionLength = DEFAULT_SETTINGS.selectionHighlighter.maxSelectionLength;
+      changed = true;
+    }
     if (this.settings.selectionHighlighter.maxMatches !== DEFAULT_SETTINGS.selectionHighlighter.maxMatches) {
       this.settings.selectionHighlighter.maxMatches = DEFAULT_SETTINGS.selectionHighlighter.maxMatches;
       changed = true;

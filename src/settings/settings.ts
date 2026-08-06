@@ -52,6 +52,7 @@ export interface TeleprompterSettings {
   selectionExtractEnabled: boolean; // 选中提取模式，默认开
   statusBarButton: boolean; // 状态栏「打开提词器」按钮，默认开
   windows: TeleprompterWindowState[]; // 打开的提词器实例（含位置/样式状态）
+  closed: TeleprompterWindowState[]; // 已关闭的实例状态（后进先出，重开时恢复）
 }
 
 export const DEFAULT_SETTINGS: GlimpseSettings = {
@@ -59,6 +60,7 @@ export const DEFAULT_SETTINGS: GlimpseSettings = {
     highlightSelectedText: true,
     maxMatches: 1000,
     minSelectionLength: 2,
+    maxSelectionLength: 30,
     highlightDelay: 200,
     minimapEnabled: false,
   },
@@ -76,6 +78,7 @@ export const DEFAULT_SETTINGS: GlimpseSettings = {
     selectionExtractEnabled: true,
     statusBarButton: true,
     windows: [],
+    closed: [],
   },
 };
 

@@ -22,6 +22,7 @@ When text is selected, highlights all occurrences of the selected text:
 - Other matching strings in the document marked as `.cm-matched-string`
 - All matches include `data-contents` attribute with the selected string value
 - **Scrollbar markers / minimap**: match positions shown on the scrollbar when text is selected; an optional minimap on the editor's right edge (draggable to scroll)
+- **Selection length cap**: a "Max selection length" slider in settings (2-60, default 30) skips full-document matching for selections longer than the cap, avoiding slowdowns from huge selections
 
 ### Persistent Highlighting
 
@@ -121,7 +122,7 @@ Karaoke-style floating teleprompter windows that follow document content in real
   - **Selection extract**: temporarily overrides the content with selected text, auto-restores on deselect
 - **Highlight index integration**: clicking an index card binds that document and switches to highlight-extract mode
 - **Document binding**: pin the window to a specific document instead of following the active one; once bound, clicking the bind button again always unbinds instead of binding the currently active document
-- **Click-through lock**: whole window becomes mouse-transparent (interactive buttons kept), never blocks the editor; the lock itself no longer changes the background — full background transparency is handled solely by the "Hide Background" button
+- **Click-through lock**: whole window becomes mouse-transparent (interactive buttons kept), never blocks the editor; the lock itself no longer changes the background — full background transparency is handled solely by the "Hide Background" button; while locked the toolbar shows only on hover and fades out on mouse-leave, and the "Track Cursor" button is hidden with the other non-interactive buttons
 - **Hide Background**: when active, the window background becomes fully transparent (including hover/drag states); when inactive, the background color stays visible with the opacity set in the settings
 - **Width auto-fit**: width adapts to the content's widest line (prev/next never grows the window), clamped to the viewport so long text wraps without overflowing; the right edge is draggable and auto-locks, and stays draggable while locked — the new width inherits as the locked value
 - **Drag snapping**: snaps to viewport edges and center lines with guide overlays
@@ -130,10 +131,11 @@ Karaoke-style floating teleprompter windows that follow document content in real
 - **Opacity**: font opacity (default 80%) and background opacity (default 90%) adjustable in settings, each with a "Reset to initial value" button (lucide `rotate-ccw`); the background color and border are always visible and the opacity applies live
 - **Theme adaptation**: the window background updates instantly when toggling light/dark themes — no restart needed
 - **Theme / custom CSS styling**: content reuses theme and user CSS snippets (headings, code blocks, inline formatting); only font size is controlled by the teleprompter. Leading tabs/spaces are stripped before rendering a single line, so indented content (e.g. nested list items) renders as unindented list/text instead of a code block
+- **Vertical centering**: content is vertically centered within the text display area — short content no longer sits at the top; when content exceeds the max height it falls back to normal scrolling (top never clipped)
 - **Status bar entry**: "Open teleprompter" button in the bottom-right status bar (lucide-presentation) for one-click open/focus, toggleable in settings
 - **Double-click to jump**: double-click the text area to move the editor cursor to the captured text's line (the current match's line in highlight-extract mode) and focus the editor, with the line scrolled to the center of the viewport
 - **Right-click to copy**: right-click the text area to copy the rendered plain text of the captured content (no Markdown syntax); a "已复制" notice confirms success
-- **State persistence**: window position, size, mode, track-cursor toggle, and binding restored on restart
+- **State persistence**: closing a window and reopening it restores its position, size, mode, binding, track-cursor toggle, and more; closed-window states survive an Obsidian restart (reopening still restores them), and closed windows never auto-reopen on restart
 - **Empty-line fallback**: shows previous item's text (half-opacity placeholder) when the current line is empty
 - **Commands**: "打开提词器" and "关闭所有提词器", multiple instances supported
 
@@ -141,7 +143,7 @@ Karaoke-style floating teleprompter windows that follow document content in real
 
 The settings dialog is organized into four tabs:
 
-- **Selection**: toggle highlighting all occurrences of the selected text; highlight delay in milliseconds (≥200); minimap toggle
+- **Selection**: toggle highlighting all occurrences of the selected text; highlight delay in milliseconds (≥200); minimap toggle; a "Max selection length" slider (2-60, default 30, with a "Restore default" button)
 - **Persistent**: create, edit, and delete highlighters, group management, one-click import/export
 - **Highlight index**: "Auto-open highlight index" toggle — enables the index tab on plugin load
 - **Teleprompter**: font opacity (default 80%) and background opacity (default 90%), each with a "Reset to initial value" button; selection-extract mode and status-bar button toggles

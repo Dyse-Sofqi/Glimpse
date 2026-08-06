@@ -1,5 +1,14 @@
 # Changelog
 
+#### 0.9.6 (2026-08-07)
+
+- **Track-cursor button hidden when click-through locked**: the toolbar's "Track Cursor" button is no longer an interactive button under click-through lock and is hidden along with the rest
+- **Toolbar shows on hover while locked**: fixed the toolbar staying visible after the mouse left the window while locked — it now fades out on mouse-leave, just like when unlocked
+- **State restored after close & reopen**: closing a teleprompter window and reopening it restores its position, size, mode, bound document, track-cursor toggle, and more
+- **Closed-window state survives restart**: closed windows' states are persisted to data.json, so reopening after an Obsidian restart still restores them; closed windows never auto-reopen after restart
+- **Vertically centered text**: content is now vertically centered within the display area; falls back to normal scrolling (top never clipped) when content exceeds the max height
+- **New "Max selection length" setting**: the selection-highlight tab gains a slider (2-60, default 30) capping how long a selection can be for full-document matching — selections longer than the cap are skipped to avoid slowdowns from huge selections; a "Restore default" button (lucide `rotate-ccw`) sits next to the slider
+
 #### 0.9.5 (2026-08-06)
 
 - **New "Track Cursor" toggle**: a new "跟踪光标" button (lucide `text-cursor`) in the toolbar makes cursor-following an independent, toggleable feature (off by default). When enabled, moving the cursor auto-extracts the line under it (line-extract mode only); when disabled, line mode stays static and manual prev/next browsing is never disturbed.
