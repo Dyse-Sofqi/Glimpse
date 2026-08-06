@@ -357,7 +357,9 @@ export class TeleprompterWindow extends Component {
     this.state.width = w;
     this.rootEl.style.width = w + "px";
     if (oldW > 0 && w !== oldW) {
-      const dx = (oldW - w) / 2;
+      // Math.trunc 向零截断：奇数宽度差产生 ±0.5/±1.5 的 dx，Math.round 遇 .5 恒上取，
+      // 两方向不对称 → 逐项渲染累计右移直到顶到右边界。截断后 ±0.5→0、±1.5→±1，对称有界
+      const dx = Math.trunc((oldW - w) / 2);
       this.place(Math.round(this.state.x + dx), this.state.y);
     }
   }
