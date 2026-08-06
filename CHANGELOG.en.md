@@ -1,5 +1,14 @@
 # Changelog
 
+#### 0.9.5 (2026-08-06)
+
+- **New "Track Cursor" toggle**: a new "跟踪光标" button (lucide `text-cursor`) in the toolbar makes cursor-following an independent, toggleable feature (off by default). When enabled, moving the cursor auto-extracts the line under it (line-extract mode only); when disabled, line mode stays static and manual prev/next browsing is never disturbed.
+- **Double-click to jump to the line**: double-clicking the teleprompter text area moves the editor cursor to the captured text's line, focuses the editor, and scrolls the line to the center of the viewport; in highlight-extract mode it jumps to the current match's line.
+- **Right-click to copy plain text**: right-clicking the text area copies the rendered plain text of the captured content (no Markdown syntax) and shows a "已复制" notice on success.
+- **Text area minimum height**: the content area now has a 45px min-height so the panel never collapses when content is short.
+- **Fixed width-measurement distortion**: the auto-fit probe now carries the actual current font size explicitly, so the `.glimpse-tp-content` rule's fixed 50px can no longer override it and measurements follow the real font slot.
+- **Fixed cumulative rightward drift from width auto-fit**: when two lines' widths differ by an odd number of pixels the refit offset is ±0.5px, and `Math.round` always rounds .5 up, making the two directions asymmetric — successive renders drifted the window right until it hit the right edge and snapped back. Switching to `Math.trunc` (toward zero) keeps the offset symmetric and bounded.
+
 #### 0.9.4 (2026-08-02)
 
 - **Import / export / custom-CSS editors switched to styled plain textareas**: the CodeMirror editors had cursor, input, and theme-compatibility issues in multi-plugin environments. They are now plain textareas (monospace, no-wrap `pre`, bordered, resizable); the box height auto-fits its content (with a min/max clamp, scrolling when longer) to sidestep those environment problems.

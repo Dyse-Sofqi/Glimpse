@@ -116,7 +116,7 @@ Automatically scans the active document for `==...==` wrapped Obsidian standard 
 Karaoke-style floating teleprompter windows that follow document content in real time — for cue cards, reading aloud, or lectures. Desktop only.
 
 - **Three content modes**:
-  - **Line extract**: follows the editor cursor and auto-extracts the line as the cursor moves (poll-based detection, bound or active document); wheel/buttons step up/down one line manually
+  - **Line extract**: static by default (extracts once when opened or when switching documents); click the "Track Cursor" button in the toolbar to enable cursor-following — the line under the cursor is auto-extracted as it moves (poll-based detection, bound or active document); wheel/buttons step up/down one line manually
   - **Highlight extract**: cycles through `==...==` matches in order — great for scripted reading
   - **Selection extract**: temporarily overrides the content with selected text, auto-restores on deselect
 - **Highlight index integration**: clicking an index card binds that document and switches to highlight-extract mode
@@ -126,12 +126,14 @@ Karaoke-style floating teleprompter windows that follow document content in real
 - **Width auto-fit**: width adapts to the content's widest line (prev/next never grows the window), clamped to the viewport so long text wraps without overflowing; the right edge is draggable and auto-locks, and stays draggable while locked — the new width inherits as the locked value
 - **Drag snapping**: snaps to viewport edges and center lines with guide overlays
 - **Font size**: cycles 32/40/50/64/80px
-- **Toolbar**: the mode toggle is a text button showing the current mode (逐行提取 / 高亮提取); prev/next (`arrow-big-left`/`arrow-big-right`), width lock (`move-horizontal`), click-through lock (`lock`/`unlock`), hide background (`eye-off`), and font-size slot icons (`heading-1`~`heading-5`) all use semantic lucide icons; button tooltips default to popping above and flip below only when there is no room above; when locked, only interactive buttons (prev/next, lock, close) remain; the settings button jumps straight to the teleprompter settings page
+- **Toolbar**: the mode toggle is a text button showing the current mode (逐行提取 / 高亮提取); track cursor (`text-cursor`, cursor-following toggle), prev/next (`arrow-big-left`/`arrow-big-right`), width lock (`move-horizontal`), click-through lock (`lock`/`unlock`), hide background (`eye-off`), and font-size slot icons (`heading-1`~`heading-5`) all use semantic lucide icons; button tooltips default to popping above and flip below only when there is no room above; when locked, only interactive buttons (prev/next, lock, close) remain; the settings button jumps straight to the teleprompter settings page
 - **Opacity**: font opacity (default 80%) and background opacity (default 90%) adjustable in settings, each with a "Reset to initial value" button (lucide `rotate-ccw`); the background color and border are always visible and the opacity applies live
 - **Theme adaptation**: the window background updates instantly when toggling light/dark themes — no restart needed
 - **Theme / custom CSS styling**: content reuses theme and user CSS snippets (headings, code blocks, inline formatting); only font size is controlled by the teleprompter. Leading tabs/spaces are stripped before rendering a single line, so indented content (e.g. nested list items) renders as unindented list/text instead of a code block
 - **Status bar entry**: "Open teleprompter" button in the bottom-right status bar (lucide-presentation) for one-click open/focus, toggleable in settings
-- **State persistence**: window position, size, mode, and binding restored on restart
+- **Double-click to jump**: double-click the text area to move the editor cursor to the captured text's line (the current match's line in highlight-extract mode) and focus the editor, with the line scrolled to the center of the viewport
+- **Right-click to copy**: right-click the text area to copy the rendered plain text of the captured content (no Markdown syntax); a "已复制" notice confirms success
+- **State persistence**: window position, size, mode, track-cursor toggle, and binding restored on restart
 - **Empty-line fallback**: shows previous item's text (half-opacity placeholder) when the current line is empty
 - **Commands**: "打开提词器" and "关闭所有提词器", multiple instances supported
 
