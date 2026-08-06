@@ -305,12 +305,17 @@ export class TeleprompterWindow extends Component {
     probe.style.cssText =
       "position:fixed;left:-99999px;top:0;visibility:hidden;white-space:nowrap;width:max-content;" +
       "padding:0;margin:0;";
-    probe.style.fontSize = getComputedStyle(this.contentEl).fontSize;
+    // 实际字号：内容区 inline fontPx 生效。但 .glimpse-tp-content 类规则 font-size:50px
+    // 会覆盖 probe 的继承字号 → 克隆容器必须显式带当前字号，否则测量恒为 50px（第三档）
+    const fontPx = getComputedStyle(this.contentEl).fontSize;
+    probe.style.fontSize = fontPx;
     // 内容克隆进带真实渲染类的容器（inline 覆盖 padding/margin 避免计入容器自身留白）
     const contentWrap = probe.createDiv();
     contentWrap.className = this.contentEl.className;
     contentWrap.style.cssText =
-      "width:max-content;white-space:nowrap;padding:0;margin:0;text-align:left;";
+      "width:max-content;white-space:nowrap;padding:0;margin:0;text-align:left;font-size:" +
+      fontPx +
+      ";";
     for (const child of Array.from(this.contentEl.children)) {
       contentWrap.appendChild(child.cloneNode(true));
     }

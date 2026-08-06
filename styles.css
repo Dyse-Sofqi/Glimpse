@@ -1359,7 +1359,7 @@
 
 /* 内容区 —— 字体透明度由 --tp-font-opacity 控制（根元素内联，步骤 3 接入设置） */
 .glimpse-tp-content {
-  padding: 6px 16px 12px;
+  padding: 0px 12px;
   font-size: 50px;
   line-height: 1.4;
   text-align: center;
