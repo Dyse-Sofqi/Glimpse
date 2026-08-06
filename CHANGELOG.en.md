@@ -1,5 +1,9 @@
 # Changelog
 
+#### 0.9.7 (2026-08-07)
+
+- **Fixed close→reopen state lost across restart**: when a closed teleprompter window was reopened (state restored from the stash), the persist ran before the window was added to the window list, writing an empty window list to disk — so after an Obsidian restart the restored window was gone and reopening gave a default window. The persist now runs after the window is registered, so restored state is properly saved and still restores after restart.
+
 #### 0.9.6 (2026-08-07)
 
 - **Track-cursor button hidden when click-through locked**: the toolbar's "Track Cursor" button is no longer an interactive button under click-through lock and is hidden along with the rest

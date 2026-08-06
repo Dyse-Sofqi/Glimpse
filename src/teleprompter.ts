@@ -944,7 +944,6 @@ export class TeleprompterManager {
   createWindow(): TeleprompterWindow {
     // 优先恢复最近关闭的窗口状态（位置/尺寸/模式/绑定等），无则新建默认
     const saved = this.closedStates.pop();
-    if (saved) this.persist(); // 已弹出，写回移除
     const win = saved
       ? new TeleprompterWindow(this.plugin, this, saved)
       : new TeleprompterWindow(this.plugin, this, {
@@ -962,6 +961,8 @@ export class TeleprompterManager {
         });
     this.windows.push(win);
     win.focus();
+    // 恢复路径：窗口已入列后再持久化，否则 windows 仍为空会写盘成 []，重启后状态丢失
+    if (saved) this.persist();
     return win;
   }
 
