@@ -1,5 +1,15 @@
 # Changelog
 
+#### 0.9.8 (2026-08-07)
+
+- **New teleprompter body-font setting**: a "Font" row in the teleprompter settings opens a font-picker modal — it enumerates local fonts via `queryLocalFonts()`, falling back to canvas width-measurement over a bundled candidate list. You can select multiple fonts and reorder them by priority (drag & drop); the first font present on this machine wins and missing fonts fall through to the next (CSS `font-family` fallback semantics). Search, per-font self-preview, and a "custom font" text input are included; leaving it empty follows the theme default.
+- **New font-weight setting**: a dropdown (follow theme / 300–700) applied live; since weight changes glyph width, the window width refits automatically on change.
+- **New font-color setting**: a color palette (Pickr) applied live on change, with opacity excluded (handled separately by "font opacity"); "Clear" restores the theme default; the picker pops up to the left of the swatch; added a "Reset to initial value" button.
+- **Fixed color-picker drag**: Obsidian intercepts document-level `mousemove`, and pickr drives its drag entirely through it — so the palette/hue handle could only be clicked, never dragged. The pickers now listen to pointer events and drive pickr's internal drag logic directly, bypassing the interception (fixed in both the teleprompter and persistent-highlight pickers).
+- **Double-click now jumps and selects**: double-clicking the teleprompter text area still moves the cursor to the captured line and now also selects the text — the matching segment in highlight-extract mode, the whole line in line mode, and the existing editor selection (which is exactly what's shown) is preserved in selection-extract mode. The selection scrolls to the center of the viewport.
+- **Fixed width-measurement distortion with custom fonts**: the auto-fit probe now carries the actual computed font family, so width auto-fit no longer measures against the theme default font and stays correct under a custom font.
+- **Theme font-override resistance**: font, weight, and color are applied as inline `!important`, beating high-specificity `.markdown-preview-view` container font rules from themes such as Blue Topaz.
+
 #### 0.9.7 (2026-08-07)
 
 - **Fixed close→reopen state lost across restart**: when a closed teleprompter window was reopened (state restored from the stash), the persist ran before the window was added to the window list, writing an empty window list to disk — so after an Obsidian restart the restored window was gone and reopening gave a default window. The persist now runs after the window is registered, so restored state is properly saved and still restores after restart.

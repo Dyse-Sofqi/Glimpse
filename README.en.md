@@ -127,13 +127,14 @@ Karaoke-style floating teleprompter windows that follow document content in real
 - **Width auto-fit**: width adapts to the content's widest line (prev/next never grows the window), clamped to the viewport so long text wraps without overflowing; the right edge is draggable and auto-locks, and stays draggable while locked — the new width inherits as the locked value
 - **Drag snapping**: snaps to viewport edges and center lines with guide overlays
 - **Font size**: cycles 32/40/50/64/80px
+- **Font / weight / color**: adjustable in settings — the body font uses a local-font picker modal (`queryLocalFonts()` enumeration, falling back to canvas measurement over a candidate list; multi-select with drag-to-reorder priority — the first available font wins, missing ones fall through; search, self-preview, and custom-font input included), font weight is a dropdown (follow theme / 300–700), and text color is a palette applied live ("Clear" restores the theme default); each has a "Reset to initial value" button
 - **Toolbar**: the mode toggle is a text button showing the current mode (逐行提取 / 高亮提取); track cursor (`text-cursor`, cursor-following toggle), prev/next (`arrow-big-left`/`arrow-big-right`), width lock (`move-horizontal`), click-through lock (`lock`/`unlock`), hide background (`eye-off`), and font-size slot icons (`heading-1`~`heading-5`) all use semantic lucide icons; button tooltips default to popping above and flip below only when there is no room above; when locked, only interactive buttons (prev/next, lock, close) remain; the settings button jumps straight to the teleprompter settings page
 - **Opacity**: font opacity (default 80%) and background opacity (default 90%) adjustable in settings, each with a "Reset to initial value" button (lucide `rotate-ccw`); the background color and border are always visible and the opacity applies live
 - **Theme adaptation**: the window background updates instantly when toggling light/dark themes — no restart needed
 - **Theme / custom CSS styling**: content reuses theme and user CSS snippets (headings, code blocks, inline formatting); only font size is controlled by the teleprompter. Leading tabs/spaces are stripped before rendering a single line, so indented content (e.g. nested list items) renders as unindented list/text instead of a code block
 - **Vertical centering**: content is vertically centered within the text display area — short content no longer sits at the top; when content exceeds the max height it falls back to normal scrolling (top never clipped)
 - **Status bar entry**: "Open teleprompter" button in the bottom-right status bar (lucide-presentation) for one-click open/focus, toggleable in settings
-- **Double-click to jump**: double-click the text area to move the editor cursor to the captured text's line (the current match's line in highlight-extract mode) and focus the editor, with the line scrolled to the center of the viewport
+- **Double-click to jump & select**: double-click the text area to move the editor cursor to the captured text's line and select the matching text (the match segment in highlight-extract mode, the whole line in line mode, the existing selection preserved in selection-extract mode), focus the editor, and scroll the selection to the center of the viewport
 - **Right-click to copy**: right-click the text area to copy the rendered plain text of the captured content (no Markdown syntax); a "已复制" notice confirms success
 - **State persistence**: closing a window and reopening it restores its position, size, mode, binding, track-cursor toggle, and more; closed-window states survive an Obsidian restart (reopening still restores them), and closed windows never auto-reopen on restart
 - **Empty-line fallback**: shows previous item's text (half-opacity placeholder) when the current line is empty
@@ -146,7 +147,7 @@ The settings dialog is organized into four tabs:
 - **Selection**: toggle highlighting all occurrences of the selected text; highlight delay in milliseconds (≥200); minimap toggle; a "Max selection length" slider (2-60, default 30, with a "Restore default" button)
 - **Persistent**: create, edit, and delete highlighters, group management, one-click import/export
 - **Highlight index**: "Auto-open highlight index" toggle — enables the index tab on plugin load
-- **Teleprompter**: font opacity (default 80%) and background opacity (default 90%), each with a "Reset to initial value" button; selection-extract mode and status-bar button toggles
+- **Teleprompter**: font (local-font picker), font weight, font color, font opacity (default 80%) and background opacity (default 90%), each with a "Reset to initial value" button; selection-extract mode and status-bar button toggles
 
 ### Limitations
 
