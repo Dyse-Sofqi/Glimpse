@@ -10,6 +10,7 @@ export class SettingTab extends PluginSettingTab {
   plugin: GlimpsePlugin;
   editor!: TextAreaComponent;
   pickrInstance!: Pickr;
+  fontColorPickr: Pickr | undefined; // 提词器「字体颜色」选择器（hide/重建时销毁）
   activeGroup: string = "默认";
   _dragItemId: string | undefined;
   activeMainTab = "persistent";
@@ -21,6 +22,8 @@ export class SettingTab extends PluginSettingTab {
 
   hide() {
     this.pickrInstance && this.pickrInstance.destroyAndRemove();
+    this.fontColorPickr && this.fontColorPickr.destroyAndRemove();
+    this.fontColorPickr = undefined;
   }
 
   display(): void {
@@ -61,6 +64,6 @@ export class SettingTab extends PluginSettingTab {
     // ── teleprompter tab content ──
     const teleprompterContent = containerEl.createDiv({ cls: "glimpse-tab-content" });
     if (this.activeMainTab !== "teleprompter") teleprompterContent.style.display = "none";
-    renderTeleprompter(teleprompterContent, this.plugin);
+    renderTeleprompter(teleprompterContent, this.plugin, this);
   }
 }

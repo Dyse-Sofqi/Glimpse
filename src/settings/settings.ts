@@ -49,6 +49,9 @@ export const DEFAULT_BG_OPACITY = 90;
 export interface TeleprompterSettings {
   fontOpacity: number; // 0-100，默认 80
   bgOpacity: number; // 0-100，默认 90
+  fontFamily: string; // 正文字体栈，逗号分隔；靠前且本机存在的字体优先生效，空串 = 跟随主题
+  fontWeight: number | null; // 正文字重，null = 跟随主题
+  fontColor: string | null; // 正文字体颜色（hex），null = 跟随主题
   selectionExtractEnabled: boolean; // 选中提取模式，默认开
   statusBarButton: boolean; // 状态栏「打开提词器」按钮，默认开
   windows: TeleprompterWindowState[]; // 打开的提词器实例（含位置/样式状态）
@@ -75,6 +78,9 @@ export const DEFAULT_SETTINGS: GlimpseSettings = {
   teleprompter: {
     fontOpacity: DEFAULT_FONT_OPACITY,
     bgOpacity: DEFAULT_BG_OPACITY,
+    fontFamily: "",
+    fontWeight: null,
+    fontColor: null,
     selectionExtractEnabled: true,
     statusBarButton: true,
     windows: [],

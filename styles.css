@@ -1372,6 +1372,7 @@
   align-content: safe center;
   padding: 0px 12px;
   min-height: 100px; /* 文本显示域最小高度，防内容过矮时面板塌缩 */
+  font-family: var(--tp-font-family, var(--font-text));
   font-size: 50px;
   line-height: 1.4;
   text-align: center;
@@ -1439,6 +1440,179 @@
   right: 0;
   height: 1px;
   top: calc(50% - 0.5px);
+}
+
+/* 设置页「字体」摘要：当前字体栈（→ 分隔，靠前者优先），空 = 跟随主题 */
+.glimpse-settings .glimpse-tp-font-summary {
+  display: inline-block;
+  margin: 2px 0 4px;
+  color: var(--text-accent);
+  font-weight: var(--font-semibold);
+}
+
+/* ── 字体选择模态窗（提词器正文）── */
+.glimpse-font-modal {
+  width: 480px;
+}
+
+.glimpse-font-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.glimpse-font-modal-content h2 {
+  margin: 0;
+}
+
+.glimpse-font-modal-desc {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.glimpse-font-modal .glimpse-font-section-title {
+  margin: 4px 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+}
+
+/* 已选字体列表：顶部「默认」项 + 可拖拽排序项 */
+.glimpse-font-selected {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+}
+
+.glimpse-font-sel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.glimpse-font-sel-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.glimpse-font-sel-row.is-dragging {
+  opacity: 0.4;
+}
+
+.glimpse-font-sel-row.is-drag-over {
+  background: var(--background-modifier-hover);
+  box-shadow: 0 2px 0 var(--interactive-accent);
+}
+
+.glimpse-font-sel-row .glimpse-font-handle {
+  cursor: grab;
+}
+
+.glimpse-font-sel-row .glimpse-font-handle:active {
+  cursor: grabbing;
+}
+
+.glimpse-font-handle {
+  color: var(--text-muted);
+  font-size: 14px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.glimpse-font-default {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.glimpse-font-default.is-active {
+  color: var(--text-normal);
+  font-style: normal;
+  font-weight: var(--font-semibold);
+}
+
+.glimpse-font-default-icon {
+  width: 16px;
+  text-align: center;
+}
+
+.glimpse-font-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.glimpse-font-remove {
+  padding: 0 4px;
+  line-height: 1;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.glimpse-font-remove:hover {
+  color: var(--text-error);
+  background: var(--background-modifier-hover);
+}
+
+/* 可用字体：搜索 + 列表 */
+.glimpse-font-available {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.glimpse-font-search {
+  width: 100%;
+}
+
+.glimpse-font-available-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  color: var(--text-muted);
+}
+
+.glimpse-font-avail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.glimpse-font-avail-row:hover,
+.glimpse-font-avail-row.is-selected {
+  background: var(--background-modifier-hover);
+}
+
+.glimpse-font-check {
+  width: 16px;
+  text-align: center;
+  color: var(--interactive-accent);
+}
+
+.glimpse-font-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* #endregion teleprompter */

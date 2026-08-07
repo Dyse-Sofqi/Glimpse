@@ -1,4 +1,5 @@
 import Pickr from "@simonwep/pickr";
+import { patchPickrDrag } from "../pickr-drag";
 import {
   ButtonComponent,
   Modal,
@@ -48,6 +49,7 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
         interaction: { hex: true, rgba: false, hsla: true, hsva: false, cmyk: false, input: true, clear: true, cancel: true, save: true },
       },
     });
+    patchPickrDrag(pickrInstance); // Obsidian 拦截 document mousemove，用 pointer 事件桥接拖拽
     colorWrapper.querySelector(".pcr-button")!.ariaLabel = "Background color picker";
 
     pickrInstance

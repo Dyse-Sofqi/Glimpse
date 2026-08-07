@@ -143,6 +143,35 @@ export class TeleprompterWindow extends Component {
     const tp = this.plugin.settings.teleprompter;
     this.rootEl.style.setProperty("--tp-font-opacity", String(tp.fontOpacity / 100));
     this.rootEl.style.setProperty("--tp-bg-opacity", String(tp.bgOpacity / 100));
+    // 正文字体栈：逗号分隔，CSS font-family 回退语义（空则移除 → 继承主题默认）。
+    // 只设在内容区 —— 若设根元素，工具栏/提示会一并继承自定义字体。
+    // inline + !important：核心/主题常以 .markdown-preview-view/.markdown-rendered
+    // 高特异性或 !important 覆盖字体，inline important 是唯一稳定压过的手段。
+    // 字体名逐一引号包裹，防含空格/数字/特殊字符的名字在 var 展开时解析失败。
+    const family = (tp.fontFamily || "").trim();
+    if (family) {
+      const stack = family
+        .split(",")
+        .map(s => `"${s.trim().replace(/"/g, "")}"`)
+        .join(", ");
+      this.contentEl.style.setProperty("--tp-font-family", stack);
+      this.contentEl.style.setProperty("font-family", stack, "important");
+    } else {
+      this.contentEl.style.removeProperty("--tp-font-family");
+      this.contentEl.style.removeProperty("font-family");
+    }
+    // 字重（null = 跟随主题）：inline !important 同上，压主题容器覆盖
+    if (tp.fontWeight != null) {
+      this.contentEl.style.setProperty("font-weight", String(tp.fontWeight), "important");
+    } else {
+      this.contentEl.style.removeProperty("font-weight");
+    }
+    // 字体颜色（null = 跟随主题）：inline !important 同上
+    if (tp.fontColor) {
+      this.contentEl.style.setProperty("color", tp.fontColor, "important");
+    } else {
+      this.contentEl.style.removeProperty("color");
+    }
     // 背景色取自主题（body 计算色）→ 拆成 rgb 分量，供 rgba() 使用
     const m = getComputedStyle(document.body).backgroundColor.match(/\d+(\.\d+)?/g);
     if (m && m.length >= 3) {
@@ -323,6 +352,9 @@ export class TeleprompterWindow extends Component {
     // 会覆盖 probe 的继承字号 → 克隆容器必须显式带当前字号，否则测量恒为 50px（第三档）
     const fontPx = getComputedStyle(this.contentEl).fontSize;
     probe.style.fontSize = fontPx;
+    // 探针挂 body，不继承根元素的 --tp-font-family → 显式带当前字体，否则
+    // .glimpse-tp-content 规则回退到 var(--font-text)，量出默认字体的宽度
+    probe.style.fontFamily = getComputedStyle(this.contentEl).fontFamily;
     // 内容克隆进带真实渲染类的容器（inline 覆盖 padding/margin 避免计入容器自身留白）
     const contentWrap = probe.createDiv();
     contentWrap.className = this.contentEl.className;
@@ -729,18 +761,46 @@ export class TeleprompterWindow extends Component {
     }
   }
 
-  /** 双击：光标跳到捕获文本所在行并聚焦编辑器。
-      高亮模式 → 当前匹配项行;行模式 → 当前显示行;选中覆盖 → 编辑器光标行 */
+  /** 双击：光标跳到捕获文本所在行、选中对应文本并聚焦编辑器。
+      高亮模式 → 尽量选中匹配文本段（归一化后找不到则回退整行）;
+      行模式 → 选中整行;选中覆盖 → 保留编辑器现有选择（即对应文本），仅聚焦 */
   private jumpToCapturedLine() {
     const src = this.resolveDoc();
     const ed = src?.view?.editor ?? this.followEditor;
     if (!ed) return;
+
+    // 选中覆盖：对应文本就是编辑器当前选中，只聚焦不破坏选择
+    if (this.selectionOverride) {
+      const cursor = ed.getCursor();
+      (ed as any).scrollIntoView?.({ from: cursor, to: cursor }, true);
+      ed.focus();
+      return;
+    }
+
     const line = this.state.mode === "highlight"
       ? (this.matches[this.currentIndex]?.line ?? ed.getCursor().line)
-      : (this.selectionOverride ? ed.getCursor().line : this.currentLine);
-    ed.setCursor({ line: Math.max(line, 0), ch: 0 });
-    // 目标行滚动到视口中央（0.14.8 类型缺 scrollIntoView,运行时存在,可选链兜底）
-    (ed as any).scrollIntoView?.({ from: { line: Math.max(line, 0), ch: 0 }, to: { line: Math.max(line, 0), ch: 0 } }, true);
+      : this.currentLine;
+    const targetLine = Math.max(line, 0);
+    const lineText = ed.getLine(targetLine) ?? "";
+
+    if (this.state.mode === "highlight" && this.matches[this.currentIndex]) {
+      // 高亮模式：在原始行内定位匹配文本（去 == 后的展示文本是行内容的子串）
+      const matchText = this.matches[this.currentIndex].text;
+      const idx = lineText.indexOf(matchText);
+      if (idx >= 0) {
+        ed.setSelection({ line: targetLine, ch: idx }, { line: targetLine, ch: idx + matchText.length });
+      } else {
+        ed.setSelection({ line: targetLine, ch: 0 }, { line: targetLine, ch: lineText.length });
+      }
+    } else {
+      // 行模式：选中整行
+      ed.setSelection({ line: targetLine, ch: 0 }, { line: targetLine, ch: lineText.length });
+    }
+    // 选中范围滚动到视口中央（0.14.8 类型缺 scrollIntoView,运行时存在,可选链兜底）
+    (ed as any).scrollIntoView?.(
+      { from: { line: targetLine, ch: 0 }, to: { line: targetLine, ch: lineText.length } },
+      true
+    );
     ed.focus();
   }
 
@@ -939,6 +999,11 @@ export class TeleprompterManager {
   /** 设置变更后套用到所有实例 */
   applySettingsToAll() {
     this.windows.forEach(w => w.applySettings());
+  }
+
+  /** 字体等影响内容宽度的设置变更后，重算各窗口自然宽度（宽度锁定窗口跳过） */
+  refitAll() {
+    this.windows.forEach(w => w.autoFitWidth());
   }
 
   createWindow(): TeleprompterWindow {
