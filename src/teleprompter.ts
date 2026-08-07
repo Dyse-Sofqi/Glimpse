@@ -114,6 +114,18 @@ export class TeleprompterWindow extends Component {
         this.startPolling();
       })
     );
+    // 匹配源文档内容修改 → 失效匹配缓存并刷新当前匹配：索引更新即时传递到提词器
+    this.registerEvent(
+      this.plugin.app.vault.on("modify", file => {
+        if (this.matchDoc !== file.path) return;
+        const prevText = this.matches[this.currentIndex]?.text;
+        this.matches = [];
+        this.matchDoc = null;
+        if (this.state.mode === "highlight" && prevText !== undefined) {
+          void this.refreshCurrentMatch(file.path, prevText);
+        }
+      })
+    );
     // 主题切换立即重读背景色：MutationObserver 同步于 body 的 theme-dark/theme-light
     // class 变化触发，无延迟。css-change 事件兜底 CSS 变量级变更（如片段改背景色）。
     let lastTheme = document.body.hasClass("theme-dark") ? "dark" : "light";
@@ -571,6 +583,22 @@ export class TeleprompterWindow extends Component {
     return this.matches;
   }
 
+  /** 匹配源文档修改后：重扫并保持当前匹配位置（文本未变则跳过渲染，避免逐键重绘闪烁） */
+  private async refreshCurrentMatch(path: string, prevText: string) {
+    const src = this.resolveDoc();
+    if (!src || src.file.path !== path) return; // 匹配源已切换，忽略本次刷新
+    await this.ensureMatches();
+    if (!this.matches.length) {
+      this.currentIndex = -1;
+      this.renderContent("");
+      return;
+    }
+    const byText = this.matches.findIndex(m => m.text === prevText);
+    const idx = byText >= 0 ? byText : Math.min(this.currentIndex, this.matches.length - 1);
+    if (idx === this.currentIndex && this.matches[idx]?.text === prevText) return; // 内容未变
+    this.showMatchIndex(idx);
+  }
+
   // ---------- 内容提取 ----------
 
   /** 核心提取：有选中临时覆盖为选中文本，否则行模式提取光标所在行。
@@ -658,6 +686,10 @@ export class TeleprompterWindow extends Component {
     this.updateBindBtn();
     this.state.mode = "highlight";
     this.updateModeBtn();
+    // 强制重扫：ensureMatches 按文档路径缓存，索引刷新后同文档内容已变更，
+    // 命中缓存会返回旧匹配导致点击显示第一项
+    this.matches = [];
+    this.matchDoc = null;
     await this.ensureMatches();
     const idx = this.matches.findIndex(m => m.text === matchText);
     this.showMatchIndex(idx >= 0 ? idx : 0);
@@ -705,11 +737,14 @@ export class TeleprompterWindow extends Component {
   }
 
   prevItem() {
+    // 手动浏览 = 退出选中提取展示，避免双击跳转被陈旧的 selectionOverride 短路
+    this.selectionOverride = false;
     if (this.state.mode === "line") this.showLine(this.currentLine - 1);
     else this.showMatchIndex(this.currentIndex - 1);
   }
 
   nextItem() {
+    this.selectionOverride = false;
     if (this.state.mode === "line") this.showLine(this.currentLine + 1);
     else this.showMatchIndex(this.currentIndex + 1);
   }
