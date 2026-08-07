@@ -1,5 +1,10 @@
 # Changelog
 
+#### 0.9.9 (2026-08-08)
+
+- **Fixed teleprompter showing the first item after the highlight index refreshes**: `ensureMatches` cached matches by document path, so after the index re-scanned a changed document the click still hit the stale cache, the text lookup failed, and it fell back to item 0. Card clicks now force a fresh scan (cache cleared), and a `modify` listener on the matched source invalidates the cache — editing the bound document rescans and refreshes the current match immediately (skipping re-render when the text is unchanged, to avoid flicker on every keystroke).
+- **Fixed double-click jump & select failing after scrolling**: the selection created by a double-click jump was flagged as "selection extract" by the line-mode poll, and that flag went stale after scrolling to the next item — the next double-click hit the early-return branch and only focused instead of jumping. Manual navigation (prev/next) now clears the flag, so double-click jumps to and selects the currently shown item again.
+
 #### 0.9.8 (2026-08-07)
 
 - **New teleprompter body-font setting**: a "Font" row in the teleprompter settings opens a font-picker modal — it enumerates local fonts via `queryLocalFonts()`, falling back to canvas width-measurement over a bundled candidate list. You can select multiple fonts and reorder them by priority (drag & drop); the first font present on this machine wins and missing fonts fall through to the next (CSS `font-family` fallback semantics). Search, per-font self-preview, and a "custom font" text input are included; leaving it empty follows the theme default.
