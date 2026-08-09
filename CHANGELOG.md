@@ -1,5 +1,14 @@
 # 更新日志
 
+#### 1.0.1 (2026-08-09)
+
+- **修复赞助图无法显示**：README / manifest 中赞助图片链接由 `github.com/{repo}/zanshang.jpg` 改为 `raw.githubusercontent.com` 直链（原路径返回 404 文本，`<img>` 破图）
+- **README 亮点优化**：文档开头新增功能关键词队列（动态高亮、正则查询、捕获组、自定义 CSS、高亮索引、提词器、光标联动、滚动同步、缩略图），中英同步
+- **通过 Obsidian 插件审核合规**：
+  - 静态样式赋值 `.style.X = "字面量"` 全部改用 `style.setProperty` / `hide()`/`show()`（`obsidianmd/no-static-styles-assignment`）
+  - 移除 `onunload` 中 `detachLeavesOfType`：卸载时分离叶子会复位到默认位置，用户挪过也丢
+  - 动态用户自定义 CSS 注入由 `<style>` 元素改 `CSSStyleSheet` + `document.adoptedStyleSheets`（审核禁止创建样式元素；功能不变，Chromium 全支持）
+
 #### 0.9.10 (2026-08-09)
 
 - **重构高亮索引标签页布局**：删除「高亮索引」「追根溯源」按钮及按钮栏，高亮文本索引直接归属高亮索引标签页

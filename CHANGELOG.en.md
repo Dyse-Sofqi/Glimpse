@@ -1,5 +1,14 @@
 # Changelog
 
+#### 1.0.1 (2026-08-09)
+
+- **Fixed broken sponsor image**: the sponsor image link in README / manifest pointed at `github.com/{repo}/zanshang.jpg`, which returns a 404 text payload and breaks as an `<img>` — switched to a `raw.githubusercontent.com` direct link
+- **README highlight strip**: added a feature keyword queue at the top of the docs (dynamic highlighting, regex queries, capture groups, custom CSS, highlight index, teleprompter, cursor-linked selection, scroll sync, minimap), mirrored in both languages
+- **Passed the Obsidian plugin review**:
+  - Static style assignments `.style.X = "literal"` converted to `style.setProperty` / `hide()`/`show()` (`obsidianmd/no-static-styles-assignment`)
+  - Removed `detachLeavesOfType` from `onunload` — detaching leaves on unload resets them to their default location even when the user moved them
+  - Dynamic user custom CSS injection switched from a `<style>` element to `CSSStyleSheet` + `document.adoptedStyleSheets` (the review forbids creating style elements; functionality unchanged, supported on all Chromium)
+
 #### 0.9.10 (2026-08-09)
 
 - **Highlight index tab layout rework**: removed the "高亮索引" / "追根溯源" buttons and their button bar; the highlight text index now lives directly in the highlight index tab
