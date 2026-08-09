@@ -128,7 +128,7 @@
 
 如果 Glimpse 对你有帮助，欢迎赞助支持～
 
-![赞助](https://github.com/Dyse-Sofqi/Glimpse/zanshang.jpg)
+![赞助](https://raw.githubusercontent.com/Dyse-Sofqi/Glimpse/main/zanshang.jpg)
 
 ### 致谢
 

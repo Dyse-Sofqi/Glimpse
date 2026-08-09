@@ -161,7 +161,7 @@ The settings dialog is organized into four tabs:
 
 If Glimpse helps you, consider supporting the author:
 
-![Sponsor](https://github.com/Dyse-Sofqi/Glimpse/zanshang.jpg)
+![Sponsor](https://raw.githubusercontent.com/Dyse-Sofqi/Glimpse/main/zanshang.jpg)
 
 ### Acknowledgments
 
