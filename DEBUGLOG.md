@@ -21,6 +21,18 @@
 - `setCssProps` 在 obsidian 0.14.8 类型未声明 → `src/dom-augment.d.ts` 声明增强（运行时自 1.0 存在，驼峰自动转连字符，null 移除属性）
 - 新增样式切换优先 `hide()/show()` / `setCssProps`
 
+## 1.0.3 (2026-08-09)
+
+### 首次打开新文档高亮索引不刷新（两阶段根因）
+
+- **现象**：打开未被索引过的文档，索引面板不检索（显示 0 匹配）；切换另一文档再切回才统计正常
+- **阶段一（事件缺监听）**：索引重渲染仅监听 `active-leaf-change`；新文档在**已激活叶子**内打开（新建 / 资源管理器点击当前标签页）叶子未变，不触发 `active-leaf-change`，只触发 `file-open`
+- **修复一**：`onOpen` 补监听 `file-open`（视图加载后触发）；`extension !== "md"` 或 `path === renderedPath` 跳过，保留选中态
+- **阶段二（内容未就绪）**：`collectFromView` 只读 CM 编辑器 `state.doc`；`file-open` 触发时 CM 内容尚未加载（doc 为空）→ 首扫误报 0 匹配，面板滞留空。切走再切回正常 = 视图已加载读到了真内容
+- **修复二**：`collectFromView` 改 async，CM doc 为空时回退 `vault.cachedRead` 读盘；两处调用点加 `await`
+- **避坑**：新打开文档的编辑器内容异步就绪，`file-open` 后立即读 CM state 可能为空；实时内容优先、空则读盘兜底。事件补 `file-open`（加载后）+ 内容回退读盘，两者缺一都会复现
+- 诊断日志已清（console.log 全部移除）
+
 ## 0.9.10 (2026-08-09)
 
 ### 崩溃：提词器管理器未初始化即被引用（全局 ↑/↓ 失效的真凶）

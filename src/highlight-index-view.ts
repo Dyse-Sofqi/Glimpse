@@ -157,6 +157,22 @@ export class HighlightIndexView extends ItemView {
       })
     );
 
+    // 新文档在活动叶子打开（新建 / 资源管理器点击当前标签页）不触发 active-leaf-change，
+    // 仅触发 file-open —— 缺失该监听是「首次打开文档索引不刷新」的根因；
+    // 且 file-open 在视图加载完成后触发，无 active-leaf-change 先于 view.file 就绪的竞态
+    this.registerEvent(
+      this.app.workspace.on("file-open", (file) => {
+        if (!file || !(file instanceof TFile)) return;
+        if (file.extension !== "md") return; // 非 markdown 文件 → 索引继续显示当前文档
+        if (file.path === this.renderedPath) return; // 同一文档 → 保留选中态
+        this.lastActiveMdView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        this.lastRenderedHeadings = [];
+        this.highlightLine = -1;
+        this.lastPollCursorLine = -2;
+        void this.renderIndexPanel();
+      })
+    );
+
     // 光标行轮询 → 联动高亮对应卡片（index 面板重渲染后也由 renderIndexPanel 补一次）
     this.registerInterval(window.setInterval(() => this.pollCursorLine(), 150));
 
@@ -218,7 +234,7 @@ export class HighlightIndexView extends ItemView {
       if (leaves.length) activeView = leaves[0].view as MarkdownView;
     }
 
-    let src: IndexSource | null = activeView ? this.collectFromView(activeView) : null;
+    let src: IndexSource | null = activeView ? await this.collectFromView(activeView) : null;
 
     // 当前页检索不到高亮 → 回退到提词器锚定的文档
     this.renderingAnchored = false;
@@ -240,10 +256,14 @@ export class HighlightIndexView extends ItemView {
     this.renderSource(src);
   }
 
-  /** 从活动 Markdown 视图收集索引数据（读 CM 编辑器实时内容） */
-  private collectFromView(view: MarkdownView): IndexSource {
+  /** 从活动 Markdown 视图收集索引数据（读 CM 编辑器实时内容；CM 内容未就绪时回退读盘）。
+      file-open 触发时 CM 编辑器内容可能尚未加载（doc 为空），首扫会误报 0 匹配；
+      回退 cachedRead 保证首次打开即统计正确（切走再切回能正常正是因视图已加载） */
+  private async collectFromView(view: MarkdownView): Promise<IndexSource> {
     const cm = (view.editor as any)?.cm as EditorView | undefined;
-    return this.buildIndexSource(view.file, view, cm?.state?.doc?.toString() ?? "");
+    const live = cm?.state?.doc?.toString() ?? "";
+    const text = live || (view.file ? await this.plugin.app.vault.cachedRead(view.file) : "");
+    return this.buildIndexSource(view.file, view, text);
   }
 
   /** 按路径收集索引数据（优先已打开视图的实时内容，否则读盘） */
@@ -257,7 +277,7 @@ export class HighlightIndexView extends ItemView {
         break;
       }
     }
-    if (view) return this.collectFromView(view);
+    if (view) return await this.collectFromView(view);
     const text = await this.plugin.app.vault.cachedRead(file);
     return this.buildIndexSource(file, null, text);
   }

@@ -73,7 +73,7 @@ export const DEFAULT_SETTINGS: GlimpseSettings = {
     groups: [],
   },
   highlightIndex: {
-    autoOpenRightLeaf: true,
+    autoOpenRightLeaf: false,
   },
   teleprompter: {
     fontOpacity: DEFAULT_FONT_OPACITY,

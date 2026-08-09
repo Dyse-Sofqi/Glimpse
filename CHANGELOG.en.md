@@ -1,5 +1,11 @@
 # Changelog
 
+#### 1.0.3 (2026-08-09)
+
+- **Fixed the highlight index not refreshing when a new document is opened** (two-stage root cause): ① re-rendering only listened to `active-leaf-change`, which does not fire when a document opens in the already-active leaf (new note / explorer click on the current tab) — added a `file-open` listener; ② `collectFromView` only read the CM editor `state.doc`, which was not yet loaded when `file-open` fired, so the first scan reported 0 matches — fall back to `vault.cachedRead` when the CM content is empty. The index now scans on first open, no need to switch away and back
+- **Renamed the highlight index setting and defaulted it to off**: "Auto-open highlight index" → "Startup auto-open highlight index", default changed to off (existing `data.json` values are preserved)
+- **Merged the bilingual README**: the English version is now integrated at the end of `README.md` (with a bilingual banner at the top pointing to it), and the standalone `README.en.md` was removed; the English content was re-synced against the Chinese master (dropped English-only examples, aligned drifted wording, synced the setting rename)
+
 #### 1.0.2 (2026-08-09)
 
 - **Passed the Obsidian plugin review (round 2)**: `obsidianmd/no-static-styles-assignment` re-flagged 8 two-argument `style.setProperty` calls (minimap / export / pickr-drag / persistent-ui / teleprompter) — all converted to `setCssProps` (the API the review allows); added `dom-augment.d.ts` to declare the method missing from the 0.14.8 types. Verified rule boundaries: custom properties (`--xxx`) and three-argument `setProperty` with `important` are allowed

@@ -1,5 +1,11 @@
 # 更新日志
 
+#### 1.0.3 (2026-08-09)
+
+- **修复高亮索引首次打开新文档不刷新**（两阶段根因）：① 重渲染仅监听 `active-leaf-change`，新文档在已激活叶子内打开（新建 / 资源管理器点击当前标签页）不触发该事件，补监听 `file-open`；② `collectFromView` 只读 CM 编辑器 `state.doc`，`file-open` 触发时内容尚未加载，首扫误报 0 匹配，CM 内容为空时回退 `vault.cachedRead` 读盘。首次打开即检索，无需切走再切回
+- **高亮索引设置项改名并默认关闭**：设置项「默认打开高亮索引」→「启动时默认打开高亮索引」，默认值改为关闭（已存 data.json 不受影响）
+- **README 双语整合**：英文版合并进 README.md 末尾（顶部双语提示「拉到下面查看英文版」），删除独立 README.en.md；以中文介绍为蓝本同步修正英文内容（删除英文独有示例、对齐漂移措辞、同步设置项改名）
+
 #### 1.0.2 (2026-08-09)
 
 - **通过 Obsidian 插件审核（二轮）**：`obsidianmd/no-static-styles-assignment` 复抓 8 处 `style.setProperty` 两参调用（minimap / export / pickr-drag / persistent-ui / teleprompter），全部改 `setCssProps`（评审放行 API）；新增 `dom-augment.d.ts` 补齐 0.14.8 缺失的类型声明。规则边界实测：自定义属性（`--xxx`）与带 `important` 三参 `setProperty` 放行
