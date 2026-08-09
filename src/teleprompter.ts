@@ -508,11 +508,11 @@ export class TeleprompterWindow extends Component {
     tip.style.top = below
       ? Math.round(r.bottom + gap) + "px"
       : Math.round(r.top - tipH - gap) + "px";
-    tip.style.setProperty("opacity", "1");
+    tip.setCssProps({ opacity: "1" });
   }
 
   private hideTip() {
-    if (this.tipEl) this.tipEl.style.setProperty("opacity", "0");
+    if (this.tipEl) this.tipEl.setCssProps({ opacity: "0" });
   }
 
   // ---------- 文档绑定 ----------

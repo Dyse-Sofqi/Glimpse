@@ -11,8 +11,7 @@ export async function copyText(str: string): Promise<boolean> {
   } catch {
     const ta = document.createElement("textarea");
     ta.value = str;
-    ta.style.setProperty("position", "fixed");
-    ta.style.setProperty("opacity", "0");
+    ta.setCssProps({ position: "fixed", opacity: "0" });
     document.body.appendChild(ta);
     ta.select();
     ta.setSelectionRange(0, 999999);

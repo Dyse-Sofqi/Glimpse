@@ -17,7 +17,7 @@ export function patchPickrDrag(pickr: Pickr): void {
     ];
     for (const [surface, comp] of surfaces) {
       if (!surface || !comp || typeof comp._tapmove !== "function") continue;
-      surface.style.setProperty("touch-action", "none");
+      surface.setCssProps({ touchAction: "none" });
       let dragging = false;
       let pid = -1;
       surface.addEventListener("pointerdown", (e: PointerEvent) => {

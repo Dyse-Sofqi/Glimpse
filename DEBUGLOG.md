@@ -15,10 +15,11 @@
 - 备选失败：`EditorView.theme`/`StyleModule` 只接受对象 spec，原始 CSS 字符串运行时逐字符遍历会坏，不可用
 - 避坑：动态 CSS 合规注入用 CSSStyleSheet，勿用 style 元素；CM 主题不接受原始 CSS 文本
 
-### no-static-styles-assignment（回顾）
-- 规则只禁 `.style.X = "静态字面量"`；`style.setProperty`（含动态）与 Obsidian `hide()/show()` 放行
-- `setCssProps` 在 obsidian 0.14.8 类型未声明，TS 报错，未用
-- 新增样式切换优先 `hide()/show()`，动态值用 `setProperty`
+### no-static-styles-assignment（规则边界实测两轮）
+- 禁：`.style.X = "静态字面量"`、`style.setProperty(prop, val)` 两参调用
+- 放行：CSS 类、`setCssProps`/`setCssStyles`（评审明确建议）、`hide()/show()`、自定义属性（`--xxx`）、带 `important` 三参 setProperty（applySettings 的字体覆盖未被抓）
+- `setCssProps` 在 obsidian 0.14.8 类型未声明 → `src/dom-augment.d.ts` 声明增强（运行时自 1.0 存在，驼峰自动转连字符，null 移除属性）
+- 新增样式切换优先 `hide()/show()` / `setCssProps`
 
 ## 0.9.10 (2026-08-09)
 
