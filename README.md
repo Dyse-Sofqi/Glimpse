@@ -132,7 +132,7 @@
 
 如果 Glimpse 对你有帮助，欢迎赞助支持～
 
-![赞助](https://raw.githubusercontent.com/Dyse-Sofqi/Glimpse/main/zanshang.jpg)
+[PayPal](https://paypal.me/Sofqi)
 
 ### 致谢
 
@@ -267,7 +267,7 @@ The settings dialog is organized into four tabs:
 
 If Glimpse helps you, consider supporting the author:
 
-![Sponsor](https://raw.githubusercontent.com/Dyse-Sofqi/Glimpse/main/zanshang.jpg)
+[PayPal](https://paypal.me/Sofqi)
 
 ### Acknowledgments
 
