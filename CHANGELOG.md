@@ -1,5 +1,9 @@
 # 更新日志
 
+#### 1.0.2 (2026-08-09)
+
+- **通过 Obsidian 插件审核（二轮）**：`obsidianmd/no-static-styles-assignment` 复抓 8 处 `style.setProperty` 两参调用（minimap / export / pickr-drag / persistent-ui / teleprompter），全部改 `setCssProps`（评审放行 API）；新增 `dom-augment.d.ts` 补齐 0.14.8 缺失的类型声明。规则边界实测：自定义属性（`--xxx`）与带 `important` 三参 `setProperty` 放行
+
 #### 1.0.1 (2026-08-09)
 
 - **修复赞助图无法显示**：README / manifest 中赞助图片链接由 `github.com/{repo}/zanshang.jpg` 改为 `raw.githubusercontent.com` 直链（原路径返回 404 文本，`<img>` 破图）

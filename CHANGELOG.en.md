@@ -1,5 +1,9 @@
 # Changelog
 
+#### 1.0.2 (2026-08-09)
+
+- **Passed the Obsidian plugin review (round 2)**: `obsidianmd/no-static-styles-assignment` re-flagged 8 two-argument `style.setProperty` calls (minimap / export / pickr-drag / persistent-ui / teleprompter) — all converted to `setCssProps` (the API the review allows); added `dom-augment.d.ts` to declare the method missing from the 0.14.8 types. Verified rule boundaries: custom properties (`--xxx`) and three-argument `setProperty` with `important` are allowed
+
 #### 1.0.1 (2026-08-09)
 
 - **Fixed broken sponsor image**: the sponsor image link in README / manifest pointed at `github.com/{repo}/zanshang.jpg`, which returns a 404 text payload and breaks as an `<img>` — switched to a `raw.githubusercontent.com` direct link
