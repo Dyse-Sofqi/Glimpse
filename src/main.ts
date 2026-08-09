@@ -24,8 +24,8 @@ export default class GlimpsePlugin extends Plugin {
   staticHighlighter!: Extension;
   selectionHighlighter!: Extension;
   minimapExtension!: Extension;
-  styleEl!: HTMLElement;
   settingsTab!: SettingTab;
+  private cssSheets: CSSStyleSheet[] = [];
   teleprompterManager!: TeleprompterManager;
   private statusBarItem?: HTMLElement;
 
@@ -105,10 +105,6 @@ export default class GlimpsePlugin extends Plugin {
     this.register(() => item.detach());
   }
 
-  onunload() {
-    this.app.workspace.detachLeavesOfType(HIGHLIGHT_INDEX_VIEW);
-  }
-
   openHighlightIndex() {
     const existing = this.app.workspace.getLeavesOfType(HIGHLIGHT_INDEX_VIEW);
     if (existing.length) {
@@ -152,18 +148,33 @@ export default class GlimpsePlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
+  /** 注入用户自定义 CSS。审核要求禁止创建/挂载 <style> 元素；
+     改用 CSSStyleSheet + document.adoptedStyleSheets（无样式元素，Chromium 全支持） */
   initCSS() {
-    const styleEl = (this.styleEl = document.createElement("style"));
-    styleEl.setAttribute("type", "text/css");
-    document.head.appendChild(styleEl);
-    this.register(() => styleEl.detach());
     this.updateCustomCSS();
+    this.register(() => {
+      for (const s of this.cssSheets) {
+        document.adoptedStyleSheets = document.adoptedStyleSheets.filter(x => x !== s);
+      }
+    });
   }
 
   updateCustomCSS() {
-    this.styleEl.textContent = Object.values(this.settings.staticHighlighter.queries)
-      .map(q => q && q.css)
+    // 卸载旧注入的 stylesheet
+    for (const s of this.cssSheets) {
+      document.adoptedStyleSheets = document.adoptedStyleSheets.filter(x => x !== s);
+    }
+    this.cssSheets = [];
+    const css = Object.values(this.settings.staticHighlighter.queries)
+      .map(q => q?.css)
+      .filter((c): c is string => !!c)
       .join("\n");
+    if (css) {
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(css);
+      document.adoptedStyleSheets.push(sheet);
+      this.cssSheets.push(sheet);
+    }
     this.app.workspace.trigger("css-change");
   }
 

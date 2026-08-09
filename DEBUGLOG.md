@@ -2,6 +2,24 @@
 
 关键避坑记录，供后期维护快速定位。按版本聚合。
 
+## 1.0.0 审核合规 (2026-08-09)
+
+### onunload 禁止 detachLeavesOfType
+- 审核规则：卸载时分离叶子会把叶子重置回默认位置（用户挪过也复位）
+- 修复：删除 `onunload` 中 `detachLeavesOfType(HIGHLIGHT_INDEX_VIEW)`；视图清理交由 Obsidian 处理
+
+### 禁止创建/挂载 `<style>` 元素
+- 审核规则：`document.createElement("style")` + `head.appendChild` 不允许；静态 CSS 用 `styles.css`
+- 本插件场景是**运行时用户自定义 CSS**（query.css），无官方注入 API
+- 修复：改用 `CSSStyleSheet` + `document.adoptedStyleSheets`（不创建样式元素，Chromium 全支持）；卸载时从 adoptedStyleSheets 移除
+- 备选失败：`EditorView.theme`/`StyleModule` 只接受对象 spec，原始 CSS 字符串运行时逐字符遍历会坏，不可用
+- 避坑：动态 CSS 合规注入用 CSSStyleSheet，勿用 style 元素；CM 主题不接受原始 CSS 文本
+
+### no-static-styles-assignment（回顾）
+- 规则只禁 `.style.X = "静态字面量"`；`style.setProperty`（含动态）与 Obsidian `hide()/show()` 放行
+- `setCssProps` 在 obsidian 0.14.8 类型未声明，TS 报错，未用
+- 新增样式切换优先 `hide()/show()`，动态值用 `setProperty`
+
 ## 0.9.10 (2026-08-09)
 
 ### 崩溃：提词器管理器未初始化即被引用（全局 ↑/↓ 失效的真凶）

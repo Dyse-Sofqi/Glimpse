@@ -61,8 +61,8 @@ export class ImportModal extends Modal {
           }
           await this.plugin.saveSettings();
           this.plugin.updateStaticHighlighter();
-          this.plugin.updateStyles();
           this.plugin.updateCustomCSS();
+          this.plugin.updateStyles();
           this.plugin.settingsTab.display();
           this.close();
         } catch (e) {
