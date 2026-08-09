@@ -48,22 +48,22 @@ export class SettingTab extends PluginSettingTab {
 
     // ── persistent highlight tab content ──
     const persistentContent = containerEl.createDiv({ cls: "glimpse-tab-content" });
-    if (this.activeMainTab !== "persistent") persistentContent.style.display = "none";
+    if (this.activeMainTab !== "persistent") persistentContent.hide();
     renderPersistent(persistentContent, this.plugin, this);
 
     // ── selection highlight tab content ──
     const selectionContent = containerEl.createDiv({ cls: "glimpse-tab-content" });
-    if (this.activeMainTab !== "selection") selectionContent.style.display = "none";
+    if (this.activeMainTab !== "selection") selectionContent.hide();
     renderSelection(selectionContent, this.plugin);
 
     // ── highlight index tab content ──
     const indexContent = containerEl.createDiv({ cls: "glimpse-tab-content" });
-    if (this.activeMainTab !== "index") indexContent.style.display = "none";
+    if (this.activeMainTab !== "index") indexContent.hide();
     renderIndex(indexContent, this.plugin);
 
     // ── teleprompter tab content ──
     const teleprompterContent = containerEl.createDiv({ cls: "glimpse-tab-content" });
-    if (this.activeMainTab !== "teleprompter") teleprompterContent.style.display = "none";
+    if (this.activeMainTab !== "teleprompter") teleprompterContent.hide();
     renderTeleprompter(teleprompterContent, this.plugin, this);
   }
 }

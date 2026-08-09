@@ -297,9 +297,9 @@ export class TeleprompterWindow extends Component {
 
     // 视口中心吸附辅助线（全屏竖/横线，仅拖拽贴近中心线时显示）
     this.guideXEl = document.body.createDiv("glimpse-tp-guide glimpse-tp-guide-x");
-    this.guideXEl.style.display = "none";
+    this.guideXEl.hide();
     this.guideYEl = document.body.createDiv("glimpse-tp-guide glimpse-tp-guide-y");
-    this.guideYEl.style.display = "none";
+    this.guideYEl.hide();
 
     // 滚轮 = 上一项/下一项（穿透锁定时事件穿透到编辑器，天然失效）
     root.addEventListener(
@@ -508,11 +508,11 @@ export class TeleprompterWindow extends Component {
     tip.style.top = below
       ? Math.round(r.bottom + gap) + "px"
       : Math.round(r.top - tipH - gap) + "px";
-    tip.style.opacity = "1";
+    tip.style.setProperty("opacity", "1");
   }
 
   private hideTip() {
-    if (this.tipEl) this.tipEl.style.opacity = "0";
+    if (this.tipEl) this.tipEl.style.setProperty("opacity", "0");
   }
 
   // ---------- 文档绑定 ----------
@@ -978,23 +978,23 @@ export class TeleprompterWindow extends Component {
     const cx = x + w / 2, cy = y + h / 2;
     if (Math.abs(cx - vw / 2) <= TP_SNAP_CENTER) {
       x = (vw - w) / 2;
-      this.guideXEl.style.display = "block";
+      this.guideXEl.show();
     } else {
-      this.guideXEl.style.display = "none";
+      this.guideXEl.hide();
     }
     if (Math.abs(cy - vh / 2) <= TP_SNAP_CENTER) {
       y = (vh - h) / 2;
-      this.guideYEl.style.display = "block";
+      this.guideYEl.show();
     } else {
-      this.guideYEl.style.display = "none";
+      this.guideYEl.hide();
     }
 
     this.place(x, y);
   }
 
   private hideGuides() {
-    this.guideXEl.style.display = "none";
-    this.guideYEl.style.display = "none";
+    this.guideXEl.hide();
+    this.guideYEl.hide();
   }
 
   /** 右缘拖宽：穿透锁定时不可用；宽度锁定仍可拖，拖完新宽度继承为锁定宽度 */

@@ -83,7 +83,7 @@ export class ImportModal extends Modal {
         accept: ".json",
       },
     });
-    fileInput.style.display = "none";
+    fileInput.hide();
     fileInput.addEventListener("change", e => {
       const reader = new FileReader();
       reader.onload = async (e: ProgressEvent<FileReader>) => {

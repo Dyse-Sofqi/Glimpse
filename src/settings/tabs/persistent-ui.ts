@@ -92,9 +92,9 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
   queryTypeInput.onChange(value => {
     queryInput.setPlaceholder(value ? "搜索表达式" : "搜索词");
     const gw = marks["group"]?.container;
-    if (gw) gw.style.visibility = value ? "" : "hidden";
+    if (gw) gw.style.setProperty("visibility", value ? "" : "hidden");
   });
-  { const gw = marks["group"]?.container; if (gw) gw.style.visibility = "hidden"; }
+  { const gw = marks["group"]?.container; if (gw) gw.style.setProperty("visibility", "hidden"); }
 
   const customCSSWrapper = defineQueryUI.controlEl.createDiv("custom-css-wrapper");
   customCSSWrapper.createSpan("setting-item-name").setText("自定义 CSS");

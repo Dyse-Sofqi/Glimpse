@@ -101,7 +101,7 @@ class MinimapView {
   }
 
   destroy() {
-    this.view.scrollDOM.style.marginRight = "";
+    this.view.scrollDOM.style.setProperty("margin-right", "");
     this.view.scrollDOM.removeEventListener("scroll", this);
     this.indicator.removeEventListener("mousedown", this);
     this.canvas.removeEventListener("mousedown", this);
