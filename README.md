@@ -5,6 +5,8 @@
 [![Stars](https://img.shields.io/github/stars/Dyse-Sofqi/Glimpse?style=flat-square&label=Stars)](https://github.com/Dyse-Sofqi/Glimpse)
 [![License](https://img.shields.io/github/license/Dyse-Sofqi/Glimpse?style=flat-square&label=License)](LICENSE)
 
+> **关键词**：动态高亮 · 正则查询 · 捕获组 · 自定义 CSS · 高亮索引 · 提词器 · 光标联动 · 滚动同步 · 多实例
+
 根据选中内容或搜索关键词动态高亮文本的 Obsidian 插件，主要功能：
 
 - **选择高亮**：选中文本后即时高亮全文所有匹配，附滚动条标记与缩略图
