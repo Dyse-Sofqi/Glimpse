@@ -5,7 +5,7 @@
 [![Stars](https://img.shields.io/github/stars/Dyse-Sofqi/Glimpse?style=flat-square&label=Stars)](https://github.com/Dyse-Sofqi/Glimpse)
 [![License](https://img.shields.io/github/license/Dyse-Sofqi/Glimpse?style=flat-square&label=License)](LICENSE)
 
-> **Keywords**: dynamic highlighting · regex queries · capture groups · custom CSS · highlight index · teleprompter · cursor-linked selection · scroll sync · multi-instance
+> **Keywords**: dynamic highlighting, regex queries, capture groups, custom CSS, highlight index, teleprompter, cursor-linked selection, scroll sync, minimap
 
 An Obsidian plugin that dynamically highlights text based on cursor selection or search query. Key features:
 
