@@ -132,7 +132,7 @@
 
 如果 Glimpse 对你有帮助，欢迎赞助支持～
 
-[PayPal](https://paypal.me/Sofqi)
+![赞助](https://raw.githubusercontent.com/Dyse-Sofqi/Glimpse/main/zanshang.jpg)
 
 ### 致谢
 
