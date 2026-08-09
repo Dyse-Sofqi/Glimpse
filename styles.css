@@ -1034,12 +1034,6 @@
   user-select: text;
 }
 
-/* tab button active state — match native .nav-action-button.is-active */
-.glimpse-tab-btn.active {
-  color: var(--icon-color-focused);
-  background-color: var(--background-modifier-hover);
-}
-
 .glimpse-index-section {
   display: flex;
   flex-direction: column;
@@ -1089,6 +1083,18 @@
   box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06);
 }
 
+/* cursor-linked selected card */
+.glimpse-index-card.active {
+  background: color-mix(in srgb, var(--interactive-accent) 22%, var(--background-primary-alt));
+  box-shadow: inset 0 0 0 1px var(--interactive-accent);
+}
+
+.glimpse-index-card.active::before {
+  opacity: 1;
+  width: 6px;
+  background: var(--interactive-accent);
+}
+
 .glimpse-index-card:hover::before {
   opacity: 1;
   width: 6px;
@@ -1096,30 +1102,6 @@
 
 .glimpse-index-card-content {
   cursor: default;
-}
-
-.glimpse-index-copy {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  opacity: 0;
-  transition: opacity 0.15s;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  color: var(--text-muted);
-  line-height: 1;
-}
-
-.glimpse-index-card:hover .glimpse-index-copy {
-  opacity: 1;
-}
-
-.glimpse-index-copy:hover {
-  color: var(--text-normal);
-  background-color: var(--background-modifier-hover);
 }
 
 .glimpse-index-text {

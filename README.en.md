@@ -107,7 +107,10 @@ Automatically scans the active document for `==...==` wrapped Obsidian standard 
 - **Level icons & colors**: h1-h6 headings display matching lucide heading icons via `setIcon`, colored by `--h1-color` through `--h6-color` CSS variables
 - **Ancestor breadcrumbs**: Shared ancestor headings rendered as standalone rows before the first entry in each subtree, using the same icon and color styling as direct headings
 - **Frosted glass cards**: Highlights displayed as rounded frosted glass cards with hover-enhanced blur effect (0.08s fast transition)
-- **One-click copy**: Copy button (lucide clipboard-paste) on each card, copies text and shows a Notice toast
+- **Cursor-linked selection**: when the editor cursor lands on a line containing a highlight, the matching card is selected and scrolled to the center of the panel
+- **Keyboard navigation**: with the index tab focused, ↑/↓ steps to the previous/next card (counting from the currently selected one), also syncing the editor cursor and the teleprompter
+- **Right-click to copy**: right-clicking a card copies its text and shows a Notice toast
+- **Anchored-document fallback**: when the current page has no highlights, the index scans the document bound to the teleprompter instead; documents not open in a view are read from disk
 - **Auto-refresh**: Re-scans on document switch; keeps previous results when the new active document has no highlights
 - **Command palette**: Registers "打开高亮索引" command to summon the index view
 - **Settings toggle**: Auto-open on plugin load option available in settings
@@ -120,9 +123,10 @@ Karaoke-style floating teleprompter windows that follow document content in real
   - **Line extract**: static by default (extracts once when opened or when switching documents); click the "Track Cursor" button in the toolbar to enable cursor-following — the line under the cursor is auto-extracted as it moves (poll-based detection, bound or active document); wheel/buttons step up/down one line manually
   - **Highlight extract**: cycles through `==...==` matches in order — great for scripted reading
   - **Selection extract**: temporarily overrides the content with selected text, auto-restores on deselect
-- **Highlight index integration**: clicking an index card binds that document and switches to highlight-extract mode
+- **Highlight index integration**: clicking an index card binds that document and switches to highlight-extract mode; double-clicking the teleprompter text area selects the matching index card, and with scroll-sync on, prev/next steps select the corresponding card too
+- **Scroll sync**: the button (lucide `link`) right of the click-through lock — when active, prev/next also syncs: line-extract mode moves the editor cursor to the previous/next line, highlight-extract mode selects the previous/next index card; hidden with the other non-interactive buttons while locked
 - **Document binding**: pin the window to a specific document instead of following the active one; once bound, clicking the bind button again always unbinds instead of binding the currently active document
-- **Click-through lock**: whole window becomes mouse-transparent (interactive buttons kept), never blocks the editor; the lock itself no longer changes the background — full background transparency is handled solely by the "Hide Background" button; while locked the toolbar shows only on hover and fades out on mouse-leave, and the "Track Cursor" button is hidden with the other non-interactive buttons
+- **Click-through lock**: whole window becomes mouse-transparent (interactive buttons kept), never blocks the editor; the lock itself no longer changes the background — full background transparency is handled solely by the "Hide Background" button; while locked the toolbar shows only on hover and fades out on mouse-leave, and the "Track Cursor" / "Scroll Sync" buttons are hidden with the other non-interactive buttons
 - **Hide Background**: when active, the window background becomes fully transparent (including hover/drag states); when inactive, the background color stays visible with the opacity set in the settings
 - **Width auto-fit**: width adapts to the content's widest line (prev/next never grows the window), clamped to the viewport so long text wraps without overflowing; the right edge is draggable and auto-locks, and stays draggable while locked — the new width inherits as the locked value
 - **Drag snapping**: snaps to viewport edges and center lines with guide overlays

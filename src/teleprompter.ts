@@ -1,6 +1,8 @@
 // 提词器 — 桌面歌词式浮动窗口（详见 docs/adr/0001-teleprompter-floating-overlay.md）
 import { ButtonComponent, Component, Editor, MarkdownRenderer, MarkdownView, Notice, Platform, TFile } from "obsidian";
 import GlimpsePlugin from "./main";
+import { copyText } from "./settings/export";
+import { HighlightIndexView, HIGHLIGHT_INDEX_VIEW } from "./highlight-index-view";
 
 const TP_SNAP_EDGE = 24; // px，贴近视口边缘的吸附距离
 const TP_SNAP_CENTER = 10; // px，贴近视口中心线的吸附距离
@@ -22,6 +24,7 @@ export interface TeleprompterWindowState {
   mode: TeleprompterMode;
   boundDoc: string | null;
   trackCursor: boolean;
+  scrollSync: boolean; // 滚动同步：上一项/下一项切换同步光标/索引卡片
 }
 
 // 高亮提取模式的匹配项（line 为 0 基行号，text 为去除 == 后的展示文本）
@@ -60,6 +63,7 @@ export class TeleprompterWindow extends Component {
   private bindBtnEl!: ButtonComponent;
   private modeBtnEl!: ButtonComponent;
   private trackBtnEl!: ButtonComponent;
+  private scrollSyncBtnEl!: ButtonComponent;
   private prevBtnEl!: ButtonComponent;
   private nextBtnEl!: ButtonComponent;
   private fontBtnEl!: ButtonComponent;
@@ -98,6 +102,7 @@ export class TeleprompterWindow extends Component {
     this.setFontPx(state.fontPx);
     this.setWidthLocked(state.widthLocked);
     this.setLocked(state.locked);
+    this.setScrollSync(!!state.scrollSync); // 兼容旧持久化缺字段
     this.setBgHidden(state.bgHidden);
     this.updateBindBtn();
     this.updateModeBtn();
@@ -106,12 +111,19 @@ export class TeleprompterWindow extends Component {
     this.ready = true;
     this.refreshLine(); // 打开即提取当前行
     this.startPolling(); // 行模式轮询跟随光标
+    // 高亮模式恢复：重启后无触发源会刷新匹配，这里主动加载并定位
+    // （refreshLine/startPolling 均守卫 line 模式，高亮模式由本调用接手）
+    if (this.state.mode === "highlight") void this.initHighlightMode();
+    // 注：悬停 ↑/↓ 键盘导航已移除 —— capture 劫持与编辑器原生导航冲突，
+    // 上一项/下一项由滚轮与工具栏按钮承担（无键盘冲突）
     // 切换文档/叶子时刷新绑定按钮文本、行内容并重启轮询（startPolling 内会重解析跟随编辑器）
     this.registerEvent(
       this.plugin.app.workspace.on("active-leaf-change", () => {
         this.updateBindBtn();
         this.refreshLine();
         this.startPolling();
+        // 未绑定高亮窗口：工作区恢复后首个文档打开时才可解析来源，补一次初始化
+        if (this.state.mode === "highlight") void this.initHighlightMode();
       })
     );
     // 匹配源文档内容修改 → 失效匹配缓存并刷新当前匹配：索引更新即时传递到提词器
@@ -237,6 +249,11 @@ export class TeleprompterWindow extends Component {
     this.lockBtnEl = addBtn("lock", "穿透锁定", () => {
       this.setLocked(!this.state.locked);
     }, true);
+    // 滚动同步：上一项/下一项切换同步光标/索引卡片（link 图标）
+    // 非交互按钮：穿透锁定时随其他非交互按钮一并隐藏
+    this.scrollSyncBtnEl = addBtn("link", "滚动同步", () => {
+      this.setScrollSync(!this.state.scrollSync);
+    });
     this.fontBtnEl = addBtn("font", `字体大小 ${this.state.fontPx}px`, () => {
       const sizes = TP_FONT_SIZES;
       const next = sizes[(sizes.indexOf(this.state.fontPx) + 1 + sizes.length) % sizes.length] ?? sizes[0];
@@ -438,6 +455,16 @@ export class TeleprompterWindow extends Component {
     this.bgHideBtnEl?.buttonEl.toggleClass("is-active", hidden);
     this.setTpTooltip(this.bgHideBtnEl?.buttonEl ?? null, () =>
       this.state.bgHidden ? "显示背景" : "隐藏背景"
+    );
+    this.persist();
+  }
+
+  /** 滚动同步：开启后 prev/next 切换同步编辑器光标（行模式）或高亮索引卡片（高亮模式） */
+  private setScrollSync(on: boolean) {
+    this.state.scrollSync = on;
+    this.scrollSyncBtnEl?.buttonEl.toggleClass("is-active", on);
+    this.setTpTooltip(this.scrollSyncBtnEl?.buttonEl ?? null, () =>
+      this.state.scrollSync ? "滚动同步（已开启）" : "滚动同步"
     );
     this.persist();
   }
@@ -703,16 +730,23 @@ export class TeleprompterWindow extends Component {
     else this.stopPolling();
     this.updateModeBtn();
     if (mode === "highlight") {
-      await this.ensureMatches();
-      // 初始定位：光标行起第一个匹配，无则第一个
-      if (this.matches.length && (this.currentIndex < 0 || this.currentIndex >= this.matches.length)) {
-        const near = this.matches.findIndex(m => m.line >= Math.max(this.currentLine, 0));
-        this.showMatchIndex(near >= 0 ? near : 0);
-      }
+      await this.initHighlightMode();
     } else {
       this.refreshLine();
     }
     this.persist();
+  }
+
+  /** 高亮模式：加载匹配列表并初始定位（重启恢复/模式切换/叶子变更时复用）。
+      当前匹配仍有效则保持位置不跳变；空列表或越界才重新定位 */
+  private async initHighlightMode() {
+    if (this.state.mode !== "highlight") return;
+    await this.ensureMatches();
+    if (this.matches.length && (this.currentIndex < 0 || this.currentIndex >= this.matches.length)) {
+      // 初始定位：光标行起第一个匹配，无则第一个
+      const near = this.matches.findIndex(m => m.line >= Math.max(this.currentLine, 0));
+      this.showMatchIndex(near >= 0 ? near : 0);
+    }
   }
 
   private async showLine(line: number, text?: string) {
@@ -736,17 +770,47 @@ export class TeleprompterWindow extends Component {
     this.renderContent(this.matches[this.currentIndex]?.text ?? "");
   }
 
-  prevItem() {
+  async prevItem() {
     // 手动浏览 = 退出选中提取展示，避免双击跳转被陈旧的 selectionOverride 短路
     this.selectionOverride = false;
-    if (this.state.mode === "line") this.showLine(this.currentLine - 1);
-    else this.showMatchIndex(this.currentIndex - 1);
+    if (this.state.mode === "line") {
+      this.showLine(this.currentLine - 1);
+      if (this.state.scrollSync) this.syncLineCursor();
+    } else {
+      // 匹配尚未加载（如重启恢复后首滚）：先扫再导航，滚动即触发获取
+      if (!this.matches.length) await this.ensureMatches();
+      this.showMatchIndex(this.currentIndex - 1);
+      if (this.state.scrollSync) this.syncHighlightCard();
+    }
   }
 
-  nextItem() {
+  async nextItem() {
     this.selectionOverride = false;
-    if (this.state.mode === "line") this.showLine(this.currentLine + 1);
-    else this.showMatchIndex(this.currentIndex + 1);
+    if (this.state.mode === "line") {
+      this.showLine(this.currentLine + 1);
+      if (this.state.scrollSync) this.syncLineCursor();
+    } else {
+      if (!this.matches.length) await this.ensureMatches();
+      this.showMatchIndex(this.currentIndex + 1);
+      if (this.state.scrollSync) this.syncHighlightCard();
+    }
+  }
+
+  /** 滚动同步：行模式 → 编辑器光标跳到当前行（不抢焦点，浏览不打断输入位置归属） */
+  private syncLineCursor() {
+    const src = this.resolveDoc();
+    const ed = src?.view?.editor ?? this.followEditor;
+    if (!ed) return;
+    const line = Math.max(this.currentLine, 0);
+    ed.setCursor({ line, ch: 0 });
+    (ed as any).scrollIntoView?.({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
+  }
+
+  /** 滚动同步：高亮模式 → 选中高亮索引中对应上一项/下一项卡片 */
+  private syncHighlightCard() {
+    const match = this.matches[this.currentIndex];
+    const path = this.resolveDoc()?.file?.path;
+    if (match && path) this.notifyIndexCardSelect(path, match.line + 1);
   }
 
   // ---------- 渲染 ----------
@@ -801,6 +865,9 @@ export class TeleprompterWindow extends Component {
       行模式 → 选中整行;选中覆盖 → 保留编辑器现有选择（即对应文本），仅聚焦 */
   private jumpToCapturedLine() {
     const src = this.resolveDoc();
+    // 高亮模式：同步选中高亮索引中对应卡片（即使匹配文档未打开为视图也触发）
+    const match = this.state.mode === "highlight" ? this.matches[this.currentIndex] : undefined;
+    if (match && src?.file?.path) this.notifyIndexCardSelect(src.file.path, match.line + 1);
     const ed = src?.view?.editor ?? this.followEditor;
     if (!ed) return;
 
@@ -839,21 +906,18 @@ export class TeleprompterWindow extends Component {
     ed.focus();
   }
 
-  /** 右键：复制捕获文本的纯文本（渲染后 innerText 天然无 md 语法）。
-      clipboard API 失败回退 execCommand 隐藏 textarea */
+  /** 通知高亮索引视图选中指定文档/行的卡片（高亮模式双击联动） */
+  private notifyIndexCardSelect(path: string, line: number) {
+    for (const leaf of this.plugin.app.workspace.getLeavesOfType(HIGHLIGHT_INDEX_VIEW)) {
+      if (leaf.view instanceof HighlightIndexView) void leaf.view.revealMatch(path, line);
+    }
+  }
+
+  /** 右键：复制捕获文本的纯文本（渲染后 innerText 天然无 md 语法） */
   private async copyCapturedText() {
     const text = (this.contentEl.innerText ?? "").trim();
     if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      ta.remove();
-    }
+    await copyText(text);
     new Notice("已复制");
   }
 
@@ -1058,6 +1122,7 @@ export class TeleprompterManager {
           mode: "line",
           boundDoc: null,
           trackCursor: false,
+          scrollSync: false,
         });
     this.windows.push(win);
     win.focus();

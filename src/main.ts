@@ -31,6 +31,9 @@ export default class GlimpsePlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
+    // 提词器先于视图注册初始化：高亮索引视图 onOpen（layout-ready 可能同步触发）
+    // 会经 anchoredDocPath 读 teleprompterManager，晚初始化即 undefined 崩溃
+    this.teleprompterManager = new TeleprompterManager(this);
     this.registerView(HIGHLIGHT_INDEX_VIEW, (leaf) => new HighlightIndexView(leaf, this));
     this.settingsTab = new SettingTab(this.app, this);
     this.addSettingTab(this.settingsTab);
@@ -54,7 +57,6 @@ export default class GlimpsePlugin extends Plugin {
     });
 
     // 提词器 —— 桌面端专用（ADRs/0001）
-    this.teleprompterManager = new TeleprompterManager(this);
     this.register(() => this.teleprompterManager.onunload());
     this.addCommand({
       id: "open-teleprompter",

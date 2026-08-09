@@ -1,5 +1,20 @@
 # Changelog
 
+#### 0.9.10 (2026-08-09)
+
+- **Highlight index tab layout rework**: removed the "高亮索引" / "追根溯源" buttons and their button bar; the highlight text index now lives directly in the highlight index tab
+- **New cursor-linked selection**: when the editor cursor lands on a line containing a highlight, the matching index card is selected and scrolled to the center of the panel (cursor line polled every 150 ms)
+- **New anchored-document fallback**: when the current page has no highlights, the index automatically scans the document bound to the teleprompter instead; documents not open in a view are read from disk
+- **New keyboard navigation**: with the highlight index tab focused, ↑/↓ steps to the previous/next highlight card (counting from the currently selected card, clamped at the ends) without scrolling the panel; also syncs the editor cursor and the teleprompter
+- **New scroll-sync button**: a "滚动同步" button (lucide `link`) right of the click-through lock; when active, prev/next switching also syncs — line-extract mode moves the editor cursor to the previous/next line, highlight-extract mode selects the previous/next index card; hidden with the other non-interactive buttons while locked
+- **Teleprompter double-click links the index card**: double-clicking the teleprompter text area in highlight-extract mode also selects and centers the matching index card (the index switches to that document if it is rendering another source)
+- **Fixed plugin-load crash that killed all arrow keys**: `teleprompterManager` was initialized after the index view's `onOpen` layout-ready callback, so `anchoredDocPath` read `undefined` and threw — the index view was left broken and every keyboard navigation stopped working; the manager is now initialized before view registration, with a defensive null check
+- **Fixed empty teleprompter after restart in highlight mode**: restoring a highlight-mode window now proactively loads the matches and positions the current item, and scrolling (prev/next) rescans on demand — clicking an index card is no longer the only way to refresh
+- **Fixed card selection vanishing right after a click**: the leaf-change re-render decision now compares the rendered document path (`renderedPath`) instead of view identity, so re-renders are skipped when the content source is unchanged (including focus returning to the same editor or to the index tab itself), preserving the selection
+- **Fixed scroll-sync selection being cancelled by the cursor poll**: the cursor-link poll tracks cursor movement with a dedicated `lastPollCursorLine`, so a stationary cursor no longer overrides keyboard/scroll-sync selections
+- **Copy moved to right-click**: removed the copy button from index cards; right-clicking a card copies the text (sharing the `copyText` implementation with the teleprompter's right-click copy)
+- **Removed hover keyboard navigation**: teleprompter hover ↑/↓ conflicted with native editor navigation (a capture-phase hijack whose guard could fail globally); removed — wheel and toolbar buttons cover prev/next
+
 #### 0.9.9 (2026-08-08)
 
 - **Fixed teleprompter showing the first item after the highlight index refreshes**: `ensureMatches` cached matches by document path, so after the index re-scanned a changed document the click still hit the stale cache, the text lookup failed, and it fell back to item 0. Card clicks now force a fresh scan (cache cleared), and a `modify` listener on the matched source invalidates the cache — editing the bound document rescans and refreshes the current match immediately (skipping re-render when the text is unchanged, to avoid flicker on every keystroke).

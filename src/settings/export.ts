@@ -4,7 +4,7 @@ import { App, ButtonComponent, Modal, Notice, Setting, TextAreaComponent } from 
 import GlimpsePlugin from "../main";
 
 /** 复制文本到剪贴板：优先异步 Clipboard API，失败降级临时 textarea + execCommand */
-async function copyText(str: string): Promise<boolean> {
+export async function copyText(str: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(str);
     return true;
