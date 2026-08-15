@@ -1,5 +1,9 @@
 # 更新日志
 
+#### 1.0.4 (2026-08-15)
+
+- **修复持久高亮列表拖拽图标垂直居中失效**：Obsidian 新版设置项（`.setting-item`）默认 `align-items: flex-start`，行内子元素顶部对齐，`grip-vertical` 拖拽图标悬在行顶（颜色预览此前已用 `align-self: center` 补偿，拖拽图标漏了）；为 `.highlighter-setting-icon-drag` 与 `.setting-item-control` 补 `align-self: center`，图标/预览/操作按钮恢复与行内容垂直居中
+
 #### 1.0.3 (2026-08-09)
 
 - **修复高亮索引首次打开新文档不刷新**（两阶段根因）：① 重渲染仅监听 `active-leaf-change`，新文档在已激活叶子内打开（新建 / 资源管理器点击当前标签页）不触发该事件，补监听 `file-open`；② `collectFromView` 只读 CM 编辑器 `state.doc`，`file-open` 触发时内容尚未加载，首扫误报 0 匹配，CM 内容为空时回退 `vault.cachedRead` 读盘。首次打开即检索，无需切走再切回

@@ -1,5 +1,9 @@
 # Changelog
 
+#### 1.0.4 (2026-08-15)
+
+- **Fixed the persistent-highlighter drag icon losing vertical centering**: Obsidian's newer `.setting-item` defaults to `align-items: flex-start`, so in-row children align to the top and the `grip-vertical` drag handle floated at the row's top edge (the color preview had already been compensated with `align-self: center`, but the drag icon was missed); added `align-self: center` to `.highlighter-setting-icon-drag` and `.setting-item-control` so the icon, preview and action buttons are vertically centered against the row content again
+
 #### 1.0.3 (2026-08-09)
 
 - **Fixed the highlight index not refreshing when a new document is opened** (two-stage root cause): ① re-rendering only listened to `active-leaf-change`, which does not fire when a document opens in the already-active leaf (new note / explorer click on the current tab) — added a `file-open` listener; ② `collectFromView` only read the CM editor `state.doc`, which was not yet loaded when `file-open` fired, so the first scan reported 0 matches — fall back to `vault.cachedRead` when the CM content is empty. The index now scans on first open, no need to switch away and back

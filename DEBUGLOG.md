@@ -2,6 +2,15 @@
 
 关键避坑记录，供后期维护快速定位。按版本聚合。
 
+## 1.0.4 (2026-08-15)
+
+### 新版设置项行内元素顶部对齐（.setting-item align-items: flex-start）
+
+- **现象**：设置页「持久高亮」列表行内 `grip-vertical` 拖拽图标垂直居中失效，悬在行顶
+- **根因**：Obsidian 新版设置 UI 中 `.setting-item` 基类为 `align-items: flex-start`（子元素顶部对齐）；插件行内自定义元素未做 `align-self` 补偿。颜色预览曾在 0.4.0 补过 `align-self: center`，拖拽图标漏了（其 `display:flex; align-items:center` 只居中 svg 于手柄内部，手柄本身仍顶部对齐）
+- **修复**：`.highlighter-setting-icon-drag` 与 `.highlighter-details .setting-item-control` 补 `align-self: center`
+- **避坑**：新版设置项自定义行内元素（图标/控件/预览）一律显式 `align-self: center`，勿依赖基类对齐；旧版（`align-items: center`）下该属性无副作用
+
 ## 1.0.1–1.0.2 审核合规 (2026-08-09)
 
 ### onunload 禁止 detachLeavesOfType
