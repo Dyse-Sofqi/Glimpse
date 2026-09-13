@@ -2,6 +2,7 @@
 import { ButtonComponent, Component, Editor, MarkdownRenderer, MarkdownView, Notice, Platform, TFile } from "obsidian";
 import GlimpsePlugin from "./main";
 import { copyText } from "./settings/export";
+import { buildGradientImage } from "./settings/settings";
 import { HighlightIndexView, HIGHLIGHT_INDEX_VIEW } from "./highlight-index-view";
 
 const TP_SNAP_EDGE = 24; // px，贴近视口边缘的吸附距离
@@ -162,11 +163,28 @@ export class TeleprompterWindow extends Component {
     if (this.ready) this.manager.persist();
   }
 
-  /** 套用设置：字体透明度 / 背景透明度（CSS 变量驱动） */
+  /** 套用设置：字体透明度 / 背景透明度 / 文字阴影（CSS 变量驱动） */
   applySettings() {
     const tp = this.plugin.settings.teleprompter;
     this.rootEl.style.setProperty("--tp-font-opacity", String(tp.fontOpacity / 100));
     this.rootEl.style.setProperty("--tp-bg-opacity", String(tp.bgOpacity / 100));
+    // 文字阴影（隐藏背景时的字幕投影）：参数走 CSS 变量，开关走类
+    this.rootEl.style.setProperty("--tp-shadow-x", `${tp.shadowOffsetX}px`);
+    this.rootEl.style.setProperty("--tp-shadow-y", `${tp.shadowOffsetY}px`);
+    this.rootEl.style.setProperty("--tp-shadow-blur", `${tp.shadowBlur}px`);
+    this.rootEl.style.setProperty("--tp-shadow-opacity", String(tp.shadowOpacity / 100));
+    this.rootEl.toggleClass("is-shadow-off", !tp.shadowEnabled);
+    // 文字渐变：CSS 变量携带渐变图片值，开关走类（开启后经 background-clip 覆盖字体颜色）
+    const gradient = tp.gradientEnabled
+      ? buildGradientImage(tp.gradientType, tp.gradientAngle, tp.gradientStops)
+      : "";
+    if (gradient) {
+      this.contentEl.style.setProperty("--tp-gradient", gradient);
+    } else {
+      this.contentEl.style.removeProperty("--tp-gradient");
+    }
+    this.rootEl.toggleClass("is-gradient", tp.gradientEnabled && !!gradient);
+    this.applyGradientScope();
     // 正文字体栈：逗号分隔，CSS font-family 回退语义（空则移除 → 继承主题默认）。
     // 只设在内容区 —— 若设根元素，工具栏/提示会一并继承自定义字体。
     // inline + !important：核心/主题常以 .markdown-preview-view/.markdown-rendered
@@ -201,6 +219,63 @@ export class TeleprompterWindow extends Component {
     if (m && m.length >= 3) {
       this.rootEl.style.setProperty("--tp-bg-rgb", `${m[0]}, ${m[1]}, ${m[2]}`);
     }
+  }
+
+  /** 渐变范围（整体/逐字）：逐字模式把文本节点的可见字符包进 span，
+      每个字独立走一遍渐变；否则解包还原。设置变更与内容渲染后调用 */
+  private applyGradientScope() {
+    const tp = this.plugin.settings.teleprompter;
+    const charMode = tp.gradientEnabled && tp.gradientScope === "char";
+    this.contentEl.toggleClass("is-gradient-char", charMode);
+    if (charMode) this.wrapCharsForGradient(this.contentEl);
+    else this.unwrapGradientChars(this.contentEl);
+  }
+
+  private wrapCharsForGradient(root: HTMLElement) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const targets: Text[] = [];
+    let node: Node | null;
+    while ((node = walker.nextNode())) targets.push(node as Text);
+    // Intl.Segmenter 按字素切分（emoji/组合字符不拆碎），环境缺失回退按码点
+    const segment = (text: string): string[] => {
+      if (typeof Intl !== "undefined" && Intl.Segmenter) {
+        return Array.from(new Intl.Segmenter().segment(text), s => s.segment);
+      }
+      return Array.from(text);
+    };
+    for (const textNode of targets) {
+      const text = textNode.textContent ?? "";
+      // 已在渐变 span 内（重复调用幂等）或纯空白（无可见字形）跳过
+      if (!text.trim() || textNode.parentElement?.classList.contains("glimpse-grad-char")) continue;
+      const frag = document.createDocumentFragment();
+      let plain = "";
+      const flush = () => {
+        if (plain) {
+          frag.append(plain);
+          plain = "";
+        }
+      };
+      for (const seg of segment(text)) {
+        if (/^\s+$/.test(seg)) {
+          plain += seg; // 空白不包裹，保持换行/空格的原生排布
+        } else {
+          flush();
+          const span = document.createElement("span");
+          span.addClass("glimpse-grad-char");
+          span.setText(seg);
+          frag.append(span);
+        }
+      }
+      flush();
+      textNode.replaceWith(frag);
+    }
+  }
+
+  private unwrapGradientChars(root: HTMLElement) {
+    root.querySelectorAll(".glimpse-grad-char").forEach(span => {
+      span.replaceWith(document.createTextNode(span.textContent ?? ""));
+    });
+    root.normalize(); // 合并还原后的相邻文本节点
   }
 
   private buildDOM() {
@@ -844,6 +919,7 @@ export class TeleprompterWindow extends Component {
     this.contentEl.empty();
     const done = () => {
       if (seq !== this.renderSeq) return;
+      this.applyGradientScope(); // 内容重建后重套渐变范围（逐字包裹/解包）
       if (!this.state.widthLocked) this.autoFitWidth();
     };
     const fallback = () => {

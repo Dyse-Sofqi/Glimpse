@@ -1,7 +1,19 @@
-import { ButtonComponent, DropdownComponent, Platform, Setting, SliderComponent } from "obsidian";
+import { ButtonComponent, DropdownComponent, Notice, Platform, Setting, setIcon, SliderComponent, ToggleComponent } from "obsidian";
 import Pickr from "@simonwep/pickr";
 import GlimpsePlugin from "../../main";
-import { DEFAULT_BG_OPACITY, DEFAULT_FONT_OPACITY } from "../settings";
+import {
+  buildGradientImage,
+  DEFAULT_BG_OPACITY,
+  DEFAULT_FONT_OPACITY,
+  DEFAULT_GRADIENT_ANGLE,
+  DEFAULT_GRADIENT_STOPS,
+  DEFAULT_SHADOW_BLUR,
+  DEFAULT_SHADOW_OFFSET_X,
+  DEFAULT_SHADOW_OFFSET_Y,
+  DEFAULT_SHADOW_OPACITY,
+  GradientScope,
+  GradientType,
+} from "../settings";
 import { FontPickerModal } from "../font-picker-modal";
 import { patchPickrDrag } from "../pickr-drag";
 import type { SettingTab } from "../ui";
@@ -12,11 +24,13 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
     containerEl.createEl("p", { text: "提词器仅桌面端可用。" });
     return;
   }
-  // 清理上次渲染残留的字体颜色选择器（tab 重建/切换时）
+  // 清理上次渲染残留的字体颜色/渐变停靠点选择器（tab 重建/切换时）
   if (tab.fontColorPickr) {
     tab.fontColorPickr.destroyAndRemove();
     tab.fontColorPickr = undefined;
   }
+  tab.gradientPickrs.forEach(p => p.destroyAndRemove());
+  tab.gradientPickrs = [];
 
   // 不透明度滑条 + 「重置为初始值」按钮（回写滑条到新默认值）
   let fontOpacitySlider: SliderComponent;
@@ -207,6 +221,329 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
           plugin.teleprompterManager.applySettingsToAll();
         })
     );
+
+  // 文字阴影 —— 可折叠分组：隐藏背景时的字幕投影参数（开关 + 偏移/模糊/不透明度）
+  // setHeading：Obsidian 原生分组标题样式，与普通设置项区分
+  const shadowHeader = new Setting(containerEl)
+    .setName("文字阴影")
+    .setDesc("隐藏背景时正文文字的投影效果（字幕感）")
+    .setClass("glimpse-collapse-header")
+    .setHeading();
+  const chevronEl = shadowHeader.controlEl.createSpan("glimpse-collapse-chevron");
+  setIcon(chevronEl, "chevron-down");
+  const shadowBody = containerEl.createDiv("glimpse-collapse-body");
+  const toggleShadowCollapse = () => {
+    const collapsed = shadowBody.hasClass("is-collapsed");
+    shadowBody.toggleClass("is-collapsed", !collapsed);
+    chevronEl.toggleClass("is-collapsed", !collapsed);
+  };
+  shadowHeader.settingEl.addEventListener("click", toggleShadowCollapse);
+
+  new Setting(shadowBody)
+    .setName("启用文字阴影")
+    .setDesc("隐藏背景时为正文文字添加投影，浮在文档上更易读")
+    .addToggle(toggle =>
+      toggle.setValue(plugin.settings.teleprompter.shadowEnabled).onChange(value => {
+        plugin.settings.teleprompter.shadowEnabled = value;
+        plugin.saveSettings();
+        plugin.teleprompterManager.applySettingsToAll();
+      })
+    );
+
+  const addShadowSlider = (
+    name: string,
+    desc: string,
+    min: number,
+    max: number,
+    get: () => number,
+    set: (value: number) => void,
+    resetValue: number
+  ) => {
+    let slider: SliderComponent;
+    new Setting(shadowBody)
+      .setName(name)
+      .setDesc(desc)
+      .addSlider(s => {
+        slider = s;
+        s.setLimits(min, max, 1).setValue(get()).setDynamicTooltip().onChange(value => {
+          set(value);
+          plugin.saveSettings();
+          plugin.teleprompterManager.applySettingsToAll();
+        });
+      })
+      .addButton(button =>
+        button.setIcon("rotate-ccw").setTooltip("重置为初始值").onClick(() => {
+          set(resetValue);
+          slider.setValue(resetValue);
+          plugin.saveSettings();
+          plugin.teleprompterManager.applySettingsToAll();
+        })
+      );
+  };
+
+  const tpSettings = () => plugin.settings.teleprompter;
+  addShadowSlider(
+    "水平偏移",
+    "阴影水平偏移量（px），负值向左",
+    -20, 20,
+    () => tpSettings().shadowOffsetX,
+    v => { tpSettings().shadowOffsetX = v; },
+    DEFAULT_SHADOW_OFFSET_X
+  );
+  addShadowSlider(
+    "垂直偏移",
+    "阴影垂直偏移量（px），负值向上",
+    -20, 20,
+    () => tpSettings().shadowOffsetY,
+    v => { tpSettings().shadowOffsetY = v; },
+    DEFAULT_SHADOW_OFFSET_Y
+  );
+  addShadowSlider(
+    "模糊半径",
+    "阴影模糊半径（px），0 为实心边缘",
+    0, 40,
+    () => tpSettings().shadowBlur,
+    v => { tpSettings().shadowBlur = v; },
+    DEFAULT_SHADOW_BLUR
+  );
+  addShadowSlider(
+    "阴影不透明度",
+    "阴影不透明度（百分比），颜色固定为黑色",
+    0, 100,
+    () => tpSettings().shadowOpacity,
+    v => { tpSettings().shadowOpacity = v; },
+    DEFAULT_SHADOW_OPACITY
+  );
+
+  // 文字渐变 —— 可折叠分组：开启后覆盖「字体颜色」，背景裁切到文字
+  const gradientHeader = new Setting(containerEl)
+    .setName("文字渐变")
+    .setDesc("为正文文字应用渐变色（开启后覆盖「字体颜色」）")
+    .setClass("glimpse-collapse-header")
+    .setHeading();
+  const gradientChevron = gradientHeader.controlEl.createSpan("glimpse-collapse-chevron");
+  setIcon(gradientChevron, "chevron-down");
+  const gradientBody = containerEl.createDiv("glimpse-collapse-body");
+  const toggleGradientCollapse = () => {
+    const collapsed = gradientBody.hasClass("is-collapsed");
+    gradientBody.toggleClass("is-collapsed", !collapsed);
+    gradientChevron.toggleClass("is-collapsed", !collapsed);
+  };
+  gradientHeader.settingEl.addEventListener("click", toggleGradientCollapse);
+
+  // 预览：与提词器正文同参数渲染（背景裁切到文字；逐字模式每字独立裁切）
+  const gradientPreview = gradientBody.createDiv("glimpse-gradient-preview");
+  const updateGradientPreview = () => {
+    const tp = plugin.settings.teleprompter;
+    const image = buildGradientImage(tp.gradientType, tp.gradientAngle, tp.gradientStops);
+    const on = tp.gradientEnabled && !!image;
+    const charMode = on && tp.gradientScope === "char";
+    gradientPreview.toggleClass("is-on", on);
+    gradientPreview.toggleClass("is-gradient-char", charMode);
+    if (on) {
+      gradientPreview.style.setProperty("--tp-gradient", image);
+      // 逐字模式重建字符 span（文本固定，简单重建即可）
+      gradientPreview.setText("无意识是像语言一样被结构的。");
+      if (charMode) {
+        const frag = document.createDocumentFragment();
+        for (const seg of Array.from(gradientPreview.textContent ?? "")) {
+          if (/^\s+$/.test(seg)) frag.append(seg);
+          else {
+            const span = document.createElement("span");
+            span.addClass("glimpse-grad-char");
+            span.setText(seg);
+            frag.append(span);
+          }
+        }
+        gradientPreview.empty();
+        gradientPreview.append(frag);
+      }
+    } else {
+      gradientPreview.style.removeProperty("--tp-gradient");
+    }
+  };
+
+  new Setting(gradientBody)
+    .setName("启用文字渐变")
+    .setDesc("为正文文字应用渐变色；开启后覆盖「字体颜色」设置")
+    .addToggle(toggle =>
+      toggle.setValue(plugin.settings.teleprompter.gradientEnabled).onChange(value => {
+        plugin.settings.teleprompter.gradientEnabled = value;
+        plugin.saveSettings();
+        plugin.teleprompterManager.applySettingsToAll();
+        updateGradientPreview();
+      })
+    );
+
+  // 渐变类型：线性（带角度）/ 径向（圆形，角度不适用）
+  let angleSetting: Setting;
+  new Setting(gradientBody)
+    .setName("渐变类型")
+    .setDesc("线性沿指定方向过渡；径向从中心向外过渡")
+    .addDropdown(dropdown =>
+      dropdown
+        .addOption("linear", "线性渐变")
+        .addOption("radial", "径向渐变")
+        .setValue(plugin.settings.teleprompter.gradientType)
+          .onChange(v => {
+            plugin.settings.teleprompter.gradientType = v as GradientType;
+            plugin.saveSettings();
+            plugin.teleprompterManager.applySettingsToAll();
+            angleSetting.settingEl.style.display = v === "radial" ? "none" : "";
+            updateGradientPreview();
+          })
+    );
+
+  // 渐变范围：整体 = 内容区铺一条渐变（多行时各行颜色不同）；逐字 = 每字独立走一遍渐变
+  new Setting(gradientBody)
+    .setName("渐变范围")
+    .setDesc("整体：整个内容区铺一条渐变；逐字：每个字独立走一遍渐变（多行更整齐）")
+    .addDropdown(dropdown =>
+      dropdown
+        .addOption("block", "整体渐变")
+        .addOption("char", "逐字渐变")
+        .setValue(plugin.settings.teleprompter.gradientScope)
+        .onChange(v => {
+          plugin.settings.teleprompter.gradientScope = v as GradientScope;
+          plugin.saveSettings();
+          plugin.teleprompterManager.applySettingsToAll();
+          updateGradientPreview();
+        })
+    );
+
+  let angleSlider: SliderComponent;
+  angleSetting = new Setting(gradientBody)
+    .setName("渐变角度")
+    .setDesc("线性渐变方向（度）：90 从左到右，180 从上到下")
+    .addSlider(slider => {
+      angleSlider = slider;
+      slider
+        .setLimits(0, 360, 1)
+        .setValue(plugin.settings.teleprompter.gradientAngle)
+        .setDynamicTooltip()
+        .onChange(value => {
+          plugin.settings.teleprompter.gradientAngle = value;
+          plugin.saveSettings();
+          plugin.teleprompterManager.applySettingsToAll();
+          updateGradientPreview();
+        });
+    })
+    .addButton(button =>
+      button.setIcon("rotate-ccw").setTooltip("重置为初始值").onClick(() => {
+        plugin.settings.teleprompter.gradientAngle = DEFAULT_GRADIENT_ANGLE;
+        angleSlider.setValue(DEFAULT_GRADIENT_ANGLE);
+        plugin.saveSettings();
+        plugin.teleprompterManager.applySettingsToAll();
+        updateGradientPreview();
+      })
+    );
+  if (plugin.settings.teleprompter.gradientType === "radial") {
+    angleSetting.settingEl.style.display = "none";
+  }
+
+  // 颜色停靠点：每行 = 位置滑条 + 颜色色板 + 删除；按位置排序渲染
+  new Setting(gradientBody)
+    .setName("颜色停靠点")
+    .setDesc("渐变经过的颜色及其位置（%），至少保留两个")
+    .addButton(button =>
+      button.setIcon("plus").setTooltip("添加停靠点").onClick(() => {
+        plugin.settings.teleprompter.gradientStops.push({ color: "#808080", pos: 50 });
+        plugin.saveSettings();
+        plugin.teleprompterManager.applySettingsToAll();
+        renderStops();
+        updateGradientPreview();
+      })
+    )
+    .addButton(button =>
+      button.setIcon("rotate-ccw").setTooltip("重置为初始值").onClick(() => {
+        plugin.settings.teleprompter.gradientStops = DEFAULT_GRADIENT_STOPS.map(s => ({ ...s }));
+        plugin.saveSettings();
+        plugin.teleprompterManager.applySettingsToAll();
+        renderStops();
+        updateGradientPreview();
+      })
+    );
+  const stopsContainer = gradientBody.createDiv("glimpse-gradient-stops");
+  const renderStops = () => {
+    stopsContainer.empty();
+    tab.gradientPickrs.forEach(p => p.destroyAndRemove());
+    tab.gradientPickrs = [];
+    const stops = plugin.settings.teleprompter.gradientStops;
+    stops.forEach((stop, index) => {
+      const row = new Setting(stopsContainer)
+        .setName(`停靠点 ${index + 1}`)
+        .addSlider(slider =>
+          slider
+            .setLimits(0, 100, 1)
+            .setValue(stop.pos)
+            .setDynamicTooltip()
+            .onChange(value => {
+              stop.pos = value;
+              plugin.saveSettings();
+              plugin.teleprompterManager.applySettingsToAll();
+              updateGradientPreview();
+            })
+        );
+      // 色板挂在滑条与删除键之间（createDiv 追加到 controlEl 末尾，故先建色板后建删除键）
+      const colorWrapper = row.controlEl.createDiv("color-wrapper");
+      row.addButton(button =>
+        button.setIcon("trash").setTooltip("删除停靠点").onClick(() => {
+          if (stops.length <= 2) {
+            new Notice("至少保留两个颜色停靠点");
+            return;
+          }
+          stops.splice(index, 1);
+          plugin.saveSettings();
+          plugin.teleprompterManager.applySettingsToAll();
+          renderStops();
+          updateGradientPreview();
+        })
+      );
+      const colorButton = new ButtonComponent(colorWrapper);
+      colorButton.setClass("highlightr-color-picker").then(() => {
+        const pickr = new Pickr({
+          el: colorButton.buttonEl,
+          container: colorWrapper,
+          theme: "nano",
+          position: "left-start",
+          defaultRepresentation: "HEXA",
+          default: stop.color,
+          comparison: false,
+          components: {
+            preview: true,
+            opacity: false,
+            hue: true,
+            interaction: {
+              hex: true,
+              rgba: false,
+              hsla: false,
+              hsva: false,
+              cmyk: false,
+              input: true,
+              clear: false,
+              cancel: true,
+              save: true,
+            },
+          },
+        });
+        patchPickrDrag(pickr);
+        tab.gradientPickrs.push(pickr);
+        pickr
+          .on("cancel", (instance: Pickr) => instance.hide())
+          .on("change", (color: Pickr.HSVaColor) => {
+            const hex = (color?.toHEXA().toString() || "").slice(0, 7);
+            if (!hex) return;
+            stop.color = hex;
+            plugin.saveSettings();
+            plugin.teleprompterManager.applySettingsToAll();
+            updateGradientPreview();
+          })
+          .on("save", (_c: Pickr.HSVaColor, instance: Pickr) => instance.hide());
+      });
+    });
+  };
+  renderStops();
+  updateGradientPreview();
 
   new Setting(containerEl)
     .setName("选中提取模式")

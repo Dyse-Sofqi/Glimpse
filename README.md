@@ -7,14 +7,14 @@
 [![Stars](https://img.shields.io/github/stars/Dyse-Sofqi/Glimpse?style=flat-square&label=Stars)](https://github.com/Dyse-Sofqi/Glimpse)
 [![License](https://img.shields.io/github/license/Dyse-Sofqi/Glimpse?style=flat-square&label=License)](LICENSE)
 
-> **关键词**：动态高亮、正则查询、捕获组、自定义 CSS、高亮索引、提词器、光标联动、滚动同步、缩略图
+> **关键词**：动态高亮、正则查询、捕获组、自定义 CSS、高亮索引、提词器、光标联动、滚动同步、缩略图、文字渐变、字幕投影
 
 根据选中内容或搜索关键词动态高亮文本的 Obsidian 插件，主要功能：
 
 - **选择高亮**：选中文本后即时高亮全文所有匹配，附滚动条标记与缩略图
 - **持久高亮**：按正则/关键词查询持久标记，支持捕获组、父行、开始/结束 widget、自定义 CSS 与标签组管理
 - **高亮索引**：自动检索 `==高亮==` 文本，按文档标题层级组织为侧边栏索引
-- **提词器（桌面端）**：歌词式浮动提词窗口，跟随文档/光标实时显示，支持多实例
+- **提词器（桌面端）**：歌词式浮动提词窗口，跟随文档/光标实时显示，支持文字渐变与字幕投影，支持多实例
 
 目前仅支持源码模式（Source）和实时预览模式（Live Preview）。阅读模式（Reading）和旧版编辑器暂不支持。
 
@@ -98,13 +98,15 @@
 - **滚动同步**：工具栏「穿透锁定」右侧按钮（lucide `link`）开启后，上一项/下一项切换同步触发——逐行模式光标跳转对应上一/下一行，高亮模式选中索引中对应上一/下一项卡片；穿透锁定时随非交互按钮一并隐藏
 - **文档绑定**：将窗口固定到某个文档，不再跟随活动文档；已锁定后再次点击绑定按钮直接解除锁定，不会转向锁定当前活动文档
 - **穿透锁定**：窗口整体穿透鼠标（仅保留交互按钮），不遮挡编辑；背景全透明统一由「隐藏背景」按钮控制，穿透锁定本身不再改动背景；锁定状态下按钮栏同样仅在鼠标悬停时显示，移出窗口自动隐藏，「跟踪光标」「滚动同步」按钮随其他非交互按钮一并隐藏
-- **隐藏背景**：激活后窗口背景全透明（悬停/拖拽也不显示），未激活时背景色常显且透明度引用设置界面所设的背景透明度
+- **隐藏背景**：激活后窗口背景全透明（悬停/拖拽也不显示），未激活时背景色常显且透明度引用设置界面所设的背景透明度；激活时正文文字自动附加字幕投影
+- **文字投影（字幕效果）**：隐藏背景时为正文文字附加柔和投影（`drop-shadow`，严格位于文字之下），设置「文字阴影」折叠分组可调投影开关、水平/垂直偏移、模糊半径、不透明度（均带重置按钮），默认右偏 2px/下偏 3px/模糊 6px/不透明度 60%
+- **文字渐变**：正文文字渐变色，设置「文字渐变」折叠分组提供渐变开关（覆盖「字体颜色」）、线性/径向类型、整体/逐字范围（逐字模式每字独立裁切渐变，emoji 等组合字符不拆碎）、渐变角度与颜色停靠点编辑器（增删/位置/色板，按位置排序），附与提词器同参数的实时预览
 - **宽度自适应**：按内容最宽行自动适配宽度（切换上一项/下一项不增宽），宽度钳制视口上限，长文本换行不溢出；右缘可拖拽调整并自动锁定，宽度锁定后仍可直接拖拽，新宽度继承为锁定宽度
 - **拖拽吸附**：贴近视口边缘或中心线时自动吸附，附辅助线提示
 - **字体大小**：32/40/50/64/80px 五档循环
 - **字体 / 字重 / 颜色**：设置中可调正文字体（本机字体选择模态窗，`queryLocalFonts()` 枚举、兜底候选表测宽；多选 + 拖拽调优先级，首个可用字体优先生效、缺失自动顺延；支持搜索、预览与自定义字体输入）、字重（跟随主题 / 300–700）与文字颜色（色板，点击即应用；「清除」恢复跟随主题），均带「重置为初始值」按钮
 - **工具栏**：模式切换为文本按钮（显示「逐行提取」/「高亮提取」）；跟踪光标（`text-cursor`，光标跟随开关）、上一项/下一项（`arrow-big-left`/`arrow-big-right`）、宽度锁定（`move-horizontal`）、穿透锁定（`lock`/`unlock`）、隐藏背景（`eye-off`）、字体档位图标（`heading-1`~`heading-5`）均为语义化 lucide 图标；按钮提示默认在上方弹出、上方无空间时自动翻转到底部；穿透锁定时仅保留上一项/下一项、穿透锁定、关闭等交互按钮；设置按钮直达提词器设置页
-- **透明度**：设置中可调字体透明度（默认 80%）与背景透明度（默认 90%），两项均带「重置为初始值」按钮（lucide `rotate-ccw`）；背景色与边框常显，透明度实时生效
+- **透明度**：设置中可调字体透明度（默认 80%）与背景透明度（默认 90%），两项均带「重置为初始值」按钮（lucide `rotate-ccw`）；背景色、边框与外轮廓阴影常显，透明度实时生效
 - **主题适配**：切换浅色/深色主题时窗口背景色即时更新，无需重启
 - **渲染样式**：内容复用主题与自定义 CSS（标题、代码块、内联格式等），仅字体大小由提词器控制；单行渲染前自动去掉行首缩进，嵌套列表等缩进行按无缩进列表/文本展示，不被误判为代码块
 - **垂直居中**：文本显示域内内容垂直居中，短内容不再顶置；内容超过最大高度时回退常规滚动，顶部不截断
@@ -122,7 +124,7 @@
 - **选择高亮**：高亮选中文本出现位置开关；高亮延迟（毫秒，需 ≥200）；缩略图开关；选择检索的字符串上限滑杆（2-60，默认 30，带「恢复默认」按钮）
 - **持久高亮**：自定义样式的创建、编辑、删除，标签组管理与一键导入导出
 - **高亮索引**：「启动时默认打开高亮索引」开关，开启后插件启动时自动启用索引标签页
-- **提词器**：字体（本机字体选择）、字重、字体颜色、字体透明度（默认 80%）、背景透明度（默认 90%），均带「重置为初始值」按钮；选中提取模式与状态栏按钮开关
+- **提词器**：字体（本机字体选择）、字重、字体颜色、字体透明度（默认 80%）、背景透明度（默认 90%），均带「重置为初始值」按钮；可折叠「文字阴影」分组（投影开关、水平/垂直偏移、模糊半径、不透明度）与「文字渐变」分组（渐变开关、类型、范围、角度、颜色停靠点，附实时预览）；选中提取模式与状态栏按钮开关
 
 ### 限制
 
@@ -143,14 +145,14 @@
 
 ## English README
 
-> **Keywords**: dynamic highlighting, regex queries, capture groups, custom CSS, highlight index, teleprompter, cursor-linked selection, scroll sync, minimap
+> **Keywords**: dynamic highlighting, regex queries, capture groups, custom CSS, highlight index, teleprompter, cursor-linked selection, scroll sync, minimap, text gradient, subtitle drop shadow
 
 An Obsidian plugin that dynamically highlights text based on cursor selection or search query. Key features:
 
 - **Selection highlighting**: instantly highlights all occurrences of the selected text, with scrollbar markers and a minimap
 - **Persistent highlighting**: mark text persistently via regex/keyword queries, with capture groups, line/start/end widgets, custom CSS, and group management
 - **Highlight index**: auto-scans `==highlighted==` text and organizes it into a sidebar index by heading hierarchy
-- **Teleprompter (desktop only)**: karaoke-style floating teleprompter windows that follow the document/cursor in real time, with multi-instance support
+- **Teleprompter (desktop only)**: karaoke-style floating teleprompter windows that follow the document/cursor in real time, with text gradient, subtitle drop shadow, and multi-instance support
 
 Currently supports Source mode and Live Preview mode. Reading mode and the legacy editor are not supported.
 
@@ -233,13 +235,15 @@ Karaoke-style floating teleprompter windows that follow document content in real
 - **Scroll sync**: the button (lucide `link`) right of the click-through lock — when active, prev/next also syncs: line-extract mode moves the editor cursor to the previous/next line, highlight-extract mode selects the previous/next index card; hidden with the other non-interactive buttons while locked
 - **Document binding**: pin the window to a specific document instead of following the active one; once bound, clicking the bind button again always unbinds instead of binding the currently active document
 - **Click-through lock**: whole window becomes mouse-transparent (interactive buttons kept), never blocks the editor; the lock itself no longer changes the background — full background transparency is handled solely by the "Hide Background" button; while locked the toolbar shows only on hover and fades out on mouse-leave, and the "Track Cursor" / "Scroll Sync" buttons are hidden with the other non-interactive buttons
-- **Hide Background**: when active, the window background becomes fully transparent (including hover/drag states); when inactive, the background color stays visible with the opacity set in the settings
+- **Hide Background**: when active, the window background becomes fully transparent (including hover/drag states) and the text automatically gets a subtitle drop shadow; when inactive, the background color stays visible with the opacity set in the settings
+- **Text shadow (subtitle effect)**: while the background is hidden, a soft drop shadow (`drop-shadow`, strictly beneath the text) is added to the teleprompter text; the collapsible "Text Shadow" settings group adjusts the shadow toggle, horizontal/vertical offset, blur radius and opacity (each with a reset button), defaulting to right 2px / down 3px / blur 6px / opacity 60%
+- **Text gradient**: gradient coloring for the teleprompter text; the collapsible "Text Gradient" settings group offers a gradient toggle (overrides "Font Color"), linear/radial type, whole-text/per-character scope (per-character mode clips the gradient independently for each glyph, emoji and combined characters stay intact), gradient angle, and a color-stop editor (add/remove, position, palette, sorted by position), with a live preview sharing the teleprompter's parameters
 - **Width auto-fit**: width adapts to the content's widest line (prev/next never grows the window), clamped to the viewport so long text wraps without overflowing; the right edge is draggable and auto-locks, and stays draggable while locked — the new width inherits as the locked value
 - **Drag snapping**: snaps to viewport edges and center lines with guide overlays
 - **Font size**: cycles 32/40/50/64/80px
 - **Font / weight / color**: adjustable in settings — the body font uses a local-font picker modal (`queryLocalFonts()` enumeration, falling back to canvas measurement over a candidate list; multi-select with drag-to-reorder priority — the first available font wins, missing ones fall through; search, self-preview, and custom-font input included), font weight is a dropdown (follow theme / 300–700), and text color is a palette applied live ("Clear" restores the theme default); each has a "Reset to initial value" button
 - **Toolbar**: the mode toggle is a text button showing the current mode (逐行提取 / 高亮提取); track cursor (`text-cursor`, cursor-following toggle), prev/next (`arrow-big-left`/`arrow-big-right`), width lock (`move-horizontal`), click-through lock (`lock`/`unlock`), hide background (`eye-off`), and font-size slot icons (`heading-1`~`heading-5`) all use semantic lucide icons; button tooltips default to popping above and flip below only when there is no room above; when locked, only interactive buttons (prev/next, lock, close) remain; the settings button jumps straight to the teleprompter settings page
-- **Opacity**: font opacity (default 80%) and background opacity (default 90%) adjustable in settings, each with a "Reset to initial value" button (lucide `rotate-ccw`); the background color and border are always visible and the opacity applies live
+- **Opacity**: font opacity (default 80%) and background opacity (default 90%) adjustable in settings, each with a "Reset to initial value" button (lucide `rotate-ccw`); the background color, border and outline shadow are always visible and the opacity applies live
 - **Theme adaptation**: the window background updates instantly when toggling light/dark themes — no restart needed
 - **Theme / custom CSS styling**: content reuses theme and user CSS snippets (headings, code blocks, inline formatting); only font size is controlled by the teleprompter. Leading tabs/spaces are stripped before rendering a single line, so indented content (e.g. nested list items) renders as unindented list/text instead of a code block
 - **Vertical centering**: content is vertically centered within the text display area — short content no longer sits at the top; when content exceeds the max height it falls back to normal scrolling (top never clipped)
@@ -257,7 +261,7 @@ The settings dialog is organized into four tabs:
 - **Selection**: toggle highlighting all occurrences of the selected text; highlight delay in milliseconds (≥200); minimap toggle; a "Max selection length" slider (2-60, default 30, with a "Restore default" button)
 - **Persistent**: create, edit, and delete highlighters, group management, one-click import/export
 - **Highlight index**: "Startup auto-open highlight index" toggle — enables the index tab on plugin load
-- **Teleprompter**: font (local-font picker), font weight, font color, font opacity (default 80%) and background opacity (default 90%), each with a "Reset to initial value" button; selection-extract mode and status-bar button toggles
+- **Teleprompter**: font (local-font picker), font weight, font color, font opacity (default 80%) and background opacity (default 90%), each with a "Reset to initial value" button; collapsible "Text Shadow" group (shadow toggle, horizontal/vertical offset, blur radius, opacity) and "Text Gradient" group (gradient toggle, type, scope, angle, color stops, with a live preview); selection-extract mode and status-bar button toggles
 
 ### Limitations
 

@@ -123,6 +123,69 @@
   margin: 0;
 }
 
+/* 设置页可折叠分组标题（提词器「文字阴影」等）：heading 样式 + 整行可点，箭头随状态旋转 */
+.glimpse-settings .glimpse-collapse-header.setting-item-heading {
+  cursor: pointer;
+  padding-bottom: 0;
+}
+
+.glimpse-settings .glimpse-collapse-header .setting-item-name {
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-semibold);
+}
+
+.glimpse-settings .glimpse-collapse-header .setting-item-control {
+  justify-content: flex-end;
+}
+
+.glimpse-settings .glimpse-collapse-chevron {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.glimpse-settings .glimpse-collapse-chevron.is-collapsed {
+  transform: rotate(-90deg);
+}
+
+.glimpse-settings .glimpse-collapse-body.is-collapsed {
+  display: none;
+}
+
+/* 渐变预览：与提词器正文同参数渲染（背景裁切到文字）；
+   is-on = 渐变启用，is-gradient-char = 逐字模式（每字 span 独立裁切） */
+.glimpse-settings .glimpse-gradient-preview {
+  padding: 6px 0;
+  font-size: var(--font-ui-large);
+  font-weight: var(--font-semibold);
+  text-align: center;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.glimpse-settings .glimpse-gradient-preview.is-on {
+  background-image: var(--tp-gradient);
+  -webkit-text-fill-color: transparent;
+}
+
+.glimpse-settings .glimpse-gradient-preview.is-on.is-gradient-char {
+  background-image: none;
+}
+
+.glimpse-settings .glimpse-gradient-preview.is-on.is-gradient-char .glimpse-grad-char {
+  background-image: var(--tp-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* 停靠点行内色块按钮尺寸对齐（nano 主题） */
+.glimpse-settings .glimpse-gradient-stops .setting-item-control {
+  gap: 6px;
+  align-items: center;
+}
+
 /* #region toolbar */
 
 .glimpse-settings .glimpse-toolbar {
@@ -1194,19 +1257,13 @@
 
 /* 面板视觉（边框/圆角/背景/阴影/过渡）挂在内容体外层 .glimpse-tp-body，
    与工具栏分离；背景色 = 主题背景色 rgba(--tp-bg-rgb, --tp-bg-opacity)，透明度由设置控制。
-   悬停/拖拽仅附加阴影；背景隐藏时全透明 */
+   外轮廓阴影常驻显示；背景隐藏时全透明 */
 .glimpse-tp-body {
   border: 1px solid var(--background-modifier-border);
   border-radius: 10px;
   background: rgba(var(--tp-bg-rgb, 27, 27, 27), var(--tp-bg-opacity, 0.5));
-  box-shadow: none;
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.glimpse-teleprompter:not(.is-locked):hover .glimpse-tp-body,
-.glimpse-teleprompter.is-dragging .glimpse-tp-body,
-.glimpse-teleprompter.is-resizing .glimpse-tp-body {
   box-shadow: var(--shadow-s);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* 背景隐藏：激活后无论悬停/拖拽均全透明，不显示背景与边框。
@@ -1218,6 +1275,46 @@
   background: transparent;
   border-color: transparent;
   box-shadow: none;
+}
+
+/* 背景隐藏时文字加柔和投影（字幕感），参数由设置注入（--tp-shadow-*）。
+   用 drop-shadow 而非 text-shadow：文字自身半透明（字体不透明度/渐变透明填充），
+   text-shadow 会透过字形透出、看似浮在文字上；drop-shadow 从渲染后的文字像素
+   轮廓向外投射，阴影严格位于文字之下 */
+.glimpse-teleprompter.is-bg-hidden .glimpse-tp-content {
+  filter: drop-shadow(var(--tp-shadow-x, 2px) var(--tp-shadow-y, 3px) var(--tp-shadow-blur, 6px)
+    rgba(0, 0, 0, var(--tp-shadow-opacity, 0.6)));
+}
+
+/* 阴影关闭（设置开关）：隐藏背景时也不投影 */
+.glimpse-teleprompter.is-shadow-off .glimpse-tp-content {
+  filter: none;
+}
+
+/* 文字渐变（设置开关）：背景裁切到文字，覆盖「字体颜色」；
+   渐变图片值由设置注入 --tp-gradient，跨内容区整体分布 */
+.glimpse-teleprompter.is-gradient .glimpse-tp-content {
+  background-image: var(--tp-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 逐字渐变：整体铺底关闭，每个字符 span 独立裁切（同一条渐变按字重复）。
+   text-fill-color: transparent 仍由容器继承 */
+.glimpse-teleprompter.is-gradient .glimpse-tp-content.is-gradient-char {
+  background-image: none;
+}
+
+.glimpse-teleprompter.is-gradient .glimpse-tp-content.is-gradient-char .glimpse-grad-char {
+  background-image: var(--tp-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* 占位文本保持轻量，不加投影 */
+.glimpse-teleprompter.is-bg-hidden .glimpse-tp-content.is-placeholder {
+  filter: none;
 }
 
 /* 穿透锁定：整窗鼠标事件穿透，仅保留交互按钮，不显示背景 */

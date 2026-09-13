@@ -11,6 +11,7 @@ export class SettingTab extends PluginSettingTab {
   editor!: TextAreaComponent;
   pickrInstance!: Pickr;
   fontColorPickr: Pickr | undefined; // 提词器「字体颜色」选择器（hide/重建时销毁）
+  gradientPickrs: Pickr[] = []; // 提词器「文字渐变」停靠点选择器（hide/重建行时销毁）
   activeGroup: string = "默认";
   _dragItemId: string | undefined;
   activeMainTab = "persistent";
@@ -24,6 +25,8 @@ export class SettingTab extends PluginSettingTab {
     this.pickrInstance && this.pickrInstance.destroyAndRemove();
     this.fontColorPickr && this.fontColorPickr.destroyAndRemove();
     this.fontColorPickr = undefined;
+    this.gradientPickrs.forEach(p => p.destroyAndRemove());
+    this.gradientPickrs = [];
   }
 
   display(): void {
