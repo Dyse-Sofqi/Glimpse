@@ -1,5 +1,9 @@
 # Changelog
 
+#### 1.0.6 (2026-09-14)
+
+- **Passed the Obsidian plugin review (`obsidianmd/no-static-styles-assignment`)**: in the "Text Gradient" settings added in 1.0.5, the gradient-angle item's show/hide on gradient-type change assigned `settingEl.style.display` directly (the rule forbids static style assignment); it now goes through an `updateAngleVisibility()` helper using the Obsidian element `hide()`/`show()` APIs — behavior unchanged
+
 #### 1.0.5 (2026-09-14)
 
 - **Persistent teleprompter outline shadow**: the panel's outline shadow (`--shadow-s`) no longer appears only on hover/drag/resize — it is always visible and stays consistent while dragging or resizing; it is still hidden with the background in hide-background mode (and remains on during click-through lock)

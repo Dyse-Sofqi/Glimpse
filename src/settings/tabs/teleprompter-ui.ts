@@ -377,6 +377,11 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
 
   // 渐变类型：线性（带角度）/ 径向（圆形，角度不适用）
   let angleSetting: Setting;
+  const updateAngleVisibility = () => {
+    // 静态样式赋值触发 no-static-styles-assignment，用 Obsidian 元素 hide()/show() 切换显示
+    if (plugin.settings.teleprompter.gradientType === "radial") angleSetting.settingEl.hide();
+    else angleSetting.settingEl.show();
+  };
   new Setting(gradientBody)
     .setName("渐变类型")
     .setDesc("线性沿指定方向过渡；径向从中心向外过渡")
@@ -389,7 +394,7 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
             plugin.settings.teleprompter.gradientType = v as GradientType;
             plugin.saveSettings();
             plugin.teleprompterManager.applySettingsToAll();
-            angleSetting.settingEl.style.display = v === "radial" ? "none" : "";
+            updateAngleVisibility();
             updateGradientPreview();
           })
     );
@@ -438,7 +443,7 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
       })
     );
   if (plugin.settings.teleprompter.gradientType === "radial") {
-    angleSetting.settingEl.style.display = "none";
+    updateAngleVisibility();
   }
 
   // 颜色停靠点：每行 = 位置滑条 + 颜色色板 + 删除；按位置排序渲染
