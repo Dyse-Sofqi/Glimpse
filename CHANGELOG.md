@@ -1,5 +1,30 @@
 # 更新日志
 
+#### 1.0.8 (2026-09-15)
+
+**新增功能**
+
+- **自定义 CSS 输入框升级为 CodeMirror 6**：获得语法高亮、括号与引号自动闭合、撤销历史，以及**按输入自动补全 CSS**（属性名、属性值关键字、选择器标签名）。输入即弹出补全面板，也可 Ctrl/Cmd-Space 手动唤起；选中属性会连带插入冒号与空格。补全词表取自 `@codemirror/lang-css`，随 CSS 规范更新，无需人工维护（产物 +29 KB）
+- **持久高亮新增「描述」字段**：备注该表达式匹配什么内容，仅用于设置页展示、不参与匹配。设置页里排在名称下一行，卡片里排在表达式下一行；随导入导出与剪贴板往返
+- **设置页表单重新分行**：「搜索词/表达式」输入框与其正则开关独占一行（此前与名称、色板挤在同一行）；「清空当前编辑」「从剪贴板导入」「保存」三个按钮移到名称与色板之后
+- **新增「清空当前编辑」按钮**（lucide `refresh-ccw`）：一键把表单恢复初始状态（名称、描述、色板、搜索词、正则开关、标记开关、自定义 CSS），放弃编辑已有样式时不必逐项手动清除
+- **提词器字重扩展到 100–900**：原 300–700，补 100 极细、200 特细、800 特粗、900 极粗
+- **背景色默认置空**：新建高亮器不再预设默认背景色；未选色时 `color` 存空串，静态高亮器自动跳过背景色（高亮类照常生效，可交由自定义 CSS 接管）
+
+**错误修复**
+
+- **修复「点色板圈圈拖不动，点圈圈之外才能拖」**：圈圈（`.pcr-picker`）与交互面（`.pcr-palette` / `.pcr-slider`）在 Pickr 模板里是**兄弟节点**而非父子，原拖拽桥接只把 pointer 监听挂在交互面上，按住圈圈时 pointerdown 不冒泡到该监听器，`dragging` 恒为 false。现两者都挂监听、`touch-action: none` 一并设置，`setPointerCapture` 改用 `e.currentTarget`（实际被按下的元素），拖出弹层范围也能连续拖动
+- **修复「编辑未设背景色的高亮器，什么都没改，保存却被写入默认色」**：Pickr 的 `getSelectedColor()` 返回内部 `_lastColor`，而 `_lastColor` 只在 `applyColor()` 里更新——`setColor(hex, true)` 走静默分支不会调用它；`setColor("")` 更是在颜色解析失败后直接 `return false`，状态原封不动。色板状态改为自行维护（含「打开弹层前快照」，取消时正确回滚），编辑 / 剪贴板导入 / 重置三处对空颜色显式清空
+- **修复设置页色板实例泄漏**：`display()` 重入时不释放上一轮的 Pickr 实例；现改为统一的销毁清单，重建与关闭时都会先释放
+- **修复编辑按钮中 `setColor()` 被重复调用两次**
+
+**重构与维护（对外行为不变）**
+
+- **设置界面取色代码独立重写**：三处重复的 Pickr 集成（持久高亮背景色、提词器字体颜色、渐变停靠点）收敛为 `src/settings/color-picker.ts` 的 `createColorPicker()` 工厂，回调式接口、`destroy` 幂等；调用点由约 125 行重复代码降为 3 处薄调用
+- **移除上游派生代码，协议维持 MIT**：删除 `setAttributes()`（逐字复制且已无调用方）与死 CSS（`.highlighter-item-draggable`、`.highlighter-sortable-grab`）；类名 `highlightr-color-picker`、`highlighter-settings-*`、`highlighter-sortable-*`、`highlighter-setting-icon-drag` 统一为 `glimpse-*`；内置 pickr 样式段补上来源与 MIT 版权声明
+- **设置页骨架改为表驱动**：`MAIN_TABS` 声明四个页签，`registerDisposable()` 统一管理资源释放
+- **消除审核灰区**：预览样式的 `setAttribute("style", …)` 改用 `setCssProps` + 声明体解析（`obsidianmd/no-static-styles-assignment`）
+
 #### 1.0.7 (2026-09-15)
 
 - **选择高亮装饰改为「有结果才出现」**（行为变更）：匹配文本双下划线与滚动条标记仅在全文检索到**选区之外的至少一个出现位置**时出现；存在其他匹配时表现与之前一致（选区仍标记 `cm-current-string`，选区所在行仍保留滚动条标记）

@@ -1,5 +1,5 @@
-import { ButtonComponent, DropdownComponent, Notice, Platform, Setting, setIcon, SliderComponent, ToggleComponent } from "obsidian";
-import Pickr from "@simonwep/pickr";
+import { DropdownComponent, Notice, Platform, Setting, setIcon, SliderComponent, ToggleComponent } from "obsidian";
+import { createColorPicker } from "../color-picker";
 import GlimpsePlugin from "../../main";
 import {
   buildGradientImage,
@@ -15,7 +15,6 @@ import {
   GradientType,
 } from "../settings";
 import { FontPickerModal } from "../font-picker-modal";
-import { patchPickrDrag } from "../pickr-drag";
 import type { SettingTab } from "../ui";
 
 // 提词器设置 —— 桌面端专用（ADRs/0001），移动端显示占位说明
@@ -24,14 +23,6 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
     containerEl.createEl("p", { text: "提词器仅桌面端可用。" });
     return;
   }
-  // 清理上次渲染残留的字体颜色/渐变停靠点选择器（tab 重建/切换时）
-  if (tab.fontColorPickr) {
-    tab.fontColorPickr.destroyAndRemove();
-    tab.fontColorPickr = undefined;
-  }
-  tab.gradientPickrs.forEach(p => p.destroyAndRemove());
-  tab.gradientPickrs = [];
-
   // 不透明度滑条 + 「重置为初始值」按钮（回写滑条到新默认值）
   let fontOpacitySlider: SliderComponent;
   new Setting(containerEl)
@@ -99,11 +90,15 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
       fontWeightDropdown = dropdown;
       dropdown
         .addOption("inherit", "跟随主题")
+        .addOption("100", "极细 100")
+        .addOption("200", "特细 200")
         .addOption("300", "细体 300")
         .addOption("400", "常规 400")
         .addOption("500", "中等 500")
         .addOption("600", "半粗 600")
         .addOption("700", "加粗 700")
+        .addOption("800", "特粗 800")
+        .addOption("900", "极粗 900")
         .setValue(
           plugin.settings.teleprompter.fontWeight == null
             ? "inherit"
@@ -129,57 +124,29 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
         })
     );
 
-  // 字体颜色 —— Pickr 色板（复用 persistent-ui 模式）；null = 跟随主题，「清除」恢复
+  // 字体颜色 —— 色板；null = 跟随主题，「清除」恢复
   const colorSetting = new Setting(containerEl)
     .setName("字体颜色")
     .setDesc("正文文字颜色；点击色块选取，点「清除」恢复跟随主题");
   const colorWrapper = colorSetting.controlEl.createDiv("color-wrapper");
-  const colorButton = new ButtonComponent(colorWrapper);
-  let fontColorPickr: Pickr | undefined;
-  colorButton.setClass("highlightr-color-picker").then(() => {
-    const pickr = (tab.fontColorPickr = fontColorPickr = new Pickr({
-      el: colorButton.buttonEl,
-      container: colorWrapper,
-      theme: "nano",
-      position: "left-start", // 弹层在按钮左侧，避免被下方内容遮挡
-      defaultRepresentation: "HEXA",
-      default: plugin.settings.teleprompter.fontColor ?? "#FFFFFF",
-      comparison: false,
-      components: {
-        preview: true,
-        opacity: false,
-        hue: true,
-        interaction: {
-          hex: true,
-          rgba: false,
-          hsla: false,
-          hsva: false,
-          cmyk: false,
-          input: true,
-          clear: true,
-          cancel: true,
-          save: true,
-        },
-      },
-    }));
-    patchPickrDrag(pickr); // Obsidian 拦截 document mousemove，用 pointer 事件桥接拖拽
-    pickr
-      .on("clear", (instance: Pickr) => {
-        instance.hide();
-        plugin.settings.teleprompter.fontColor = null;
-        plugin.saveSettings();
-        plugin.teleprompterManager.applySettingsToAll();
-      })
-      .on("cancel", (instance: Pickr) => instance.hide())
-      .on("change", (color: Pickr.HSVaColor) => {
-        // 取 RRGGBB 段（忽略 alpha；透明度由「字体透明度」独立控制）
-        const hex = (color?.toHEXA().toString() || "").slice(0, 7);
-        plugin.settings.teleprompter.fontColor = hex;
-        plugin.saveSettings();
-        plugin.teleprompterManager.applySettingsToAll();
-      })
-      .on("save", (_color: Pickr.HSVaColor, instance: Pickr) => instance.hide());
+  const fontColorPicker = createColorPicker({
+    container: colorWrapper,
+    initial: plugin.settings.teleprompter.fontColor,
+    placement: "left-start", // 弹层在按钮左侧，避免被下方内容遮挡
+    label: "字体颜色",
+    onChange: hexa => {
+      // 只取 RRGGBB 段；透明度由「字体透明度」独立控制
+      plugin.settings.teleprompter.fontColor = hexa.slice(0, 7);
+      plugin.saveSettings();
+      plugin.teleprompterManager.applySettingsToAll();
+    },
+    onClear: () => {
+      plugin.settings.teleprompter.fontColor = null;
+      plugin.saveSettings();
+      plugin.teleprompterManager.applySettingsToAll();
+    },
   });
+  tab.registerDisposable(fontColorPicker.destroy);
 
   // 重置为初始值：跟随主题（null），并重置色板外观
   colorSetting.addButton(button =>
@@ -190,7 +157,7 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
         plugin.settings.teleprompter.fontColor = null;
         plugin.saveSettings();
         plugin.teleprompterManager.applySettingsToAll();
-        if (fontColorPickr) (fontColorPickr as any).setColor(null, true); // 静默重置，不触发 clear 事件
+        fontColorPicker.setColor(null); // 静默重置外观，不触发 clear 回调
       })
   );
 
@@ -469,10 +436,16 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
       })
     );
   const stopsContainer = gradientBody.createDiv("glimpse-gradient-stops");
+  // 停靠点色板每次重建都会换一批实例：先释放上一批，再登记新一批
+  let stopPickerDisposers: Array<() => void> = [];
+  const disposeStopPickers = () => {
+    for (const dispose of stopPickerDisposers) dispose();
+    stopPickerDisposers = [];
+  };
+  tab.registerDisposable(disposeStopPickers);
   const renderStops = () => {
+    disposeStopPickers();
     stopsContainer.empty();
-    tab.gradientPickrs.forEach(p => p.destroyAndRemove());
-    tab.gradientPickrs = [];
     const stops = plugin.settings.teleprompter.gradientStops;
     stops.forEach((stop, index) => {
       const row = new Setting(stopsContainer)
@@ -504,47 +477,21 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
           updateGradientPreview();
         })
       );
-      const colorButton = new ButtonComponent(colorWrapper);
-      colorButton.setClass("highlightr-color-picker").then(() => {
-        const pickr = new Pickr({
-          el: colorButton.buttonEl,
-          container: colorWrapper,
-          theme: "nano",
-          position: "left-start",
-          defaultRepresentation: "HEXA",
-          default: stop.color,
-          comparison: false,
-          components: {
-            preview: true,
-            opacity: false,
-            hue: true,
-            interaction: {
-              hex: true,
-              rgba: false,
-              hsla: false,
-              hsva: false,
-              cmyk: false,
-              input: true,
-              clear: false,
-              cancel: true,
-              save: true,
-            },
-          },
-        });
-        patchPickrDrag(pickr);
-        tab.gradientPickrs.push(pickr);
-        pickr
-          .on("cancel", (instance: Pickr) => instance.hide())
-          .on("change", (color: Pickr.HSVaColor) => {
-            const hex = (color?.toHEXA().toString() || "").slice(0, 7);
-            if (!hex) return;
-            stop.color = hex;
-            plugin.saveSettings();
-            plugin.teleprompterManager.applySettingsToAll();
-            updateGradientPreview();
-          })
-          .on("save", (_c: Pickr.HSVaColor, instance: Pickr) => instance.hide());
+      const stopPicker = createColorPicker({
+        container: colorWrapper,
+        initial: stop.color,
+        placement: "left-start",
+        label: `停靠点 ${index + 1} 颜色`,
+        onChange: hexa => {
+          const hex = hexa.slice(0, 7);
+          if (!hex) return;
+          stop.color = hex;
+          plugin.saveSettings();
+          plugin.teleprompterManager.applySettingsToAll();
+          updateGradientPreview();
+        },
       });
+      stopPickerDisposers.push(stopPicker.destroy);
     });
   };
   renderStops();

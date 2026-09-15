@@ -1,5 +1,30 @@
 # Changelog
 
+#### 1.0.8 (2026-09-15)
+
+**New features**
+
+- **The custom-CSS field is now a CodeMirror 6 editor**: syntax highlighting, auto-closing brackets and quotes, undo history, and **CSS autocompletion as you type** (property names, value keywords, selector tag names). The panel pops up while typing or on demand with Ctrl/Cmd-Space, and accepting a property also inserts the colon and a space. The completion data comes from `@codemirror/lang-css`, so it tracks the CSS spec without hand-maintained lists (+29 KB bundle)
+- **New "Description" field for persistent highlighters**: a note about what the expression matches — display-only, never used for matching. It sits on the row below the name in settings and on the line below the expression in the list card, and survives import/export and clipboard round-trips
+- **Settings form re-flowed**: the search-term/expression field and its regex toggle now occupy their own row (they previously shared a row with the name and color swatch), and the "Clear current edit", "Import from clipboard" and "Save" buttons moved next to the name and swatch
+- **New "Clear current edit" button** (lucide `refresh-ccw`): resets the whole form to its initial state (name, description, swatch, search term, regex toggle, mark toggles, custom CSS) — no more clearing every field by hand when you want to abandon an edit
+- **Teleprompter font weight extended to 100–900** (was 300–700), adding 100 Thin, 200 Extra Light, 800 Extra Bold and 900 Black
+- **No default background color any more**: new highlighters start with no color; saving without picking one stores an empty `color`, and the static highlighter simply skips the background (the highlight class still applies, so custom CSS can take over)
+
+**Fixes**
+
+- **Fixed "dragging the color-picker knob does nothing, dragging outside it works"**: the knob (`.pcr-picker`) and the interactive surface (`.pcr-palette` / `.pcr-slider`) are **siblings**, not parent and child, in Pickr's template. The drag bridge only attached its pointer listeners to the surface, so a pointerdown on the knob never bubbled to them and `dragging` stayed false. Both now get the listeners, `touch-action: none` is applied to both, and `setPointerCapture` uses `e.currentTarget` (the element actually pressed) so the drag continues even outside the popup
+- **Fixed "editing a highlighter with no background color and saving it unchanged writes in the default color"**: Pickr's `getSelectedColor()` returns the internal `_lastColor`, which is only assigned inside `applyColor()` — `setColor(hex, true)` takes the silent branch and never calls it; worse, `setColor("")` fails to parse the color and simply `return false`, leaving the state untouched. The picker state is now tracked by the plugin itself (including a pre-open snapshot that "cancel" rolls back to), and the edit / clipboard-import / reset paths explicitly clear an empty color
+- **Fixed a leak of color-picker instances in settings**: re-entering `display()` no longer leaves the previous Pickr instances alive; they are released through a shared disposer list on rebuild and on close
+- **Fixed `setColor()` being called twice in the edit button handler**
+
+**Refactoring and maintenance (no behavior change)**
+
+- **The settings color-picker code was independently rewritten**: the three duplicated Pickr integrations (persistent-highlight background, teleprompter font color, gradient stops) collapsed into a `createColorPicker()` factory in `src/settings/color-picker.ts` — callback-based API, idempotent `destroy`; call sites went from ~125 duplicated lines to three thin calls
+- **Upstream-derived code removed, license stays MIT**: dropped `setAttributes()` (a verbatim copy with no remaining callers) and dead CSS (`.highlighter-item-draggable`, `.highlighter-sortable-grab`); renamed `highlightr-color-picker`, `highlighter-settings-*`, `highlighter-sortable-*` and `highlighter-setting-icon-drag` to `glimpse-*`; added the source and MIT notice to the vendored pickr styles
+- **Settings skeleton is now table-driven**: `MAIN_TABS` declares the four tabs and `registerDisposable()` manages resource release
+- **Review gray area removed**: the preview styles use `setCssProps` plus declaration parsing instead of `setAttribute("style", …)` (`obsidianmd/no-static-styles-assignment`)
+
 #### 1.0.7 (2026-09-15)
 
 - **Selection-highlight decorations now require at least one match** (behavior change): the match underline and the scrollbar markers only appear when the full-document search finds **at least one occurrence other than the selection itself**; when other matches exist, behavior is unchanged (the selection still carries `cm-current-string` and its line keeps its scrollbar marker)

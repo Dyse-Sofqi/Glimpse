@@ -23,6 +23,8 @@ export interface SearchQuery {
   css?: string;
   enabled?: boolean;
   group?: string;
+  /** 备注该表达式匹配什么内容，仅用于设置页展示，不参与匹配 */
+  desc?: string;
 }
 export interface SearchQueries {
   [key: string]: SearchQuery;
@@ -148,9 +150,3 @@ export const DEFAULT_SETTINGS: GlimpseSettings = {
     closed: [],
   },
 };
-
-export function setAttributes(element: any, attributes: any) {
-  for (const key in attributes) {
-    element.setAttribute(key, attributes[key]);
-  }
-}

@@ -15,6 +15,9 @@ export const queriesSchema = {
         css: {
           type: "string",
         },
+        desc: {
+          type: "string",
+        },
         enabled: {
           type: "boolean",
         },

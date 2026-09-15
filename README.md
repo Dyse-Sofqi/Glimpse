@@ -7,14 +7,14 @@
 [![Stars](https://img.shields.io/github/stars/Dyse-Sofqi/Glimpse?style=flat-square&label=Stars)](https://github.com/Dyse-Sofqi/Glimpse)
 [![License](https://img.shields.io/github/license/Dyse-Sofqi/Glimpse?style=flat-square&label=License)](LICENSE)
 
-> **关键词**：动态高亮、选择高亮、持久高亮、正则查询、捕获组、自定义 CSS、高亮索引、提词器、光标联动、滚动条标记、缩略图、文字渐变、字幕投影、滚动同步、穿透锁定、文档绑定、分组管理、导入导出
+> **关键词**：动态高亮、选择高亮、持久高亮、正则查询、捕获组、自定义 CSS、CSS 自动补全、高亮器描述、高亮索引、提词器、光标联动、滚动条标记、缩略图、文字渐变、字幕投影、滚动同步、穿透锁定、文档绑定、分组管理、导入导出
 
 根据选中内容或搜索关键词动态高亮文本的 Obsidian 插件，主要功能：
 
 - **选择高亮**：选中文本后即时高亮全文所有匹配（**仅在检索到选区之外的至少一个出现位置时才出现装饰**），附滚动条标记与缩略图
-- **持久高亮**：按正则/关键词查询持久标记，支持捕获组、父行、开始/结束 widget、自定义 CSS，配标签组管理与一键导入导出
+- **持久高亮**：按正则/关键词查询持久标记，支持捕获组、父行、开始/结束 widget、自定义 CSS（内置带 CSS 自动补全的代码编辑器）与高亮器描述，配标签组管理与一键导入导出
 - **高亮索引**：自动检索 `==高亮==` 文本，按文档标题层级组织为侧边栏索引，支持光标联动与键盘导航
-- **提词器（桌面端）**：歌词式浮动提词窗口，跟随文档/光标实时显示，支持文字渐变、字幕投影、穿透锁定、文档绑定、滚动同步与多实例
+- **提词器（桌面端）**：歌词式浮动提词窗口，跟随文档/光标实时显示，支持 100–900 字重、文字渐变、字幕投影、穿透锁定、文档绑定、滚动同步与多实例
 
 目前仅支持源码模式（Source）和实时预览模式（Live Preview）。阅读模式（Reading）和旧版编辑器暂不支持。
 
@@ -31,7 +31,9 @@
 
 ### 持久高亮
 
-定义搜索查询并关联 CSS 类名和颜色来创建持久高亮。匹配的字符串会自动标记对应 CSS 类并应用所选背景色。每条样式与颜色缓存于索引，标记可随时开关控制匹配表现。
+定义搜索查询并关联 CSS 类名和颜色来创建持久高亮。匹配的字符串会自动标记对应 CSS 类，并按所设背景色着色（**背景色可留空**，未选色时只应用高亮类，样式完全交给自定义 CSS）。每条样式与颜色缓存于索引，标记可随时开关控制匹配表现。
+
+每条样式可附带一段**描述**，备注该表达式匹配什么内容——仅用于设置页展示，不参与匹配。设置页里描述排在名称下一行，列表卡片里排在表达式下一行。
 
 支持正则表达式查询（需开启对应选项），正则模式下可使用**命名捕获组**（如 `(?<groupName>…)`）或**无名捕获组**（如 `(…)`）精确高亮子匹配内容。
 
@@ -48,6 +50,8 @@
 
 每条样式可编写独立 CSS 规则，经 `CSSStyleSheet` + `document.adoptedStyleSheets` 注入页面（不创建 `<style>` 元素）。
 编辑器内通过 CodeMirror 实例高亮渲染，支持深色/浅色主题适配。CSS 变更随保存即时生效。
+
+输入框本身是一个完整的 **CodeMirror 6 代码编辑器**：语法高亮、括号与引号自动闭合、撤销历史，并**按输入自动补全 CSS**——属性名、属性值关键字与选择器标签名都会在输入时弹出候选，也可用 Ctrl/Cmd-Space 手动唤起；选中属性会连带插入冒号与空格。
 
 #### 标签组
 
@@ -105,7 +109,7 @@
 - **宽度自适应**：按内容最宽行自动适配宽度（切换上一项/下一项不增宽），宽度钳制视口上限，长文本换行不溢出；右缘可拖拽调整并自动锁定，宽度锁定后仍可直接拖拽，新宽度继承为锁定宽度
 - **拖拽吸附**：贴近视口边缘或中心线时自动吸附，附辅助线提示
 - **字体大小**：32/40/50/64/80px 五档循环
-- **字体 / 字重 / 颜色**：设置中可调正文字体（本机字体选择模态窗，`queryLocalFonts()` 枚举、兜底候选表测宽；多选 + 拖拽调优先级，首个可用字体优先生效、缺失自动顺延；支持搜索、预览与自定义字体输入）、字重（跟随主题 / 300–700）与文字颜色（色板，点击即应用；「清除」恢复跟随主题），均带「重置为初始值」按钮
+- **字体 / 字重 / 颜色**：设置中可调正文字体（本机字体选择模态窗，`queryLocalFonts()` 枚举、兜底候选表测宽；多选 + 拖拽调优先级，首个可用字体优先生效、缺失自动顺延；支持搜索、预览与自定义字体输入）、字重（跟随主题 / 100–900）与文字颜色（色板，点击即应用；「清除」恢复跟随主题），均带「重置为初始值」按钮
 - **工具栏**：模式切换为文本按钮（显示「逐行提取」/「高亮提取」）；跟踪光标（`text-cursor`，光标跟随开关）、上一项/下一项（`arrow-big-left`/`arrow-big-right`）、宽度锁定（`move-horizontal`）、穿透锁定（`lock`/`unlock`）、隐藏背景（`eye-off`）、字体档位图标（`heading-1`~`heading-5`）均为语义化 lucide 图标；按钮提示默认在上方弹出、上方无空间时自动翻转到底部；穿透锁定时仅保留上一项/下一项、穿透锁定、关闭等交互按钮；设置按钮直达提词器设置页
 - **透明度**：设置中可调字体透明度（默认 80%）与背景透明度（默认 90%），两项均带「重置为初始值」按钮（lucide `rotate-ccw`）；背景色、边框与外轮廓阴影常显，透明度实时生效
 - **主题适配**：切换浅色/深色主题时窗口背景色即时更新，无需重启
@@ -123,9 +127,9 @@
 设置界面按功能分为四个页签：
 
 - **选择高亮**：高亮选中文本出现位置开关；高亮延迟（毫秒，需 ≥200）；缩略图开关；选择检索的字符串上限滑杆（2-60，默认 30，带「恢复默认」按钮）
-- **持久高亮**：自定义样式的创建、编辑、删除，标签组管理与一键导入导出
+- **持久高亮**：自定义样式的创建、编辑、删除，标签组管理与一键导入导出。表单含名称、描述、背景色（可留空）、搜索词/表达式（带正则开关）、标记开关，以及带 CSS 自动补全的代码编辑器，并提供「清空当前编辑」一键复位
 - **高亮索引**：「启动时默认打开高亮索引」开关，开启后插件启动时自动启用索引标签页
-- **提词器**：字体（本机字体选择）、字重、字体颜色、字体透明度（默认 80%）、背景透明度（默认 90%），均带「重置为初始值」按钮；可折叠「文字阴影」分组（投影开关、水平/垂直偏移、模糊半径、不透明度）与「文字渐变」分组（渐变开关、类型、范围、角度、颜色停靠点，附实时预览）；选中提取模式与状态栏按钮开关
+- **提词器**：字体（本机字体选择）、字重（跟随主题 / 100–900）、字体颜色、字体透明度（默认 80%）、背景透明度（默认 90%），均带「重置为初始值」按钮；可折叠「文字阴影」分组（投影开关、水平/垂直偏移、模糊半径、不透明度）与「文字渐变」分组（渐变开关、类型、范围、角度、颜色停靠点，附实时预览）；选中提取模式与状态栏按钮开关
 
 ### 限制
 
@@ -146,14 +150,14 @@
 
 ## English README
 
-> **Keywords**: dynamic highlighting, selection highlighting, persistent highlighting, regex queries, capture groups, custom CSS, highlight index, teleprompter, cursor-linked selection, scrollbar markers, minimap, text gradient, subtitle drop shadow, scroll sync, click-through lock, document binding, group management, import/export
+> **Keywords**: dynamic highlighting, selection highlighting, persistent highlighting, regex queries, capture groups, custom CSS, CSS autocompletion, highlighter description, highlight index, teleprompter, cursor-linked selection, scrollbar markers, minimap, text gradient, subtitle drop shadow, scroll sync, click-through lock, document binding, group management, import/export
 
 An Obsidian plugin that dynamically highlights text based on cursor selection or search query. Key features:
 
 - **Selection highlighting**: instantly highlights all occurrences of the selected text (**decorations appear only when at least one occurrence other than the selection is found**), with scrollbar markers and a minimap
-- **Persistent highlighting**: mark text persistently via regex/keyword queries, with capture groups, line/start/end widgets, custom CSS, group management, and one-click import/export
+- **Persistent highlighting**: mark text persistently via regex/keyword queries, with capture groups, line/start/end widgets, custom CSS (a built-in code editor with CSS autocompletion), a per-highlighter description, group management, and one-click import/export
 - **Highlight index**: auto-scans `==highlighted==` text and organizes it into a sidebar index by heading hierarchy, with cursor-linked selection and keyboard navigation
-- **Teleprompter (desktop only)**: karaoke-style floating teleprompter windows that follow the document/cursor in real time, with text gradient, subtitle drop shadow, click-through lock, document binding, scroll sync, and multi-instance support
+- **Teleprompter (desktop only)**: karaoke-style floating teleprompter windows that follow the document/cursor in real time, with font weights 100–900, text gradient, subtitle drop shadow, click-through lock, document binding, scroll sync, and multi-instance support
 
 Currently supports Source mode and Live Preview mode. Reading mode and the legacy editor are not supported.
 
@@ -170,7 +174,9 @@ When text is selected, highlights all occurrences of the selected text:
 
 ### Persistent Highlighting
 
-Define search queries with associated CSS class names and colors to create persistent highlights. Matched strings are automatically tagged with the corresponding CSS class and background color. Each highlighter's style and color is cached in the index; match toggles can be switched on/off at any time to control how matches appear.
+Define search queries with associated CSS class names and colors to create persistent highlights. Matched strings are automatically tagged with the corresponding CSS class and painted with the chosen background color (**the color may be left empty** — with no color picked, only the highlight class is applied and styling is left entirely to custom CSS). Each highlighter's style and color is cached in the index; match toggles can be switched on/off at any time to control how matches appear.
+
+Each highlighter can also carry a **description** noting what its expression matches — display-only, never used for matching. It sits on the row below the name in settings and on the line below the expression in the list card.
 
 Supports regex queries (enable the toggle for regex mode). In regex mode, **named capture groups** (e.g., `(?<groupName>…)`) or **unnamed capture groups** (e.g., `(…)`) can be used to highlight sub-matches with precision.
 
@@ -186,6 +192,8 @@ Each highlighter can combine multiple mark modes:
 #### Custom CSS
 
 Each highlighter can include its own CSS rules, injected into the page via `CSSStyleSheet` + `document.adoptedStyleSheets` (no `<style>` element is created). Renders through the editor's CodeMirror instance, supporting dark/light theme adaptation. CSS changes take effect immediately on save.
+
+The field itself is a full **CodeMirror 6 editor**: syntax highlighting, auto-closing brackets and quotes, undo history, and **CSS autocompletion as you type** — property names, value keywords and selector tag names all suggest as you type, or on demand with Ctrl/Cmd-Space; accepting a property also inserts the colon and a space.
 
 #### Group Management
 
@@ -243,7 +251,7 @@ Karaoke-style floating teleprompter windows that follow document content in real
 - **Width auto-fit**: width adapts to the content's widest line (prev/next never grows the window), clamped to the viewport so long text wraps without overflowing; the right edge is draggable and auto-locks, and stays draggable while locked — the new width inherits as the locked value
 - **Drag snapping**: snaps to viewport edges and center lines with guide overlays
 - **Font size**: cycles 32/40/50/64/80px
-- **Font / weight / color**: adjustable in settings — the body font uses a local-font picker modal (`queryLocalFonts()` enumeration, falling back to canvas measurement over a candidate list; multi-select with drag-to-reorder priority — the first available font wins, missing ones fall through; search, self-preview, and custom-font input included), font weight is a dropdown (follow theme / 300–700), and text color is a palette applied live ("Clear" restores the theme default); each has a "Reset to initial value" button
+- **Font / weight / color**: adjustable in settings — the body font uses a local-font picker modal (`queryLocalFonts()` enumeration, falling back to canvas measurement over a candidate list; multi-select with drag-to-reorder priority — the first available font wins, missing ones fall through; search, self-preview, and custom-font input included), font weight is a dropdown (follow theme / 100–900), and text color is a palette applied live ("Clear" restores the theme default); each has a "Reset to initial value" button
 - **Toolbar**: the mode toggle is a text button showing the current mode (逐行提取 / 高亮提取); track cursor (`text-cursor`, cursor-following toggle), prev/next (`arrow-big-left`/`arrow-big-right`), width lock (`move-horizontal`), click-through lock (`lock`/`unlock`), hide background (`eye-off`), and font-size slot icons (`heading-1`~`heading-5`) all use semantic lucide icons; button tooltips default to popping above and flip below only when there is no room above; when locked, only interactive buttons (prev/next, lock, close) remain; the settings button jumps straight to the teleprompter settings page
 - **Opacity**: font opacity (default 80%) and background opacity (default 90%) adjustable in settings, each with a "Reset to initial value" button (lucide `rotate-ccw`); the background color, border and outline shadow are always visible and the opacity applies live
 - **Theme adaptation**: the window background updates instantly when toggling light/dark themes — no restart needed
@@ -261,9 +269,9 @@ Karaoke-style floating teleprompter windows that follow document content in real
 The settings dialog is organized into four tabs:
 
 - **Selection**: toggle highlighting all occurrences of the selected text; highlight delay in milliseconds (≥200); minimap toggle; a "Max selection length" slider (2-60, default 30, with a "Restore default" button)
-- **Persistent**: create, edit, and delete highlighters, group management, one-click import/export
+- **Persistent**: create, edit, and delete highlighters, group management, one-click import/export. The form covers name, description, background color (may be left empty), search term/expression (with a regex toggle), mark toggles and a code editor with CSS autocompletion, plus a one-click "Clear current edit" reset
 - **Highlight index**: "Startup auto-open highlight index" toggle — enables the index tab on plugin load
-- **Teleprompter**: font (local-font picker), font weight, font color, font opacity (default 80%) and background opacity (default 90%), each with a "Reset to initial value" button; collapsible "Text Shadow" group (shadow toggle, horizontal/vertical offset, blur radius, opacity) and "Text Gradient" group (gradient toggle, type, scope, angle, color stops, with a live preview); selection-extract mode and status-bar button toggles
+- **Teleprompter**: font (local-font picker), font weight (follow theme / 100–900), font color, font opacity (default 80%) and background opacity (default 90%), each with a "Reset to initial value" button; collapsible "Text Shadow" group (shadow toggle, horizontal/vertical offset, blur radius, opacity) and "Text Gradient" group (gradient toggle, type, scope, angle, color stops, with a live preview); selection-extract mode and status-bar button toggles
 
 ### Limitations
 

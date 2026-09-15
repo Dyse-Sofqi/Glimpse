@@ -318,19 +318,50 @@
 
 /* #endregion color selection */
 
+/* #region description */
+
+/* 描述输入框独占一行，排在「名称 + 色板」之后 */
+.glimpse-settings .desc-wrapper {
+  display: flex;
+  align-items: flex-end;
+  flex-basis: 100%;
+}
+
+.glimpse-settings .desc-wrapper input {
+  flex-grow: 100;
+}
+
+/* 列表卡片里的描述行 —— 排在表达式下方 */
+.glimpse-settings .glimpse-highlighter-note {
+  margin-top: 2px;
+  white-space: pre-wrap;
+}
+
+/* #endregion description */
+
 /* #region search term & save */
 
+/* 操作按钮（清空 / 从剪贴板导入 / 保存）跟在「名称 + 色板」同一行 */
+.glimpse-settings .action-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  align-self: center;
+}
+
+/* 搜索词/表达式输入框与其正则开关独占一行 */
 .glimpse-settings .query-wrapper {
   display: flex;
   align-items: flex-end;
   flex-grow: 100;
+  flex-basis: 100%;
 }
 
 .glimpse-settings .query-wrapper input {
   flex-grow: 100;
 }
 
-.glimpse-settings .highlighter-settings-regex {
+.glimpse-settings .glimpse-settings-regex {
   /* TODO: fix the fact that this gets squashed on mobile */
   align-self: center;
   margin: 1px 4px 0;
@@ -401,23 +432,48 @@
 }
 
 /* 自定义 CSS 输入框：样式化纯 textarea（已从 CodeMirror 退回，规避环境问题） */
-.glimpse-settings .custom-css-wrapper textarea {
-  display: block;
-  width: 100%;
-  min-height: 10em;
-  max-height: 15em;
-  font-family: var(--font-monospace) !important;
-  font-size: 12px;
-  line-height: 1.4;
-  white-space: pre;
-  overflow-wrap: normal;
-  overflow-x: auto;
-  overflow-y: auto;
-  resize: vertical;
+/* 自定义 CSS 输入框 —— CodeMirror 6（语法高亮 + 自动补全），外观对齐原 textarea */
+.glimpse-settings .custom-css-wrapper .cm-editor {
   border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
   background-color: var(--background-primary-alt);
   box-sizing: border-box;
+  font-size: 12px;
+}
+
+.glimpse-settings .custom-css-wrapper .cm-editor.cm-focused {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+.glimpse-settings .custom-css-wrapper .cm-scroller {
+  min-height: 10em;
+  max-height: 15em;
   padding: 6px 8px;
+  font-family: var(--font-monospace);
+  line-height: 1.4;
+  overflow-y: auto;
+}
+
+.glimpse-settings .custom-css-wrapper .cm-content {
+  padding: 0;
+}
+
+.glimpse-settings .custom-css-wrapper .cm-placeholder {
+  color: var(--text-faint);
+  /* 占位示例是多行 CSS：保留换行并允许长行折行（默认会被压成一行） */
+  white-space: pre-wrap;
+}
+
+/* 补全面板：与设置面板的字体/配色一致，别被主题的编辑器样式串味 */
+.glimpse-settings .custom-css-wrapper .cm-tooltip-autocomplete {
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-small);
+}
+
+.glimpse-settings .custom-css-wrapper .cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
 }
 
 /* #endregion custom css editor */
@@ -496,16 +552,7 @@
 
 /* #region persistent highlighters sortable ui */
 
-.glimpse-settings .highlighter-item-draggable {
-  cursor: initial;
-  display: grid;
-  grid-gap: 8px;
-  grid-template-columns: 0.2fr 0.5fr 7fr;
-  align-items: center;
-  border-top: 1px solid var(--background-modifier-border);
-}
-
-.glimpse-settings .highlighter-setting-icon-drag {
+.glimpse-settings .glimpse-setting-icon-drag {
   cursor: grab;
   margin-inline-end: 0;
   display: flex;
@@ -513,27 +560,23 @@
   align-self: center;
 }
 
-.glimpse-settings .highlighter-sortable-fallback {
+.glimpse-settings .glimpse-sortable-fallback {
   cursor: grabbing;
   box-shadow: 0px 3px 32px rgb(31 38 135 / 15%);
 }
 
-.glimpse-settings .highlighter-sortable-grab {
-  cursor: grabbing;
-}
-
-.glimpse-settings .highlighter-sortable-ghost {
+.glimpse-settings .glimpse-sortable-ghost {
   opacity: 0.4;
   cursor: grabbing;
 }
 
-.glimpse-settings .highlighter-sortable-chosen {
+.glimpse-settings .glimpse-sortable-chosen {
   cursor: grabbing;
   border-radius: var(--setting-items-radius);
   box-shadow: 0px 3px 32px rgb(31 38 135 / 15%);
 }
 
-.glimpse-settings .highlighter-sortable-drag {
+.glimpse-settings .glimpse-sortable-drag {
   cursor: grabbing;
 }
 
@@ -635,6 +678,8 @@
 /* #endregion style settings import/export */
 
 /* #region pickr vendored styles */
+/* Pickr 自带样式（@simonwep/pickr，MIT License，Copyright (c) 2018 - 2021 Simon Reinisch）
+   随插件内置，避免依赖运行时加载；仅下方少量 .glimpse-settings 规则为本项目定制。 */
 .pickr {
   position: relative;
   overflow: visible;

@@ -1,12 +1,11 @@
-import Pickr from "@simonwep/pickr";
-import { patchPickrDrag } from "../pickr-drag";
+import { createColorPicker } from "../color-picker";
+import { createCssEditor } from "../css-editor";
 import {
   ButtonComponent,
   Modal,
   Notice,
   setIcon,
   Setting,
-  TextAreaComponent,
   TextComponent,
   ToggleComponent,
 } from "obsidian";
@@ -15,6 +14,29 @@ import GlimpsePlugin from "../../main";
 import { ExportModal } from "../export";
 import { ImportModal } from "../import";
 import { SettingTab } from "../ui";
+
+/** 把 CSS 声明体（形如 "a: b; c: d"）解析成属性表，交给 setCssProps 应用。
+    只处理单层声明：值里含分号（如 data: URI）不支持，末尾的 !important 会被忽略 —— 预览色块够用。 */
+function parseCssDeclarations(cssText: string): Record<string, string> {
+  const props: Record<string, string> = {};
+  for (const declaration of cssText.split(";")) {
+    const separator = declaration.indexOf(":");
+    if (separator < 0) continue;
+    const name = declaration.slice(0, separator).trim();
+    const value = declaration.slice(separator + 1).replace(/!important\s*$/i, "").trim();
+    if (name && value) props[name] = value;
+  }
+  return props;
+}
+
+/** 自定义 CSS 输入框的默认示例 —— 仅作空内容时的占位提示，不会写进配置 */
+const CUSTOM_CSS_EXAMPLE = [
+  "示例：",
+  ".input-your-highlighter-name {",
+  "font-family: 'Segoe UI', 'Source Han Serif SC VF';",
+  "font-weight: 550;",
+  "}",
+].join("\n");
 
 export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: SettingTab) {
   const config = plugin.settings.staticHighlighter;
@@ -26,85 +48,41 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
     .setDesc("样式名仅支持英文字符");
 
   const classInput = new TextComponent(defineQueryUI.controlEl);
-  classInput.setPlaceholder("高亮器名称");
+  classInput.setPlaceholder("英文高亮器名称");
   classInput.inputEl.ariaLabel = "高亮器名称";
   classInput.inputEl.addClass("highlighter-name");
 
   const colorWrapper = defineQueryUI.controlEl.createDiv("color-wrapper");
-
-  let pickrInstance: Pickr;
-  const colorPicker = new ButtonComponent(colorWrapper);
-  colorPicker.setClass("highlightr-color-picker").then(() => {
-    tab.pickrInstance = pickrInstance = new Pickr({
-      el: colorPicker.buttonEl,
-      container: colorWrapper,
-      theme: "nano",
-      defaultRepresentation: "HEXA",
-      default: "#42188038",
-      comparison: false,
-      components: {
-        preview: true,
-        opacity: true,
-        hue: true,
-        interaction: { hex: true, rgba: false, hsla: true, hsva: false, cmyk: false, input: true, clear: true, cancel: true, save: true },
-      },
-    });
-    patchPickrDrag(pickrInstance); // Obsidian 拦截 document mousemove，用 pointer 事件桥接拖拽
-    colorWrapper.querySelector(".pcr-button")!.ariaLabel = "Background color picker";
-
-    pickrInstance
-      .on("clear", (instance: Pickr) => {
-        instance.hide();
-        classInput.inputEl.style.removeProperty("--picker-bg");
-        classInput.inputEl.style.removeProperty("color");
-      })
-      .on("cancel", (instance: Pickr) => instance.hide())
-      .on("change", (color: Pickr.HSVaColor) => {
-        const colorHex = color?.toHEXA().toString() || "";
-        const newColor = colorHex && colorHex.length === 6 ? `${colorHex}A6` : colorHex;
-        classInput.inputEl.setCssProps({ "--picker-bg": newColor, color: "var(--text-normal)" });
-      })
-      .on("save", (color: Pickr.HSVaColor, instance: Pickr) => instance.hide());
+  // 背景色默认不预设：未选色时 color 落空串，静态高亮器会跳过背景色（static.ts buildStyles）
+  const colorPicker = createColorPicker({
+    container: colorWrapper,
+    withAlpha: true,
+    label: "背景颜色",
+    onChange: hexa => {
+      // Pickr 在未指定透明度时给出 6 位十六进制，补上 A6 作为默认不透明度
+      const color = hexa.length === 6 ? `${hexa}A6` : hexa;
+      classInput.inputEl.setCssProps({ "--picker-bg": color, color: "var(--text-normal)" });
+    },
+    onClear: () => {
+      classInput.inputEl.setCssProps({ "--picker-bg": null, color: null });
+    },
   });
+  tab.registerDisposable(colorPicker.destroy);
 
-  const queryWrapper = defineQueryUI.controlEl.createDiv("query-wrapper");
-  const queryInput = new TextComponent(queryWrapper);
-  queryInput.setPlaceholder("搜索词");
-  queryInput.inputEl.addClass("highlighter-settings-query");
+  // 操作按钮紧跟「名称 + 色板」同一行：清空当前编辑 / 从剪贴板导入 / 保存
+  const actionWrapper = defineQueryUI.controlEl.createDiv("action-wrapper");
 
-  const queryTypeInput = new ToggleComponent(queryWrapper);
-  queryTypeInput.toggleEl.addClass("highlighter-settings-regex");
-  queryTypeInput.toggleEl.ariaLabel = "启用正则";
+  const resetBtn = new ButtonComponent(actionWrapper);
+  resetBtn
+    .setClass("action-button")
+    .setClass("action-button-reset")
+    .setIcon("refresh-ccw")
+    .setTooltip("清空当前编辑")
+    .onClick(() => resetForm());
 
-  // mark toggles: match, line, start, end, group
-  const marksWrapper = defineQueryUI.controlEl.createDiv({ cls: "mark-wrapper" });
-  const marks: { [key: string]: { container: HTMLDivElement; toggle: ToggleComponent } } = {};
-  const toggleLabels: Record<string, string> = { match: "匹配", line: "父行", start: "开始", end: "结束", group: "捕获组" };
-  Object.entries(toggleLabels).forEach(([key, label]) => {
-    const item = marksWrapper.createDiv();
-    item.createSpan({ text: label });
-    const toggle = new ToggleComponent(item);
-    toggle.setValue(key === "match");
-    marks[key] = { container: item, toggle };
-  });
-
-  queryTypeInput.onChange(value => {
-    queryInput.setPlaceholder(value ? "搜索表达式" : "搜索词");
-    const gw = marks["group"]?.container;
-    if (gw) gw.setCssProps({ visibility: value ? "" : "hidden" });
-  });
-  { const gw = marks["group"]?.container; if (gw) gw.setCssProps({ visibility: "hidden" }); }
-
-  const customCSSWrapper = defineQueryUI.controlEl.createDiv("custom-css-wrapper");
-  customCSSWrapper.createSpan("setting-item-name").setText("自定义 CSS");
-  const customCSSEl = new TextAreaComponent(customCSSWrapper);
-  tab.editor = customCSSEl;
-  customCSSEl.inputEl.addClass("custom-css");
-
-  const importBtn = new ButtonComponent(queryWrapper);
+  const importBtn = new ButtonComponent(actionWrapper);
   importBtn
     .setClass("action-button")
-    .setClass("action-button-save")
     .setClass("mod-cta")
     .setIcon("clipboard-copy")
     .setTooltip("从剪贴板导入")
@@ -116,9 +94,11 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
         if (!entry) { new Notice("剪贴板数据格式无效"); return; }
         const [name, opts] = entry;
         classInput.inputEl.value = name;
-        if (opts.color) pickrInstance.setColor(opts.color);
+        colorPicker.setColor(opts.color || null); // 无颜色时清空，别让默认色残留
         queryInput.inputEl.value = opts.query || "";
+        descInput.inputEl.value = opts.desc || "";
         queryTypeInput.setValue(!!opts.regex);
+        syncRegexUI(!!opts.regex); // setValue 不保证触发 onChange，显式同步一次
         Object.entries(marks).forEach(([key, m]) => {
           m.toggle.setValue(opts.mark?.includes(key) ?? false);
         });
@@ -129,17 +109,18 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
       }
     });
 
-  const saveButton = new ButtonComponent(queryWrapper);
+  const saveButton = new ButtonComponent(actionWrapper);
   saveButton
     .setClass("action-button")
     .setClass("action-button-save")
     .setClass("mod-cta")
     .setIcon("save")
     .setTooltip("保存")
-    .onClick(async (buttonEl: any) => {
+    .onClick(async () => {
       const className = classInput.inputEl.value.replace(/ /g, "-");
-      const hexValue = pickrInstance.getSelectedColor()?.toHEXA().toString();
+      const hexValue = colorPicker.getColor();
       const queryValue = queryInput.inputEl.value;
+      const descValue = descInput.inputEl.value.trim();
       const queryTypeValue = queryTypeInput.getValue();
       const customCss = tab.editor.getValue();
 
@@ -159,6 +140,7 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
           mark: enabledMarks,
           css: customCss,
           group: tab.activeGroup === "默认" ? undefined : tab.activeGroup,
+          desc: descValue || undefined,
         };
         await plugin.saveSettings();
         plugin.updateStaticHighlighter();
@@ -175,6 +157,65 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
         new Notice("缺少高亮器设置值");
       }
     });
+
+  // 描述：备注该表达式匹配什么内容，仅用于设置页展示。另起一行排在名称之后
+  const descWrapper = defineQueryUI.controlEl.createDiv("desc-wrapper");
+  const descInput = new TextComponent(descWrapper);
+  descInput.setPlaceholder("描述（备注该表达式匹配的内容）");
+  descInput.inputEl.ariaLabel = "描述";
+  descInput.inputEl.addClass("glimpse-settings-desc");
+
+  const queryWrapper = defineQueryUI.controlEl.createDiv("query-wrapper");
+  const queryInput = new TextComponent(queryWrapper);
+  queryInput.setPlaceholder("搜索词");
+  queryInput.inputEl.addClass("glimpse-settings-query");
+
+  const queryTypeInput = new ToggleComponent(queryWrapper);
+  queryTypeInput.toggleEl.addClass("glimpse-settings-regex");
+  queryTypeInput.toggleEl.ariaLabel = "启用正则";
+
+  // mark toggles: match, line, start, end, group
+  const marksWrapper = defineQueryUI.controlEl.createDiv({ cls: "mark-wrapper" });
+  const marks: { [key: string]: { container: HTMLDivElement; toggle: ToggleComponent } } = {};
+  const toggleLabels: Record<string, string> = { match: "匹配", line: "父行", start: "开始", end: "结束", group: "捕获组" };
+  Object.entries(toggleLabels).forEach(([key, label]) => {
+    const item = marksWrapper.createDiv();
+    item.createSpan({ text: label });
+    const toggle = new ToggleComponent(item);
+    toggle.setValue(key === "match");
+    marks[key] = { container: item, toggle };
+  });
+
+  /** 正则开关联动：切换占位符文案与「捕获组」开关的显隐 */
+  const syncRegexUI = (regex: boolean) => {
+    queryInput.setPlaceholder(regex ? "搜索表达式" : "搜索词");
+    const groupToggle = marks["group"]?.container;
+    if (groupToggle) groupToggle.setCssProps({ visibility: regex ? "" : "hidden" });
+  };
+  queryTypeInput.onChange(syncRegexUI);
+  syncRegexUI(false);
+
+  const customCSSWrapper = defineQueryUI.controlEl.createDiv("custom-css-wrapper");
+  customCSSWrapper.createSpan("setting-item-name").setText("自定义 CSS");
+  const customCssEditor = createCssEditor({
+    container: customCSSWrapper,
+    placeholder: CUSTOM_CSS_EXAMPLE,
+  });
+  tab.editor = customCssEditor;
+  tab.registerDisposable(customCssEditor.destroy);
+
+  /** 放弃当前编辑，把「自定义样式设置」表单恢复为初始状态 */
+  function resetForm() {
+    classInput.inputEl.value = "";
+    classInput.inputEl.setCssProps({ "--picker-bg": null, color: null });
+    colorPicker.setColor(null);
+    descInput.inputEl.value = "";
+    queryInput.inputEl.value = "";
+    queryTypeInput.setValue(false);
+    syncRegexUI(false);
+    Object.entries(marks).forEach(([key, m]) => m.toggle.setValue(key === "match"));
+    tab.editor.setValue("");
+  }
 
   // toolbar: toggle all, import, export
   const toolbarEl = containerEl.createDiv({ cls: "glimpse-toolbar" });
@@ -353,22 +394,23 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
   filteredOrder.forEach((highlighter: string) => {
     const { query, regex, mark } = config.queries[highlighter];
     const color = config.queries[highlighter].color;
+    const note = config.queries[highlighter].desc?.trim();
     const settingItem = highlightersContainer.createEl("div");
     settingItem.id = "dh-" + highlighter;
     settingItem.draggable = true;
     settingItem.addEventListener("dragstart", () => { tab._dragItemId = highlighter; });
     settingItem.addEventListener("dragend", () => { tab._dragItemId = undefined; });
-    const desc: string[] = [];
-    desc.push((regex ? "搜索表达式: " : "搜索词: ") + query);
 
     const setting = new Setting(settingItem)
       .setClass("highlighter-details")
       .setName(highlighter)
-      .setDesc(desc.join(" | "));
+      .setDesc((regex ? "搜索表达式: " : "搜索词: ") + query);
+    // 描述另起一行，排在表达式下方
+    if (note) setting.descEl.createDiv({ cls: "glimpse-highlighter-note", text: note });
 
     // drag handle
     const dragIcon = setting.settingEl.createEl("span");
-    dragIcon.addClass("highlighter-setting-icon-drag");
+    dragIcon.addClass("glimpse-setting-icon-drag");
     setIcon(dragIcon, "grip-vertical");
     dragIcon.ariaLabel = "拖动排序";
     setting.settingEl.prepend(dragIcon);
@@ -377,14 +419,15 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
     const colorIcon = setting.settingEl.createEl("span");
     colorIcon.addClass("highlighter-style-preview");
     colorIcon.textContent = "预览";
-    let previewStyles = "";
-    if (color) previewStyles += `background-color: ${color}; `;
+    // 预览样式 = 底色 + 该高亮器自定义 CSS 的声明体（不含选择器）
+    const previewProps: Record<string, string> = { width: "auto" };
+    if (color) previewProps["background-color"] = color;
     const customCss = config.queries[highlighter].css;
     if (customCss) {
       const blockMatch = customCss.match(/\{([^}]+)\}/);
-      previewStyles += blockMatch ? blockMatch[1] : customCss;
+      Object.assign(previewProps, parseCssDeclarations(blockMatch ? blockMatch[1] : customCss));
     }
-    if (previewStyles) colorIcon.setAttribute("style", previewStyles + " width: auto;");
+    if (Object.keys(previewProps).length > 1) colorIcon.setCssProps(previewProps);
     setting.settingEl.insertBefore(colorIcon, dragIcon.nextSibling);
 
     setting
@@ -397,10 +440,11 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
           .onClick(async evt => {
             const options = config.queries[highlighter];
             classInput.inputEl.value = highlighter;
-            pickrInstance.setColor(options.color);
+            colorPicker.setColor(options.color || null); // 无颜色时清空，别让上一次的颜色残留
             queryInput.inputEl.value = options.query;
-            pickrInstance.setColor(options.color);
+            descInput.inputEl.value = options.desc ?? "";
             queryTypeInput.setValue(options.regex);
+            syncRegexUI(options.regex); // setValue 不保证触发 onChange，显式同步一次
             // restore mark toggle states
             Object.entries(marks).forEach(([key, m]) => {
               m.toggle.setValue(options.mark?.includes(key) ?? true);
@@ -456,12 +500,12 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
   });
   const sortableEl = Sortable.create(highlightersContainer, {
     animation: 500,
-    ghostClass: "highlighter-sortable-ghost",
-    chosenClass: "highlighter-sortable-chosen",
-    dragClass: "highlighter-sortable-drag",
-    handle: ".highlighter-setting-icon-drag",
+    ghostClass: "glimpse-sortable-ghost",
+    chosenClass: "glimpse-sortable-chosen",
+    dragClass: "glimpse-sortable-drag",
+    handle: ".glimpse-setting-icon-drag",
     dragoverBubble: true,
-    fallbackClass: "highlighter-sortable-fallback",
+    fallbackClass: "glimpse-sortable-fallback",
     easing: "cubic-bezier(1, 0, 0, 1)",
     onSort: async command => {
       const items = highlightersContainer.querySelectorAll('[id^="dh-"]');
