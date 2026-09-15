@@ -122,6 +122,9 @@ const matchHighlighter = ViewPlugin.fromClass(
       const query = state.sliceDoc(selFrom, selTo).trim();
       if (!query) return Decoration.none;
       const deco = [];
+      const matchedLines = new Set<number>();
+      // 选区自身永远「匹配自己」，不能算作检索结果，否则无其他出现位置时也会出现装饰
+      let hasOtherMatch = false;
       const caseInsensitive = (s: string) => s.toLowerCase();
       // 全文档搜索（不限于可见区域）
       const cursor = new SearchCursor(state.doc, query, 0, state.doc.length, caseInsensitive);
@@ -129,9 +132,11 @@ const matchHighlighter = ViewPlugin.fromClass(
         const { from, to } = cursor.value;
         const string = state.sliceDoc(from, to).trim();
         const ln = state.doc.lineAt(from).number;
-        this.matchLines.add(ln); // 始终采集行号（滚动条标记不受 maxMatches 限制）
+        matchedLines.add(ln); // 始终采集行号（滚动条标记不受 maxMatches 限制）
+        const isSelf = from <= selFrom && to >= selTo;
+        if (!isSelf) hasOtherMatch = true;
         if (deco.length >= conf.maxMatches) continue;
-        if (from <= selFrom && to >= selTo) {
+        if (isSelf) {
           deco.push(Decoration.mark({
             class: `cm-current-${matchType}`,
             attributes: { "data-contents": string },
@@ -143,6 +148,12 @@ const matchHighlighter = ViewPlugin.fromClass(
           }).range(from, to));
         }
       }
+      // 无其他出现位置 → 不产生任何装饰：文本下划线、滚动条标记全部不出现
+      if (!hasOtherMatch) {
+        this.matchLines.clear();
+        return Decoration.none;
+      }
+      for (const ln of matchedLines) this.matchLines.add(ln);
       if (deco.length < 1) {
         return Decoration.none;
       }

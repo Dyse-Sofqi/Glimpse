@@ -7,25 +7,26 @@
 [![Stars](https://img.shields.io/github/stars/Dyse-Sofqi/Glimpse?style=flat-square&label=Stars)](https://github.com/Dyse-Sofqi/Glimpse)
 [![License](https://img.shields.io/github/license/Dyse-Sofqi/Glimpse?style=flat-square&label=License)](LICENSE)
 
-> **关键词**：动态高亮、正则查询、捕获组、自定义 CSS、高亮索引、提词器、光标联动、滚动同步、缩略图、文字渐变、字幕投影
+> **关键词**：动态高亮、选择高亮、持久高亮、正则查询、捕获组、自定义 CSS、高亮索引、提词器、光标联动、滚动条标记、缩略图、文字渐变、字幕投影、滚动同步、穿透锁定、文档绑定、分组管理、导入导出
 
 根据选中内容或搜索关键词动态高亮文本的 Obsidian 插件，主要功能：
 
-- **选择高亮**：选中文本后即时高亮全文所有匹配，附滚动条标记与缩略图
-- **持久高亮**：按正则/关键词查询持久标记，支持捕获组、父行、开始/结束 widget、自定义 CSS 与标签组管理
-- **高亮索引**：自动检索 `==高亮==` 文本，按文档标题层级组织为侧边栏索引
-- **提词器（桌面端）**：歌词式浮动提词窗口，跟随文档/光标实时显示，支持文字渐变与字幕投影，支持多实例
+- **选择高亮**：选中文本后即时高亮全文所有匹配（**仅在检索到选区之外的至少一个出现位置时才出现装饰**），附滚动条标记与缩略图
+- **持久高亮**：按正则/关键词查询持久标记，支持捕获组、父行、开始/结束 widget、自定义 CSS，配标签组管理与一键导入导出
+- **高亮索引**：自动检索 `==高亮==` 文本，按文档标题层级组织为侧边栏索引，支持光标联动与键盘导航
+- **提词器（桌面端）**：歌词式浮动提词窗口，跟随文档/光标实时显示，支持文字渐变、字幕投影、穿透锁定、文档绑定、滚动同步与多实例
 
 目前仅支持源码模式（Source）和实时预览模式（Live Preview）。阅读模式（Reading）和旧版编辑器暂不支持。
 
 ### 选择高亮
 
 有选中内容时，高亮选中文本的所有出现位置：
-- 大小写不敏感匹配
-- 当前选中文本默认标记为 `.cm-selection`
+- 大小写不敏感匹配，全文档检索（不限于可见区域）
+- **装饰出现条件**：仅当检索到**选区之外的至少一个出现位置**时才施加装饰；选中仅出现一次的文本时不显示任何下划线，滚动条标记同样不出现
+- 当前选中文本标记为 `.cm-current-string`
 - 文档中其他位置匹配的字符串标记为 `.cm-matched-string`
 - 所有匹配项附带 `data-contents` 属性存储当前选中字符串值
-- **滚动条标记 / 缩略图**：选中时滚动条显示匹配位置标记；可选在编辑器右侧显示缩略图（类似 VS Code minimap，可拖动滚动）
+- **滚动条标记 / 缩略图**：检索到结果时滚动条显示匹配位置标记；可选在编辑器右侧显示缩略图（类似 VS Code minimap，可拖动滚动）
 - **检索上限**：设置中可调「选择检索的字符串上限」（2-60，默认 30），超过该长度的选中文本不再进行全文匹配，避免超长选择拖慢编辑
 
 ### 持久高亮
@@ -45,7 +46,7 @@
 
 #### 自定义 CSS
 
-每条样式可编写独立 CSS 规则，自动注入页面 `<style>` 元素。
+每条样式可编写独立 CSS 规则，经 `CSSStyleSheet` + `document.adoptedStyleSheets` 注入页面（不创建 `<style>` 元素）。
 编辑器内通过 CodeMirror 实例高亮渲染，支持深色/浅色主题适配。CSS 变更随保存即时生效。
 
 #### 标签组
@@ -145,25 +146,26 @@
 
 ## English README
 
-> **Keywords**: dynamic highlighting, regex queries, capture groups, custom CSS, highlight index, teleprompter, cursor-linked selection, scroll sync, minimap, text gradient, subtitle drop shadow
+> **Keywords**: dynamic highlighting, selection highlighting, persistent highlighting, regex queries, capture groups, custom CSS, highlight index, teleprompter, cursor-linked selection, scrollbar markers, minimap, text gradient, subtitle drop shadow, scroll sync, click-through lock, document binding, group management, import/export
 
 An Obsidian plugin that dynamically highlights text based on cursor selection or search query. Key features:
 
-- **Selection highlighting**: instantly highlights all occurrences of the selected text, with scrollbar markers and a minimap
-- **Persistent highlighting**: mark text persistently via regex/keyword queries, with capture groups, line/start/end widgets, custom CSS, and group management
-- **Highlight index**: auto-scans `==highlighted==` text and organizes it into a sidebar index by heading hierarchy
-- **Teleprompter (desktop only)**: karaoke-style floating teleprompter windows that follow the document/cursor in real time, with text gradient, subtitle drop shadow, and multi-instance support
+- **Selection highlighting**: instantly highlights all occurrences of the selected text (**decorations appear only when at least one occurrence other than the selection is found**), with scrollbar markers and a minimap
+- **Persistent highlighting**: mark text persistently via regex/keyword queries, with capture groups, line/start/end widgets, custom CSS, group management, and one-click import/export
+- **Highlight index**: auto-scans `==highlighted==` text and organizes it into a sidebar index by heading hierarchy, with cursor-linked selection and keyboard navigation
+- **Teleprompter (desktop only)**: karaoke-style floating teleprompter windows that follow the document/cursor in real time, with text gradient, subtitle drop shadow, click-through lock, document binding, scroll sync, and multi-instance support
 
 Currently supports Source mode and Live Preview mode. Reading mode and the legacy editor are not supported.
 
 ### Selection Highlighting
 
 When text is selected, highlights all occurrences of the selected text:
-- Case-insensitive matching
-- Current selection marked as `.cm-selection`
+- Case-insensitive matching across the whole document (not just the visible viewport)
+- **Decoration condition**: decorations are applied only when **at least one occurrence other than the selection itself** is found; selecting text that occurs only once draws no underline and no scrollbar marker
+- Current selection marked as `.cm-current-string`
 - Other matching strings in the document marked as `.cm-matched-string`
 - All matches include `data-contents` attribute with the selected string value
-- **Scrollbar markers / minimap**: match positions shown on the scrollbar when text is selected; an optional minimap on the editor's right edge (draggable to scroll)
+- **Scrollbar markers / minimap**: match positions shown on the scrollbar when matches are found; an optional minimap on the editor's right edge (draggable to scroll)
 - **Selection length cap**: a "Max selection length" slider in settings (2-60, default 30) skips full-document matching for selections longer than the cap, avoiding slowdowns from huge selections
 
 ### Persistent Highlighting
@@ -183,7 +185,7 @@ Each highlighter can combine multiple mark modes:
 
 #### Custom CSS
 
-Each highlighter can include its own CSS rules, automatically injected into the page via a `<style>` element. Renders through the editor's CodeMirror instance, supporting dark/light theme adaptation. CSS changes take effect immediately on save.
+Each highlighter can include its own CSS rules, injected into the page via `CSSStyleSheet` + `document.adoptedStyleSheets` (no `<style>` element is created). Renders through the editor's CodeMirror instance, supporting dark/light theme adaptation. CSS changes take effect immediately on save.
 
 #### Group Management
 

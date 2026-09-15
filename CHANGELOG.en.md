@@ -1,5 +1,10 @@
 # Changelog
 
+#### 1.0.7 (2026-09-15)
+
+- **Selection-highlight decorations now require at least one match** (behavior change): the match underline and the scrollbar markers only appear when the full-document search finds **at least one occurrence other than the selection itself**; when other matches exist, behavior is unchanged (the selection still carries `cm-current-string` and its line keeps its scrollbar marker)
+- **Fixed decorations appearing for a selection that occurs only once**: `getDeco()` treated the selection itself as a match (`from <= selFrom && to >= selTo`), and a selection always matches its own query — so "matches ≥ 1" was always true and both the decorations and the scrollbar markers appeared unconditionally; the code now distinguishes the selection itself from other matches, returns `Decoration.none` and clears the scrollbar markers when there is no other match, and the `maxMatches` cap is unaffected (the check runs before the cap)
+
 #### 1.0.6 (2026-09-14)
 
 - **Passed the Obsidian plugin review (`obsidianmd/no-static-styles-assignment`)**: in the "Text Gradient" settings added in 1.0.5, the gradient-angle item's show/hide on gradient-type change assigned `settingEl.style.display` directly (the rule forbids static style assignment); it now goes through an `updateAngleVisibility()` helper using the Obsidian element `hide()`/`show()` APIs — behavior unchanged
