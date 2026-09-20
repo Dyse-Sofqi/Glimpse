@@ -1,5 +1,12 @@
 # Changelog
 
+#### 1.0.10 (2026-09-20)
+
+**Docs & licensing**
+
+- **Music module attribution**: the Music module is modified from [LyricFlux](https://github.com/fhb263/obsidian-lyricflux) (MIT, Copyright (c) 2026 eatgrass, fhb263) and [obsidian-lyric](https://github.com/eatgrass/obsidian-lyric) (MIT, Copyright (c) 2023 eatgrass) — `LICENSE` now lists all four copyright holders (including the upstream dynamic-highlights and Glimpse) plus a bilingual "Third-party sources" section, and the README's Chinese and English Music sections each carry an attribution note with a line added to both Acknowledgments
+- This release is **documentation and licensing only** — plugin behaviour is identical to 1.0.9 (`main.js` / `styles.css` unchanged; the bundle is republished only because `manifest.json`'s version changed)
+
 #### 1.0.9 (2026-09-20)
 
 **New features**

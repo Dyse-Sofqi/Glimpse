@@ -1,5 +1,12 @@
 # 更新日志
 
+#### 1.0.10 (2026-09-20)
+
+**文档与许可**
+
+- **标注音乐模块来源**：「音乐」模块基于 [LyricFlux](https://github.com/fhb263/obsidian-lyricflux)（MIT，Copyright (c) 2026 eatgrass, fhb263）与 [obsidian-lyric](https://github.com/eatgrass/obsidian-lyric)（MIT，Copyright (c) 2023 eatgrass）修改而来——`LICENSE` 的 Copyright 行补齐四个版权持有人（含上游 dynamic-highlights 与 Glimpse），并新增中英双语「第三方来源 / Third-party sources」小节；README 中英双语的「音乐 / Music」段末各加一条来源标注，「致谢 / Acknowledgments」各加一行
+- 本版**仅文档与许可变更**，插件行为与 1.0.9 完全一致（`main.js` / `styles.css` 未改动；仅因 `manifest.json` 版本号变化而重新出包）
+
 #### 1.0.9 (2026-09-20)
 
 **新增功能**
