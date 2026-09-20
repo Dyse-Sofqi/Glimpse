@@ -1,6 +1,9 @@
 MIT License
 
-Copyright (c) 2021 mathieu
+Copyright (c) 2021 mathieu (obsidian-dynamic-highlights)
+Copyright (c) 2023 eatgrass (obsidian-lyric)
+Copyright (c) 2026 eatgrass, fhb263 (obsidian-lyricflux)
+Copyright (c) 2026 Sofqi (Glimpse)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +22,37 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+## 第三方来源 / Third-party sources
+
+Glimpse 的「音乐」模块（`src/music/`、`src/settings/tabs/music-ui.ts` 与相关样式、设置页）是在以下两个 **MIT** 项目的基础上
+修改而来。它们的版权与许可声明已并入上方 Copyright 行，许可正文与本文件相同（同一份 MIT 文本）。
+
+The Music module of Glimpse (`src/music/`, `src/settings/tabs/music-ui.ts` and the related styles and settings page) is
+derived from the following two **MIT** projects. Their copyright and permission notices are included above; the license
+text is the same MIT text as this file.
+
+### 1. LyricFlux
+
+- 仓库 / Repository: <https://github.com/fhb263/obsidian-lyricflux>
+- 版权 / Copyright: Copyright (c) 2026 eatgrass, fhb263 — MIT License
+- 说明：在 Obsidian 里提供笔记内嵌歌词播放器、逐字高亮、侧边栏歌单与状态栏控制，支持 MP3/M4A 标签编辑、
+  在线多平台歌词获取与翻译、多平台歌曲下载与试听。Glimpse 音乐模块的侧边栏歌单/歌词面板、逐字卡拉OK、
+  双语注释、在线歌词、多平台下载与试听、标签编辑等功能与交互以其实现为基础修改而来。
+- Description: an Obsidian plugin that turns listening into an immersive experience — an in-note lyrics player with
+  word-by-word highlighting, a sidebar playlist and status-bar controls, MP3/M4A tag editing, multi-platform online
+  lyrics with translation, and multi-platform download/preview. Glimpse's sidebar playlist/lyrics panes, karaoke word
+  highlighting, bilingual annotations, online lyrics, multi-platform download/preview and tag editing are modified
+  from its implementation.
+
+### 2. obsidian-lyric
+
+- 仓库 / Repository: <https://github.com/eatgrass/obsidian-lyric>
+- 版权 / Copyright: Copyright (c) 2023 eatgrass — MIT License
+- 说明：为 Obsidian 音频播放器加入交互式歌词显示。Glimpse 音乐模块的音频播放与歌词显示
+  （侧车 `.lrc` / 内嵌歌词解析、歌词按行高亮与滚动）以其实现为基础修改而来。
+- Description: adds an interactive lyrics display to Obsidian's audio player. Glimpse's audio playback and lyrics
+  display (sidecar `.lrc` / embedded-lyrics parsing, per-line highlighting and scrolling) are modified from its
+  implementation.

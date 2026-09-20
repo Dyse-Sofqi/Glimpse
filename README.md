@@ -169,6 +169,8 @@
 - **网易云客户端缓存**：设置「网易云客户端缓存目录」指向客户端缓存目录后，试听与网易云歌曲下载（含账号歌单同步）优先读客户端已缓存音频，命中即离线秒开
 - **推荐歌单**：「在线歌单」标签页无关键词时展示四源推荐歌单（胶囊切换平台，可按平台与关键词筛选），点歌单查看歌曲并逐首下载，支持返回与刷新
 
+> **来源标注**：本「音乐」模块是在 [LyricFlux](https://github.com/fhb263/obsidian-lyricflux)（Copyright (c) 2026 eatgrass, fhb263）与 [obsidian-lyric](https://github.com/eatgrass/obsidian-lyric)（Copyright (c) 2023 eatgrass）两个 MIT 项目的基础上修改而来，遵循 MIT 许可；完整声明见 [LICENSE](LICENSE)。
+
 ### 设置
 
 设置界面按功能分为五个页签：
@@ -193,7 +195,8 @@
 ### 致谢
 
 感谢 @chrisgrieser（aka @pseudometa）提供的插件创意和反馈。  
-感谢 @chetachiezikeuzor 的插件设置界面代码，灵感来自 <https://github.com/chetachiezikeuzor/highlightr-Plugin/>
+感谢 @chetachiezikeuzor 的插件设置界面代码，灵感来自 <https://github.com/chetachiezikeuzor/highlightr-Plugin/>  
+感谢 @eatgrass 与 @fhb263：「音乐」模块基于 [LyricFlux](https://github.com/fhb263/obsidian-lyricflux) 与 [obsidian-lyric](https://github.com/eatgrass/obsidian-lyric)（均为 MIT 许可）修改而来
 
 ---
 
@@ -356,6 +359,8 @@ A sidebar lyrics music panel (click the music ribbon icon or run the "Open music
 - **NetEase client cache**: point the "NetEase client cache folder" setting at the desktop client's cache and previews plus NetEase downloads (including account-playlist sync) read the cached audio first — instant and offline on a hit
 - **Recommended playlists**: with no keyword the "Online playlists" tab shows four-source recommendations (capsule switcher, filterable by platform and keyword); open a playlist to download songs one by one, with back navigation and refresh
 
+> **Attribution**: this Music module is modified from two MIT projects — [LyricFlux](https://github.com/fhb263/obsidian-lyricflux) (Copyright (c) 2026 eatgrass, fhb263) and [obsidian-lyric](https://github.com/eatgrass/obsidian-lyric) (Copyright (c) 2023 eatgrass) — and is distributed under the MIT license; see [LICENSE](LICENSE) for the full notices.
+
 ### Settings
 
 The settings dialog is organized into five tabs:
@@ -380,4 +385,5 @@ If Glimpse helps you, consider supporting the author:
 ### Acknowledgments
 
 Thanks to @chrisgrieser (aka @pseudometa) for the plugin concept and feedback.  
-Thanks to @chetachiezikeuzor for the settings UI code, inspired by <https://github.com/chetachiezikeuzor/highlightr-Plugin/>
+Thanks to @chetachiezikeuzor for the settings UI code, inspired by <https://github.com/chetachiezikeuzor/highlightr-Plugin/>  
+Thanks to @eatgrass and @fhb263: the Music module is modified from [LyricFlux](https://github.com/fhb263/obsidian-lyricflux) and [obsidian-lyric](https://github.com/eatgrass/obsidian-lyric) (both MIT licensed)
