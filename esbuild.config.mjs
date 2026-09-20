@@ -21,6 +21,8 @@ esbuild
     external: [
       "obsidian",
       "electron",
+      // jsmediatags 的可选 React Native 读取器依赖，Obsidian 环境永不加载
+      "react-native-fs",
       "codemirror",
       "@codemirror/autocomplete",
       "@codemirror/closebrackets",

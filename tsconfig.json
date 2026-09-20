@@ -10,6 +10,7 @@
     "strict": true,
     "moduleResolution": "bundler",
     "importHelpers": true,
+    "types": ["node"],
     "lib": [
       "DOM",
       "ES2017",

@@ -5,6 +5,7 @@ import { render as renderPersistent } from "./tabs/persistent-ui";
 import { render as renderSelection } from "./tabs/selection-ui";
 import { render as renderIndex } from "./tabs/index-ui";
 import { render as renderTeleprompter } from "./tabs/teleprompter-ui";
+import { render as renderMusic } from "./tabs/music-ui";
 
 /** 主标签页定义：id 用于选中判定，render 负责填充该页内容 */
 interface MainTab {
@@ -18,6 +19,7 @@ const MAIN_TABS: MainTab[] = [
   { id: "selection", label: "选择高亮", render: (el, tab) => renderSelection(el, tab.plugin) },
   { id: "index", label: "高亮索引", render: (el, tab) => renderIndex(el, tab.plugin) },
   { id: "teleprompter", label: "提词器", render: (el, tab) => renderTeleprompter(el, tab.plugin, tab) },
+  { id: "music", label: "音乐", render: (el, tab) => renderMusic(el, tab.plugin, tab) },
 ];
 
 export class SettingTab extends PluginSettingTab {

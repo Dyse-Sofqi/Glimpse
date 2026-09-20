@@ -12,9 +12,13 @@ import { buildStyles, reconfigureStaticHighlighter, staticHighlighterExtension }
 import { minimapExtension } from "./highlighters/minimap";
 import { scrollbarMarkersExtension } from "./highlighters/scrollbar-markers";
 import { DEFAULT_SETTINGS, GlimpseSettings, HighlighterOptions } from "./settings/settings";
+import { DEFAULT_MUSIC_SETTINGS } from "./music/settings-types";
 import { SettingTab } from "./settings/ui";
 import { HIGHLIGHT_INDEX_VIEW, HighlightIndexView } from "./highlight-index-view";
 import { TeleprompterManager } from "./teleprompter";
+import { MUSIC_VIEW_TYPE } from "./music/shared";
+import { MusicManager } from "./music/manager";
+import MusicView from "./music/musicView";
 
 
 export default class GlimpsePlugin extends Plugin {
@@ -27,14 +31,20 @@ export default class GlimpsePlugin extends Plugin {
   settingsTab!: SettingTab;
   private cssSheets: CSSStyleSheet[] = [];
   teleprompterManager!: TeleprompterManager;
+  music!: MusicManager;
   private statusBarItem?: HTMLElement;
 
   async onload() {
     await this.loadSettings();
+    // 音乐模块先于提词器创建：提词器歌词模式构造时订阅其播放状态
+    // （歌单扫描/播放控制/状态分发中枢；设置页渲染 music-ui 前必须已创建）
+    this.music = new MusicManager(this.app, this, this.settings.music);
     // 提词器先于视图注册初始化：高亮索引视图 onOpen（layout-ready 可能同步触发）
     // 会经 anchoredDocPath 读 teleprompterManager，晚初始化即 undefined 崩溃
     this.teleprompterManager = new TeleprompterManager(this);
+    this.register(() => this.music.onunload());
     this.registerView(HIGHLIGHT_INDEX_VIEW, (leaf) => new HighlightIndexView(leaf, this));
+    this.registerView(MUSIC_VIEW_TYPE, (leaf) => new MusicView(leaf, this.music));
     this.settingsTab = new SettingTab(this.app, this);
     this.addSettingTab(this.settingsTab);
     this.staticHighlighter = staticHighlighterExtension(this);
@@ -74,6 +84,42 @@ export default class GlimpsePlugin extends Plugin {
         this.teleprompterManager.closeAll();
       },
     });
+
+    // 音乐模块：ribbon 图标 + 命令（播放/切歌/歌单/下载）
+    this.addRibbonIcon("music", "Glimpse 音乐面板", () => void this.music.activateView());
+    this.addCommand({
+      id: "open-music-panel",
+      name: "打开音乐面板",
+      callback: () => void this.music.activateView(),
+    });
+    this.addCommand({
+      id: "music-toggle-play",
+      name: "音乐：播放/暂停",
+      callback: () => this.music.toggleActivePlayer(),
+    });
+    this.addCommand({
+      id: "music-next-song",
+      name: "音乐：下一首",
+      callback: () => this.music.stepSong(1),
+    });
+    this.addCommand({
+      id: "music-prev-song",
+      name: "音乐：上一首",
+      callback: () => this.music.stepSong(-1),
+    });
+    this.addCommand({
+      id: "music-open-download",
+      name: "音乐：打开在线歌曲搜索",
+      callback: async () => {
+        await this.music.activateView();
+        const leaf = this.app.workspace.getLeavesOfType(MUSIC_VIEW_TYPE)[0];
+        if (leaf?.view instanceof MusicView) leaf.view.showOnlineTab();
+      },
+    });
+
+    // 音乐模块生命周期：vault 事件（重扫）+ 状态初始化（首扫后恢复上次播放进度，不自动播放）
+    this.music.registerVaultEvents();
+    void this.music.scanLyricSongs().then(() => this.music.restoreLastPlayed());
 
     // 状态栏「打开提词器」按钮（随设置显隐）
     this.updateStatusBarButton();
@@ -123,6 +169,11 @@ export default class GlimpsePlugin extends Plugin {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
     // 提词器设置单独深层合并（浅合并下 windows[] 数组会被整体覆盖）
     this.settings.teleprompter = Object.assign({}, DEFAULT_SETTINGS.teleprompter, data?.teleprompter ?? {});
+    // 音乐设置单独深层合并（浅合并下 platformCookies/downloadSources 对象会被整体覆盖）
+    this.settings.music = Object.assign({}, DEFAULT_MUSIC_SETTINGS, data?.music ?? {});
+    this.settings.music.downloadSources = Object.assign(
+      {}, DEFAULT_MUSIC_SETTINGS.downloadSources, data?.music?.downloadSources ?? {},
+    );
     // 强制对齐项目默认值并写回磁盘，避免 data.json 残留旧值
     let changed = false;
     if (this.settings.selectionHighlighter.minSelectionLength !== DEFAULT_SETTINGS.selectionHighlighter.minSelectionLength) {

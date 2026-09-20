@@ -1,6 +1,8 @@
 import { StaticHighlightOptions } from "../highlighters/static";
 import { SelectionHighlightOptions } from "../highlighters/selection";
 import type { TeleprompterWindowState } from "../teleprompter";
+import type { MusicSettings } from "../music/settings-types";
+import { DEFAULT_MUSIC_SETTINGS } from "../music/settings-types";
 
 interface SearchConfig {
   value: string;
@@ -37,6 +39,8 @@ export interface GlimpseSettings {
   staticHighlighter: StaticHighlightOptions;
   highlightIndex: HighlightIndexSettings;
   teleprompter: TeleprompterSettings;
+  /** 音乐模块（侧边栏歌词面板/歌单/多平台下载），持久化在 data.json 的 music 字段 */
+  music: MusicSettings;
 }
 
 export interface HighlightIndexSettings {
@@ -45,16 +49,22 @@ export interface HighlightIndexSettings {
 
 // 提词器设置 —— UI 接入在步骤 3；windows 持久化在步骤 4
 // 不透明度初始值（百分比）—— 设置界面重置按钮恢复到此值
-export const DEFAULT_FONT_OPACITY = 80;
-export const DEFAULT_BG_OPACITY = 90;
+export const DEFAULT_FONT_OPACITY = 100;
+export const DEFAULT_BG_OPACITY = 80;
 
-// 文字阴影初始值（隐藏背景时的字幕投影）—— 依据截图效果校准：
-// 右偏 2px / 下偏 3px / 模糊 6px / 不透明度 60%，设置界面重置按钮恢复到此值
+// 正文字体/字重/颜色初始值 —— 取自当前实际使用配置
+export const DEFAULT_FONT_FAMILY =
+  "Segoe UI, Source Han Serif SC VF, Source Han Sans SC VF";
+export const DEFAULT_FONT_WEIGHT = 800;
+export const DEFAULT_FONT_COLOR = "#B00000";
+
+// 文字阴影初始值（隐藏背景时的字幕投影）——
+// 右偏 2px / 下偏 3px / 模糊 6px / 不透明度 35%，设置界面重置按钮恢复到此值
 export const DEFAULT_SHADOW_ENABLED = true;
 export const DEFAULT_SHADOW_OFFSET_X = 2;
 export const DEFAULT_SHADOW_OFFSET_Y = 3;
 export const DEFAULT_SHADOW_BLUR = 6;
-export const DEFAULT_SHADOW_OPACITY = 60;
+export const DEFAULT_SHADOW_OPACITY = 35;
 
 // 文字渐变（覆盖「字体颜色」，背景裁切到文字）
 export type GradientType = "linear" | "radial";
@@ -63,13 +73,13 @@ export interface GradientStop {
   color: string; // hex（不含 alpha）
   pos: number; // 停靠位置 0-100（%）
 }
-export const DEFAULT_GRADIENT_ENABLED = false;
+export const DEFAULT_GRADIENT_ENABLED = true;
 export const DEFAULT_GRADIENT_TYPE: GradientType = "linear";
-export const DEFAULT_GRADIENT_SCOPE: GradientScope = "block";
-export const DEFAULT_GRADIENT_ANGLE = 90; // 线性渐变角度，90 = 从左到右
+export const DEFAULT_GRADIENT_SCOPE: GradientScope = "char";
+export const DEFAULT_GRADIENT_ANGLE = 180; // 线性渐变角度，180 = 从上到下
 export const DEFAULT_GRADIENT_STOPS: GradientStop[] = [
-  { color: "#FF4D4F", pos: 0 },
-  { color: "#B00020", pos: 100 },
+  { color: "#FF8D4D", pos: 0 },
+  { color: "#E70F0F", pos: 100 },
 ];
 
 /** 按停靠位置排序后拼出 CSS 渐变图片值；无停靠点返回空串 */
@@ -90,8 +100,8 @@ export function buildGradientImage(
 }
 
 export interface TeleprompterSettings {
-  fontOpacity: number; // 0-100，默认 80
-  bgOpacity: number; // 0-100，默认 90
+  fontOpacity: number; // 0-100，默认 100
+  bgOpacity: number; // 0-100，默认 80
   fontFamily: string; // 正文字体栈，逗号分隔；靠前且本机存在的字体优先生效，空串 = 跟随主题
   fontWeight: number | null; // 正文字重，null = 跟随主题
   fontColor: string | null; // 正文字体颜色（hex），null = 跟随主题
@@ -99,12 +109,12 @@ export interface TeleprompterSettings {
   shadowOffsetX: number; // 阴影水平偏移（px，可负），默认 2
   shadowOffsetY: number; // 阴影垂直偏移（px，可负），默认 3
   shadowBlur: number; // 阴影模糊半径（px），默认 6
-  shadowOpacity: number; // 阴影不透明度 0-100，默认 60
-  gradientEnabled: boolean; // 文字渐变开关，默认关（开启后覆盖 fontColor）
+  shadowOpacity: number; // 阴影不透明度 0-100，默认 35
+  gradientEnabled: boolean; // 文字渐变开关，默认开（开启后覆盖 fontColor）
   gradientType: GradientType; // linear | radial，默认 linear
-  gradientScope: GradientScope; // block = 整体一条渐变 | char = 每字独立渐变，默认 block
-  gradientAngle: number; // 线性渐变角度 0-360，默认 90
-  gradientStops: GradientStop[]; // 颜色停靠点（位置 %），默认红系两停靠
+  gradientScope: GradientScope; // block = 整体一条渐变 | char = 每字独立渐变，默认 char
+  gradientAngle: number; // 线性渐变角度 0-360，默认 180
+  gradientStops: GradientStop[]; // 颜色停靠点（位置 %），默认橙红两停靠
   selectionExtractEnabled: boolean; // 选中提取模式，默认开
   statusBarButton: boolean; // 状态栏「打开提词器」按钮，默认开
   windows: TeleprompterWindowState[]; // 打开的提词器实例（含位置/样式状态）
@@ -131,9 +141,9 @@ export const DEFAULT_SETTINGS: GlimpseSettings = {
   teleprompter: {
     fontOpacity: DEFAULT_FONT_OPACITY,
     bgOpacity: DEFAULT_BG_OPACITY,
-    fontFamily: "",
-    fontWeight: null,
-    fontColor: null,
+    fontFamily: DEFAULT_FONT_FAMILY,
+    fontWeight: DEFAULT_FONT_WEIGHT,
+    fontColor: DEFAULT_FONT_COLOR,
     shadowEnabled: DEFAULT_SHADOW_ENABLED,
     shadowOffsetX: DEFAULT_SHADOW_OFFSET_X,
     shadowOffsetY: DEFAULT_SHADOW_OFFSET_Y,
@@ -149,4 +159,5 @@ export const DEFAULT_SETTINGS: GlimpseSettings = {
     windows: [],
     closed: [],
   },
+  music: { ...DEFAULT_MUSIC_SETTINGS, downloadSources: { ...DEFAULT_MUSIC_SETTINGS.downloadSources } },
 };

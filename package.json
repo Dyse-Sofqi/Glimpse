@@ -1,6 +1,6 @@
 {
   "name": "glimpse",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "An Obsidian plugin that dynamically highlights text based on selection or search query",
   "main": "main.js",
   "scripts": {
@@ -31,8 +31,10 @@
     "codemirror": "^6.0.0",
     "codemirror6-themes": "^0.1.2",
     "esbuild": "0.13.12",
+    "jsmediatags": "^3.9.7",
     "lodash": "^4.17.21",
     "monkey-around": "^2.2.0",
+    "node-id3": "^0.2.9",
     "obsidian": "^0.14.8",
     "regexp-match-indices": "^1.0.2",
     "sortablejs": "^1.14.0",
@@ -42,5 +44,8 @@
     "tslib": "2.3.1",
     "typescript": "^7.0.2",
     "typescript-json-schema": "^0.53.0"
+  },
+  "dependencies": {
+    "playwright": "^1.63.0"
   }
 }

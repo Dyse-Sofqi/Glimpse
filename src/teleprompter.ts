@@ -4,13 +4,22 @@ import GlimpsePlugin from "./main";
 import { copyText } from "./settings/export";
 import { buildGradientImage } from "./settings/settings";
 import { HighlightIndexView, HIGHLIGHT_INDEX_VIEW } from "./highlight-index-view";
+import type { MusicState } from "./music/manager";
 
 const TP_SNAP_EDGE = 24; // px，贴近视口边缘的吸附距离
 const TP_SNAP_CENTER = 10; // px，贴近视口中心线的吸附距离
 const TP_MIN_WIDTH = 240; // 窗口最小宽度
+const TP_MIN_VISIBLE_H = 44; // px，窗口纵向至少露出这么高（工具栏可抓取）
 const TP_FONT_SIZES = [32, 40, 50, 64, 80]; // 字体大小循环档位
 
-export type TeleprompterMode = "line" | "highlight";
+export type TeleprompterMode = "line" | "highlight" | "lyrics";
+
+/** 模式下拉选项（顺序即下拉顺序） */
+const TP_MODE_OPTIONS: Array<[TeleprompterMode, string]> = [
+  ["line", "逐行提取"],
+  ["highlight", "高亮提取"],
+  ["lyrics", "歌词提取"],
+];
 
 // 窗口状态 —— 步骤 4 持久化到 data.json
 export interface TeleprompterWindowState {
@@ -62,7 +71,7 @@ export class TeleprompterWindow extends Component {
   private guideXEl!: HTMLElement;
   private guideYEl!: HTMLElement;
   private bindBtnEl!: ButtonComponent;
-  private modeBtnEl!: ButtonComponent;
+  private modeSelectEl!: HTMLSelectElement;
   private trackBtnEl!: ButtonComponent;
   private scrollSyncBtnEl!: ButtonComponent;
   private prevBtnEl!: ButtonComponent;
@@ -106,7 +115,7 @@ export class TeleprompterWindow extends Component {
     this.setScrollSync(!!state.scrollSync); // 兼容旧持久化缺字段
     this.setBgHidden(state.bgHidden);
     this.updateBindBtn();
-    this.updateModeBtn();
+    this.updateModeSelect();
     this.updateTrackBtn();
     this.applySettings();
     this.ready = true;
@@ -115,6 +124,10 @@ export class TeleprompterWindow extends Component {
     // 高亮模式恢复：重启后无触发源会刷新匹配，这里主动加载并定位
     // （refreshLine/startPolling 均守卫 line 模式，高亮模式由本调用接手）
     if (this.state.mode === "highlight") void this.initHighlightMode();
+    else if (this.state.mode === "lyrics") this.refreshLyrics();
+    // 歌词模式：订阅音乐模块播放状态（timeupdate 高频推送，refreshLyrics 内按行去重）
+    this.plugin.music?.onLyricsStateChange(this._onMusicState);
+    this.register(() => this.plugin.music?.removeLyricsStateListener(this._onMusicState));
     // 注：悬停 ↑/↓ 键盘导航已移除 —— capture 劫持与编辑器原生导航冲突，
     // 上一项/下一项由滚轮与工具栏按钮承担（无键盘冲突）
     // 切换文档/叶子时刷新绑定按钮文本、行内容并重启轮询（startPolling 内会重解析跟随编辑器）
@@ -309,13 +322,14 @@ export class TeleprompterWindow extends Component {
     this.bindBtnEl.buttonEl.addClass("is-interactive");
     this.bindBtnEl.setButtonText("—");
     this.bindBtnEl.onClick(() => this.toggleBinding());
-    // 模式切换 —— 文本按钮，显示当前模式名，点击切换
-    this.modeBtnEl = new ButtonComponent(toolbar);
-    this.modeBtnEl.setClass("glimpse-tp-btn");
-    this.modeBtnEl.buttonEl.addClass("clickable-icon");
-    this.modeBtnEl.buttonEl.addClass("is-interactive");
-    this.modeBtnEl.buttonEl.addClass("glimpse-tp-mode");
-    this.modeBtnEl.onClick(() => this.setMode(this.state.mode === "line" ? "highlight" : "line"));
+    // 模式切换 —— 下拉列表：逐行提取 / 高亮提取 / 歌词提取
+    this.modeSelectEl = toolbar.createEl("select", { cls: "glimpse-tp-mode" });
+    for (const [value, label] of TP_MODE_OPTIONS) {
+      this.modeSelectEl.createEl("option", { value, text: label });
+    }
+    this.modeSelectEl.addEventListener("change", () => {
+      void this.setMode(this.modeSelectEl.value as TeleprompterMode);
+    });
     // 跟踪光标 —— 行模式光标跟随开关（默认关，独立于模式）
     // 非交互按钮：穿透锁定时随其他非交互按钮一并隐藏
     this.trackBtnEl = addBtn("text-cursor", "跟踪光标", () => this.toggleTrackCursor());
@@ -358,6 +372,9 @@ export class TeleprompterWindow extends Component {
     this.bodyEl = root.createDiv("glimpse-tp-body");
     this.contentEl = this.bodyEl.createDiv("glimpse-tp-content markdown-rendered markdown-preview-view");
     this.contentEl.setText("Glimpse 提词器");
+    // 内容区高度设计上限（styles.css 的 max-height: 70vh）在此读一次：
+    // 之后 place/capContentHeight 会写 inline max-height，回读会拿到被压过的值
+    this.contentMaxH = parseFloat(getComputedStyle(this.contentEl).maxHeight) || 0;
     // 双击：光标跳到捕获文本所在行并聚焦编辑器（穿透锁定时事件穿透,天然失效）
     this.contentEl.addEventListener("dblclick", () => this.jumpToCapturedLine());
     // 右键：复制捕获文本的纯文本（渲染后 innerText,无 md 语法;抑制原生菜单）
@@ -380,6 +397,7 @@ export class TeleprompterWindow extends Component {
     root.addEventListener(
       "wheel",
       e => {
+        if ((e.target as HTMLElement).closest?.("select")) return; // 模式下拉交给原生滚动
         e.preventDefault();
         if (e.deltaY > 0) this.nextItem();
         else this.prevItem();
@@ -387,25 +405,47 @@ export class TeleprompterWindow extends Component {
       { passive: false }
     );
 
-    // 拖拽 —— 整个窗口均可拖动（按钮 / 缩放手柄除外）
+    // 拖拽 —— 整个窗口均可拖动（按钮 / 缩放手柄 / 原生下拉除外）
     root.addEventListener("mousedown", e => {
       const t = e.target as HTMLElement;
       if (t.closest(".glimpse-tp-btn")) return; // 按钮（含交互按钮）
       if (t.closest(".glimpse-tp-resize")) return; // 宽度缩放手柄
+      if (t.closest("select")) return; // 模式下拉：preventDefault 会阻止选项列表弹出
       this.startDrag(e);
     });
   }
 
-  /** 将窗口放到指定位置并做视口内边界校正 */
+  /** 将窗口放到指定位置并做视口内边界校正。
+   *  纵向只保证顶部在视口内（至少露出 TP_MIN_VISIBLE_H，工具栏可抓取），**不按窗口高度钳制**：
+   *  窗口高度由当前行文决定，按高度钳制会把「与位置无关的高度变化」变成整窗位移 ——
+   *  重启恢复时最明显：构造期工作区还没有活动文档（内容空、窗口矮），保存的 y 原样保留；
+   *  文档打开后真内容渲染变高、autoFitWidth 再 place 时 y 就被钳上去（表现为「提词器被抬升一段」）。
+   *  装不下的部分改由内容区高度上限消化（见 capContentHeight），窗口仍不越出视口 */
   place(x: number, y: number) {
     const vw = window.innerWidth, vh = window.innerHeight;
-    const w = this.rootEl.offsetWidth, h = this.rootEl.offsetHeight;
+    const w = this.rootEl.offsetWidth;
     x = Math.min(Math.max(x, 0), Math.max(vw - w, 0));
-    y = Math.min(Math.max(y, 0), Math.max(vh - h, 0));
+    y = Math.min(Math.max(y, 0), Math.max(vh - TP_MIN_VISIBLE_H, 0));
     this.state.x = x;
     this.state.y = y;
     this.rootEl.style.left = x + "px";
     this.rootEl.style.top = y + "px";
+    this.capContentHeight();
+  }
+
+  /** 内容区高度设计上限（styles.css 的 max-height: 70vh），构造时读一次存下：
+   *  之后 place 会写 inline max-height（可用空间限制），回读会拿到被压过的值，越压越小 */
+  private contentMaxH = 0;
+
+  /** 内容区高度上限 = min(设计上限, 该窗口下方可用空间)：长行文在窗口内滚动，而不是把窗口
+   *  撑出屏幕（旧行为靠「按高度钳 y」兜住，代价就是整窗被顶上去）。内容区 CSS 自带 min-height，
+   *  可用空间不足时以 min-height 为准（此时窗口最多露出一点点在视口外，仍可抓取） */
+  private capContentHeight() {
+    const vh = window.innerHeight;
+    const chromeH = this.rootEl.offsetHeight - this.contentEl.offsetHeight; // 工具栏 + 边框
+    const avail = vh - this.state.y - chromeH;
+    const cap = this.contentMaxH > 0 ? this.contentMaxH : Math.round(vh * 0.7);
+    this.contentEl.style.maxHeight = Math.max(Math.min(cap, avail), 0) + "px";
   }
 
   /** 移到最前（重新 append 到 body，同 z-index 下后置者在上） */
@@ -632,11 +672,10 @@ export class TeleprompterWindow extends Component {
     }
   }
 
-  private updateModeBtn() {
-    const line = this.state.mode === "line";
-    this.modeBtnEl?.buttonEl.toggleClass("is-active", !line);
-    this.modeBtnEl?.setButtonText(line ? "逐行提取" : "高亮提取");
-    this.setTpTooltip(this.modeBtnEl?.buttonEl ?? null, () => "模式切换");
+  private updateModeSelect() {
+    if (!this.modeSelectEl) return;
+    this.modeSelectEl.value = this.state.mode;
+    this.setTpTooltip(this.modeSelectEl, () => "模式切换");
   }
 
   private updateTrackBtn() {
@@ -787,7 +826,7 @@ export class TeleprompterWindow extends Component {
     this.state.boundDoc = path;
     this.updateBindBtn();
     this.state.mode = "highlight";
-    this.updateModeBtn();
+    this.updateModeSelect();
     // 强制重扫：ensureMatches 按文档路径缓存，索引刷新后同文档内容已变更，
     // 命中缓存会返回旧匹配导致点击显示第一项
     this.matches = [];
@@ -800,12 +839,15 @@ export class TeleprompterWindow extends Component {
 
   async setMode(mode: TeleprompterMode) {
     this.state.mode = mode;
-    // 行模式启轮询跟随光标；高亮模式关（prev/next 手动浏览，不跟光标）
+    // 行模式启轮询跟随光标；高亮/歌词模式关（歌词跟随播放推送，不跟编辑器）
     if (mode === "line") this.startPolling();
     else this.stopPolling();
-    this.updateModeBtn();
+    this.updateModeSelect();
     if (mode === "highlight") {
       await this.initHighlightMode();
+    } else if (mode === "lyrics") {
+      this.lastLyricsKey = ""; // 强制重渲染当前歌词行
+      this.refreshLyrics();
     } else {
       this.refreshLine();
     }
@@ -822,6 +864,44 @@ export class TeleprompterWindow extends Component {
       const near = this.matches.findIndex(m => m.line >= Math.max(this.currentLine, 0));
       this.showMatchIndex(near >= 0 ? near : 0);
     }
+  }
+
+  // ---------- 歌词提取模式 ----------
+
+  /** 上次渲染的歌词键（filePath:currentIndex），状态推送 ~4 次/秒，仅行切换时重渲染 */
+  private lastLyricsKey = "";
+
+  private _onMusicState = (_state: MusicState | null) => {
+    this.refreshLyrics();
+  };
+
+  /** 歌词模式：展示音乐模块当前高亮歌词行（随播放滚动）。
+   *  无播放会话 / 前奏未唱到第一行时展示半透明提示（不污染 lastText 回退） */
+  private refreshLyrics() {
+    if (this.state.mode !== "lyrics") return;
+    const state = this.plugin.music?.getState() ?? null;
+    const line = state && state.currentIndex >= 0 ? state.lyrics[state.currentIndex] : undefined;
+    const text = (line?.text ?? "").trim();
+    const key = `${state?.filePath ?? ""}:${state?.currentIndex ?? -1}`;
+    if (key === this.lastLyricsKey) return;
+    this.lastLyricsKey = key;
+    if (text) {
+      this.renderContent(text);
+    } else {
+      this.contentEl.toggleClass("is-placeholder", true);
+      this.renderMarkdown(state?.filePath ? "♪ 前奏 ♪" : "未在播放歌曲");
+    }
+  }
+
+  /** 歌词模式上一项/下一项：展示跟随播放推送，无法脱离播放手动浏览，
+   *  改为 seek 到相邻歌词行时间戳（暂停时同样生效，行高亮随 seek 更新） */
+  private stepLyrics(dir: 1 | -1) {
+    const music = this.plugin.music;
+    const state = music?.getState();
+    if (!music || !state || !state.lyrics.length) return;
+    const cur = state.currentIndex >= 0 ? state.currentIndex : 0;
+    const idx = Math.min(Math.max(cur + dir, 0), state.lyrics.length - 1);
+    music.seekActivePlayer((state.lyrics[idx]?.timestamp ?? 0) / 1000);
   }
 
   private async showLine(line: number, text?: string) {
@@ -851,6 +931,8 @@ export class TeleprompterWindow extends Component {
     if (this.state.mode === "line") {
       this.showLine(this.currentLine - 1);
       if (this.state.scrollSync) this.syncLineCursor();
+    } else if (this.state.mode === "lyrics") {
+      this.stepLyrics(-1);
     } else {
       // 匹配尚未加载（如重启恢复后首滚）：先扫再导航，滚动即触发获取
       if (!this.matches.length) await this.ensureMatches();
@@ -864,6 +946,8 @@ export class TeleprompterWindow extends Component {
     if (this.state.mode === "line") {
       this.showLine(this.currentLine + 1);
       if (this.state.scrollSync) this.syncLineCursor();
+    } else if (this.state.mode === "lyrics") {
+      this.stepLyrics(1);
     } else {
       if (!this.matches.length) await this.ensureMatches();
       this.showMatchIndex(this.currentIndex + 1);
@@ -921,6 +1005,9 @@ export class TeleprompterWindow extends Component {
       if (seq !== this.renderSeq) return;
       this.applyGradientScope(); // 内容重建后重套渐变范围（逐字包裹/解包）
       if (!this.state.widthLocked) this.autoFitWidth();
+      // 宽度没变时 autoFitWidth 不会 place：内容高度变化也要按当前 y 重新限制高度，
+      // 否则长行文会把窗口撑出屏幕（见 capContentHeight）
+      this.capContentHeight();
     };
     const fallback = () => {
       if (seq !== this.renderSeq) return;
@@ -940,6 +1027,7 @@ export class TeleprompterWindow extends Component {
       高亮模式 → 尽量选中匹配文本段（归一化后找不到则回退整行）;
       行模式 → 选中整行;选中覆盖 → 保留编辑器现有选择（即对应文本），仅聚焦 */
   private jumpToCapturedLine() {
+    if (this.state.mode === "lyrics") return; // 歌词模式无文档行可跳
     const src = this.resolveDoc();
     // 高亮模式：同步选中高亮索引中对应卡片（即使匹配文档未打开为视图也触发）
     const match = this.state.mode === "highlight" ? this.matches[this.currentIndex] : undefined;
@@ -1064,6 +1152,9 @@ export class TeleprompterWindow extends Component {
     } else {
       this.guideYEl.hide();
     }
+
+    // 用户明确摆放：整窗不越出视口下缘（内容高度上限会随 y 收紧，正常不会顶住这里）
+    y = Math.min(y, Math.max(vh - h, 0));
 
     this.place(x, y);
   }
