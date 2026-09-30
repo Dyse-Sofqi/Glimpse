@@ -6,10 +6,11 @@
  * text-pipeline 坚持「偏移保持」的回报，不需要任何坐标换算。
  */
 import type { EditorView } from "@codemirror/view";
+import { ChangeSet } from "@codemirror/state";
 import { MarkdownView, Notice } from "obsidian";
 import type GlimpsePlugin from "../main";
 import { clauseIndexAt, clauseRawSpans, segmentContentRawRange, type ClauseSpan, type RawSpan } from "./clause-highlight";
-import { applyReaderHighlight, hasReaderHighlight } from "./highlight";
+import { applyReaderHighlight, hasReaderHighlight, mapRangeThroughDelta, setReaderDocChangeListener } from "./highlight";
 import {
   createElementAudioPlayback,
   createUrlAudioPlayback,
@@ -54,7 +55,30 @@ export class ReaderController {
   private boundPath: string | null = null;
   private readonly listeners = new Set<(progress: ReaderProgress) => void>();
 
+  /**
+   * 自分段以来文档的累计变更，用于把「分段时坐标」换算到当前文档。
+   *
+   * 所有内部持有的坐标（segment.rawFrom/rawTo、clauseRaw、lastAppliedRange）**一律是
+   * 分段那一刻的坐标**，只在两个出口换算成当前文档坐标：`toLiveRange()`。
+   * 这样「编辑中朗读」的高亮就不再整体偏移 —— 用户插入/删除多少字符，重算时都跟着挪。
+   *
+   * 关联方向与 CM 自己平移装饰（`RangeSet.map`：from 用 assoc 1、to 用 assoc -1）**必须
+   * 一致**，否则「自动平移」与「重算」两种路径在插入点边界上的取舍相反，换段瞬间会跳动。
+   *
+   * 用 `null` 表示「还没有任何编辑」而不是 `ChangeSet.empty` —— 后者在
+   * `@codemirror/state` 6.7 是 `empty(length)` 静态方法，需要一个文档长度且语义不等价。
+   */
+  private docDelta: ChangeSet | null = null;
+  /** 上面这条变更链对应的编辑器；只累计它所绑定的那个编辑器的事务 */
+  private deltaView: EditorView | null = null;
+
   constructor(private readonly plugin: GlimpsePlugin) {
+    // 累计变更：只认朗读会话绑定的编辑器，且只在分段之后（分段时基线清零）
+    setReaderDocChangeListener((view, changes) => {
+      if (view !== this.deltaView) return;
+      // 第一笔编辑直接作为链头（它的 length 必须是分段时的文档长度，此时成立）
+      this.docDelta = this.docDelta ? this.docDelta.compose(changes) : changes;
+    });
     this.queue = new SegmentQueue({
       engine: plugin.readerEngine,
       lookahead: plugin.settings.reader.lookahead,
@@ -201,11 +225,14 @@ export class ReaderController {
     if (!segment) return "";
     // 细分开启时取当前子区间；否则整段（段尾标点已由分段器剥掉，直接用段区间）
     const span = this.clauseRaw?.[this.clauseIndex];
-    const range: RawSpan =
+    const stored: RawSpan =
       span ??
       (this.segmentMap
         ? segmentContentRawRange(segment, this.segmentMap)
         : { from: segment.rawFrom, to: segment.rawTo });
+    // 编辑后要按当前文档取文本，否则提词器会显示错位的片段
+    const range = this.toLiveRange(stored);
+    if (!range) return segment.text;
     // 编辑器可能在切标签页后被 Obsidian 卸载（后台叶子销毁 CM 视图），读取会抛 ——
     // 回退段文本兜底：这里抛出去会打断 emit 的后续订阅者（提词器/播放条全冻结）
     let doc = "";
@@ -231,10 +258,35 @@ export class ReaderController {
   }
 
   private cmView(): EditorView | null {
-    const view = this.view;
+    return this.cmViewOf(this.view);
+  }
+
+  /** 从任意 MarkdownView 取底层 CM6 编辑器（分段时 this.view 还没挂上，须按参数取） */
+  private cmViewOf(view: MarkdownView | null): EditorView | null {
     if (!view) return null;
     const cm = (view.editor as unknown as { cm?: EditorView }).cm;
     return cm ?? null;
+  }
+
+  /**
+   * 分段基线：段坐标以**此刻的文档**为准。
+   * 清零变更链并记住对应编辑器；之后的编辑由 docDelta 累计，取用时经 toLiveRange() 换算。
+   *
+   * 必须在 buildSegments 处调用，**不能**放进 startWithSegments —— 后者还会被
+   * 「首段失败自动重启重试」复用（那时段列表没重建，清零会把用户的编辑丢掉），
+   * 且它内部有 `await ensureService()`（冷启动可达 20–65 秒），期间用户的编辑也会被丢。
+   */
+  private baselineSegmentation(view: MarkdownView): void {
+    this.deltaView = this.cmViewOf(view);
+    this.docDelta = null;
+  }
+
+  /**
+   * 「分段时坐标」→ **当前文档**坐标（编辑后自动修正）。
+   * 区间被删到不含任何字符时返回 null，调用方据此清掉高亮。
+   */
+  private toLiveRange(range: RawSpan): RawSpan | null {
+    return mapRangeThroughDelta(this.docDelta, range);
   }
 
   /**
@@ -284,11 +336,23 @@ export class ReaderController {
   private applyRange(range: RawSpan): void {
     const cm = this.cmView();
     if (!cm) return;
+    // 存的是分段时坐标；下发前统一换算到当前文档（编辑后自动修正）
     this.lastAppliedRange = range;
+    const live = this.toLiveRange(range);
+    if (!live) {
+      // 这一段/子区间的文本已被删空：没有可高亮的内容，清掉装饰即可
+      try {
+        applyReaderHighlight(cm, null, false);
+      } catch {
+        /* 编辑器不可用 */
+      }
+      this.pinBar();
+      return;
+    }
     try {
       applyReaderHighlight(
         cm,
-        range,
+        live,
         this.plugin.settings.reader.autoScroll,
         this.plugin.settings.reader.cursorFollow
       );
@@ -345,6 +409,9 @@ export class ReaderController {
       const mv = leaf.view;
       if (mv instanceof MarkdownView && mv.file?.path === path) {
         this.view = mv;
+        // 换到新编辑器：变更链**保留**（旧视图里的编辑已经落到文档里了，坐标仍然是
+        // 相对分段那一刻的），只把累计目标改到新编辑器上
+        this.deltaView = this.cmViewOf(mv);
         this.plugin.readerPlayerBar.mount(mv); // 播放条随旧视图销毁了，重挂
         return true;
       }
@@ -355,16 +422,8 @@ export class ReaderController {
   private reapplyIfLost(): void {
     const cm = this.cmView();
     if (!cm || hasReaderHighlight(cm)) return;
-    try {
-      applyReaderHighlight(
-        cm,
-        this.lastAppliedRange!,
-        this.plugin.settings.reader.autoScroll,
-        this.plugin.settings.reader.cursorFollow
-      );
-    } catch {
-      /* 编辑器仍不可用（尚未重载完），等下一次布局事件/兜底复查 */
-    }
+    // 走 applyRange：补发同样要经过 toLiveRange 换算（期间可能编辑过文档）
+    this.applyRange(this.lastAppliedRange!);
   }
 
   // ── 朗读入口 ──────────────────────────────────────────────
@@ -379,6 +438,7 @@ export class ReaderController {
       this.plugin.settings.reader.segment,
       this.plugin.readerSegmentLimits()
     );
+    this.baselineSegmentation(view);
     return this.startWithSegments(view, built.segments, startIndex, built.readable.map);
   }
 
@@ -460,6 +520,7 @@ export class ReaderController {
       new Notice("光标之后没有可朗读的内容");
       return false;
     }
+    this.baselineSegmentation(view);
 
     // 光标落在段中间时把首段在光标处截断，只读光标之后的内容 ——
     // 段按「弱边界 36 字」合并分句，整段照读会把光标前面的分句也读进去

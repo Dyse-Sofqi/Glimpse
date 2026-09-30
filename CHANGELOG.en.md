@@ -1,5 +1,11 @@
 # Changelog
 
+#### Unreleased
+
+**Bug fixes**
+
+- **Fixed read-aloud highlighting drifting as a whole when the note is edited while reading** — a segment's `rawFrom`/`rawTo` are coordinates from **the moment of segmentation**: the decorations themselves map through transactions automatically (`RangeSet.map`), but every segment change, clause advance and teleprompter text read **recomputes** the range from those stored coordinates. Editing while listening therefore fed the recomputation stale coordinates — the highlight shifted by exactly as many characters as were inserted or deleted, and drifted further with every edit. The controller now accumulates the **change chain since segmentation** (`ChangeSet.compose`) and maps every coordinate through `mapPos` at the **two exits where coordinates leave the controller** (dispatching the highlight in `applyRange`, and reading text for the teleprompter in `getCurrentText`). The association **matches CM's own decoration mapping** (`from` with assoc 1, `to` with assoc -1), so the "automatic mapping" and "recomputation" paths make the same choice at insertion boundaries and the highlight no longer jumps when the segment changes. Details: a range deleted down to nothing returns `null` and clears the highlight (instead of covering unrelated text); the chain is reset at the **segmentation baseline** and **survives an editor rebuild** (switching tabs or workspaces makes Obsidian destroy and recreate the CM view, while those edits are already in the document — which is why the chain lives in the controller rather than in a `StateField`); and the "decorations were lost, re-apply them" path goes through the same mapping. All 42 checks pass (11 single-edit cases, 5 multi-edit cases and boundary cases): the recomputed range is **byte-identical** to CM's own mapped decoration, and after an edit the highlighted text is exactly the original segment text with that same edit applied
+
 #### 1.1.0 (2026-09-30)
 
 **New features**

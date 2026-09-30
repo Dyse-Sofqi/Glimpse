@@ -6,12 +6,51 @@
  * 不需要 CSS 变量定位，也没有 z-index 负值、跨行阈值这类补丁。
  * 代价是只在视口内渲染 —— 但我们本来就要滚到当前段，无影响。
  */
-import { EditorState, Extension, Range, StateEffect, StateField } from "@codemirror/state";
+import { ChangeSet, EditorState, Extension, Range, StateEffect, StateField } from "@codemirror/state";
 import { Decoration, DecorationSet, EditorView } from "@codemirror/view";
 
 export interface ReaderHighlightRange {
   from: number;
   to: number;
+}
+
+/**
+ * 文档变更转发口：controller 订阅它，累计「自分段以来」的变更链。
+ *
+ * 为什么需要：段的 rawFrom / rawTo 是**分段那一刻**的坐标。装饰本身会随
+ * transaction.changes 自动平移（见下面 readerHighlightField.update），但 controller
+ * 每次换段、标点细分推进、提词器取文本时都会**从存储坐标重算**区间 —— 用户朗读中
+ * 一旦编辑文档，重算就会用到过期坐标，表现为高亮整体偏移（越改越偏）。
+ * 把变更链交给 controller，用 `ChangeSet.mapPos` 把旧坐标换算到当前文档即可自动修正。
+ *
+ * 用模块级转发口而不是 StateField 存变更链：变更链必须能**跨编辑器重建**活下来
+ * （切标签页/切工作区时 Obsidian 会销毁并重建 CM 视图，StateField 会随之清零，
+ * 而那些编辑已经落到文档里了），而 controller 的生命周期比编辑器长。
+ */
+export type ReaderDocChangeListener = (view: EditorView, changes: ChangeSet) => void;
+
+let docChangeListener: ReaderDocChangeListener | null = null;
+
+export function setReaderDocChangeListener(listener: ReaderDocChangeListener | null): void {
+  docChangeListener = listener;
+}
+
+/**
+ * 把「旧文档坐标」的区间经变更链换算到新文档；区间被删到不含任何字符时返回 null。
+ *
+ * 关联方向与 CM 自己平移装饰（`RangeSet.map`：from 取 assoc 1、to 取 assoc -1）**必须一致**，
+ * 否则「自动平移」与「重算」两条路径在插入点边界上的取舍相反，换段瞬间高亮会跳动。
+ * 实测该约定为：在 from 处插入 → 高亮右移（新字符不算入）；在 to 处插入 → 高亮不动。
+ */
+export function mapRangeThroughDelta(
+  delta: ChangeSet | null,
+  range: ReaderHighlightRange
+): ReaderHighlightRange | null {
+  if (!delta || delta.empty) return range;
+  const from = delta.mapPos(range.from, 1);
+  const to = delta.mapPos(range.to, -1);
+  if (to <= from) return null;
+  return { from, to };
 }
 
 /** 设置/清除朗读高亮；传 null 清除 */
@@ -64,7 +103,14 @@ export const readerHighlightField = StateField.define<DecorationSet>({
 export function readerHighlightExtension(): Extension {
   // 配色放在 styles.css 的 .glimpse-reader-line / .glimpse-reader-segment 里，
   // 而不是用 EditorView.theme 内联 —— 这样用户能用 CSS 片段覆盖。
-  return readerHighlightField;
+  return [
+    readerHighlightField,
+    // 变更转发：只转发「文档真的变了」的事务，空变更不参与累计
+    EditorView.updateListener.of(update => {
+      if (!update.docChanged) return;
+      docChangeListener?.(update.view, update.changes);
+    }),
+  ];
 }
 
 /** 当前编辑器是否还挂着朗读高亮装饰。

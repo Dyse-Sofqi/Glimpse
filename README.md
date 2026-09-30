@@ -183,7 +183,7 @@
 **说明与限制**
 
 - 朗读依赖本地服务与子进程，**仅桌面端可用**；阅读模式（Reading）不支持
-- 朗读过程中编辑文档：高亮会跟着文本变更平移，但已在合成的段队列不会重排，位置可能失配
+- 朗读过程中编辑文档：高亮与提词器内容会随文本变更**自动换算位置**（不会整体偏移）；但已在合成/播放中的段仍是编辑前的文字——音频不会因编辑重新合成或重排
 - 目前是段级高亮（可选推进到分句），尚无逐词高亮；也没有续读位置持久化与音频导出
 
 ### 音乐
@@ -235,7 +235,7 @@
 ### 限制
 
 - 阅读（Reading）模式暂不支持动态高亮
-- 朗读（桌面端）：依赖本地语音服务与子进程，仅桌面端可用；阅读（Reading）模式不支持；朗读期间编辑文档时，已在合成的段队列不会重排，高亮位置可能失配
+- 朗读（桌面端）：依赖本地语音服务与子进程，仅桌面端可用；阅读（Reading）模式不支持；朗读期间编辑文档时，高亮与提词器会随文本变更自动换算位置，但已在合成/播放中的段仍是编辑前的文字
 - 音乐：库外绝对路径音频/下载写盘为桌面端功能；移动端仅支持 vault 内音频播放，在线歌词/下载接口在移动端可能因 Referer 头被剥离而不可用
 
 ### 赞助
@@ -425,7 +425,7 @@ Reads the current note out loud: the text is first filtered down to "what should
 **Notes & limitations**
 
 - Reading aloud depends on local services and child processes and is **desktop only**; Reading mode is not supported
-- Editing the document while reading: the highlight pans with the text changes, but segments already queued for synthesis are not re-ordered, so positions can drift
+- Editing the document while reading: the highlight and the teleprompter text **re-map to the current document automatically** (they no longer drift as a whole); segments already synthesised or playing still read the pre-edit text, though — the audio is never re-synthesised or re-ordered because of an edit
 - Highlighting is currently segment-level (optionally advancing to the clause), with no word-level highlighting yet; there is also no resume-position persistence and no audio export
 
 ### Music
