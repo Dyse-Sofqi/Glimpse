@@ -132,7 +132,7 @@
 - **渲染样式**：内容复用主题与自定义 CSS（标题、代码块、内联格式等），仅字体大小由提词器控制；单行渲染前自动去掉行首缩进，嵌套列表等缩进行按无缩进列表/文本展示，不被误判为代码块
 - **垂直居中**：文本显示域内内容垂直居中，短内容不再顶置；内容超过最大高度时回退常规滚动，顶部不截断；高度上限取 `min(70vh, 窗口下方可用空间)`——窗口贴近屏幕下缘时长行文在窗口内滚动，而不是把窗口撑出屏幕
 - **状态栏入口**：右下角状态栏「打开提词器」按钮（lucide-presentation）一键打开/聚焦，可在设置中关闭
-- **双击定位 + 选中**：双击文本显示域，编辑器光标跳到捕获文本所在行并选中对应文本（高亮模式选中匹配文本段、行模式选中整行、选中提取保留现有选择），聚焦并将选中范围滚动至视口中央
+- **双击定位 + 选中**：双击文本显示域，编辑器跳到捕获文本所在位置并选中对应文本（高亮模式选中匹配文本段、行模式选中整行、**朗读模式滚动到正在朗读的段落并选中朗读高亮的那段文字**、选中提取保留现有选择），聚焦并将选中范围滚动至视口中央
 - **右键复制**：右键单击文本显示域，复制捕获文本的渲染后纯文本（无 Markdown 语法），成功弹出「已复制」通知
 - **状态持久化**：关闭后重新打开即恢复上次窗口的位置、尺寸、模式、绑定、跟踪光标等状态；已关闭窗口的状态跨重启保留，Obsidian 重启后重开仍可恢复，已关闭的窗口不会在重启后自动弹出；**窗口位置按保存值原样恢复**，不再因恢复后的行文变高被抬升
 - **空行回退**：当前行为空时显示上一项内容（半透明占位）
@@ -374,7 +374,7 @@ Karaoke-style floating teleprompter windows that follow document content in real
 - **Theme / custom CSS styling**: content reuses theme and user CSS snippets (headings, code blocks, inline formatting); only font size is controlled by the teleprompter. Leading tabs/spaces are stripped before rendering a single line, so indented content (e.g. nested list items) renders as unindented list/text instead of a code block
 - **Vertical centering**: content is vertically centered within the text display area — short content no longer sits at the top; when content exceeds the max height it falls back to normal scrolling (top never clipped); the height cap is `min(70vh, space below the window)`, so long content near the bottom of the screen scrolls inside the window instead of pushing it off-screen
 - **Status bar entry**: "Open teleprompter" button in the bottom-right status bar (lucide-presentation) for one-click open/focus, toggleable in settings
-- **Double-click to jump & select**: double-click the text area to move the editor cursor to the captured text's line and select the matching text (the match segment in highlight-extract mode, the whole line in line mode, the existing selection preserved in selection-extract mode), focus the editor, and scroll the selection to the center of the viewport
+- **Double-click to jump & select**: double-click the text area to take the editor to the captured text's position and select the matching text (the match segment in highlight-extract mode, the whole line in line mode, **in reader-extract mode it scrolls to the segment being read and selects exactly the text the reader highlights**, the existing selection preserved in selection-extract mode), focus the editor, and scroll the selection to the center of the viewport
 - **Right-click to copy**: right-click the text area to copy the rendered plain text of the captured content (no Markdown syntax); a "已复制" notice confirms success
 - **State persistence**: closing a window and reopening it restores its position, size, mode, binding, track-cursor toggle, and more; closed-window states survive an Obsidian restart (reopening still restores them), and closed windows never auto-reopen on restart; **the window position comes back exactly as saved** instead of being lifted by taller restored content
 - **Empty-line fallback**: shows previous item's text (half-opacity placeholder) when the current line is empty

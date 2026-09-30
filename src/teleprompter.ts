@@ -1129,32 +1129,42 @@ export class TeleprompterWindow extends Component {
     }
   }
 
-  /** 双击：光标跳到捕获文本所在行、选中对应文本并聚焦编辑器。
+  /** 双击：滚动到捕获文本所在位置、选中对应文本并聚焦编辑器。
       高亮模式 → 尽量选中匹配文本段（归一化后找不到则回退整行）;
       行模式 → 选中整行;选中覆盖 → 保留编辑器现有选择（即对应文本），仅聚焦；
-      朗读模式 → 跳朗读所在的编辑器（朗读跟随编辑器，故取其当前光标行） */
+      朗读模式 → 由朗读控制器定位到**正在朗读的区间**（滚动到该段 + 选中朗读高亮的那段文字） */
   private jumpToCapturedLine() {
     if (this.state.mode === "lyrics") return; // 歌词模式无文档行可跳
     const src = this.resolveDoc();
     // 高亮模式：同步选中高亮索引中对应卡片（即使匹配文档未打开为视图也触发）
     const match = this.state.mode === "highlight" ? this.matches[this.currentIndex] : undefined;
     if (match && src?.file?.path) this.notifyIndexCardSelect(src.file.path, match.line + 1);
-    const ed = src?.view?.editor ?? this.followEditor;
-    if (!ed) return;
 
     // 选中覆盖：对应文本就是编辑器当前选中，只聚焦不破坏选择
     if (this.selectionOverride) {
+      const ed = src?.view?.editor ?? this.followEditor;
+      if (!ed) return;
       const cursor = ed.getCursor();
       (ed as any).scrollIntoView?.({ from: cursor, to: cursor }, true);
       ed.focus();
       return;
     }
 
+    // 朗读模式：朗读位置由**音频时钟**驱动，与编辑器光标无关（「光标跟随」默认还是关的），
+    // 所以交给控制器按当前高亮区间定位。用 ed.getCursor() 会选中用户上次留下的光标行 ——
+    // 那正是「双击后选中某个未知段落」的来源。
+    if (this.state.mode === "reader") {
+      // 未在朗读（占位文本）时没有可跳转的目标，什么也不做
+      this.plugin.readerController.revealCurrent();
+      return;
+    }
+
+    const ed = src?.view?.editor ?? this.followEditor;
+    if (!ed) return;
+
     const line = this.state.mode === "highlight"
       ? (this.matches[this.currentIndex]?.line ?? ed.getCursor().line)
-      : this.state.mode === "reader"
-        ? ed.getCursor().line // 朗读位置就在编辑器里，直接用它的光标行
-        : this.currentLine;
+      : this.currentLine;
     const targetLine = Math.max(line, 0);
     const lineText = ed.getLine(targetLine) ?? "";
 

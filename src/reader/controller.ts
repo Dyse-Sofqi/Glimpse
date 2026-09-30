@@ -10,7 +10,7 @@ import { ChangeSet } from "@codemirror/state";
 import { MarkdownView, Notice } from "obsidian";
 import type GlimpsePlugin from "../main";
 import { clauseIndexAt, clauseRawSpans, segmentContentRawRange, type ClauseSpan, type RawSpan } from "./clause-highlight";
-import { applyReaderHighlight, hasReaderHighlight, mapRangeThroughDelta, setReaderDocChangeListener } from "./highlight";
+import { applyReaderHighlight, hasReaderHighlight, mapRangeThroughDelta, scrollPosToCenter, setReaderDocChangeListener } from "./highlight";
 import {
   createElementAudioPlayback,
   createUrlAudioPlayback,
@@ -213,16 +213,17 @@ export class ReaderController {
   }
 
   /**
-   * 当前正在朗读的块文本（细分开启时是当前子区间，否则是整段）。
+   * 当前朗读高亮区间（**实时坐标**，已按编辑换算）：细分开启时是当前子区间，
+   * 否则是整段内容区间（段尾标点已排除）。未在朗读 / 拿不到段时返回 null。
    *
-   * 从**编辑器实时文档**按高亮区间切片，而不是回存一份文本 —— 这样提词器展示的
-   * 与实际被高亮/朗读的内容永远一致（含 Markdown 记号，因此提词器能渲染出格式）。
-   * 未在朗读 / 拿不到编辑器时返回空串。
+   * 这是「界面显示的文字」（getCurrentText）与「双击选中并滚动的范围」
+   * （revealCurrent）的**唯一来源** —— 两者共用同一个区间，
+   * 因此不可能出现「显示的是这一段、选中的却是另一段」。
    */
-  getCurrentText(): string {
-    if (this.queue.getState() === "idle") return "";
+  currentSpan(): RawSpan | null {
+    if (this.queue.getState() === "idle") return null;
     const segment = this.segments[this.queue.getCursor()];
-    if (!segment) return "";
+    if (!segment) return null;
     // 细分开启时取当前子区间；否则整段（段尾标点已由分段器剥掉，直接用段区间）
     const span = this.clauseRaw?.[this.clauseIndex];
     const stored: RawSpan =
@@ -230,9 +231,20 @@ export class ReaderController {
       (this.segmentMap
         ? segmentContentRawRange(segment, this.segmentMap)
         : { from: segment.rawFrom, to: segment.rawTo });
-    // 编辑后要按当前文档取文本，否则提词器会显示错位的片段
-    const range = this.toLiveRange(stored);
-    if (!range) return segment.text;
+    return this.toLiveRange(stored);
+  }
+
+  /**
+   * 当前正在朗读的块文本（细分开启时是当前子区间，否则是整段）。
+   *
+   * 从**编辑器实时文档**按高亮区间切片，而不是回存一份文本 —— 这样提词器展示的
+   * 与实际被高亮/朗读的内容永远一致（含 Markdown 记号，因此提词器能渲染出格式）。
+   * 未在朗读 / 拿不到编辑器时返回空串。
+   */
+  getCurrentText(): string {
+    const range = this.currentSpan();
+    const segment = this.segments[this.queue.getCursor()];
+    if (!range || !segment) return "";
     // 编辑器可能在切标签页后被 Obsidian 卸载（后台叶子销毁 CM 视图），读取会抛 ——
     // 回退段文本兜底：这里抛出去会打断 emit 的后续订阅者（提词器/播放条全冻结）
     let doc = "";
@@ -243,6 +255,39 @@ export class ReaderController {
     }
     const text = doc.slice(range.from, range.to);
     return text.trim() ? text : segment.text;
+  }
+
+  /**
+   * 把编辑器定位到**正在朗读的区间**：滚动到该段，并把朗读高亮的那段文字选中。
+   *
+   * 提词器「朗读提取」模式双击时调用。朗读位置由**音频时钟**驱动，与编辑器光标无关
+   * （而且「光标跟随」默认是关的），所以不能用 `ed.getCursor()` 当朗读位置 ——
+   * 那会选中用户上次留下的光标所在行，表现为「双击后选中某个未知段落」。
+   *
+   * 区间与提词器显示的文字同源（currentSpan），因此选中的一定就是正在读、也正在高亮
+   * 的那段。滚动刻意不用 `Editor.scrollIntoView` / `EditorView.scrollIntoView`：
+   * 它们在自己滚不到时会连带滚动裁剪祖先容器，把播放条顶出视野
+   * （见 highlight.scrollPosToCenter 的注释），故复用只动 cm-scroller 的那一个。
+   */
+  revealCurrent(): boolean {
+    const range = this.currentSpan();
+    const cm = this.cmView();
+    const view = this.view;
+    if (!range || !cm || !view) return false;
+    try {
+      // 朗读所在的叶子可能不在前台：先带到前台，否则「滚动到正在读的段落」看不见
+      this.plugin.app.workspace.revealLeaf(view.leaf);
+      view.editor.setSelection(
+        view.editor.offsetToPos(range.from),
+        view.editor.offsetToPos(range.to)
+      );
+      scrollPosToCenter(cm, range.from);
+      view.editor.focus();
+      this.pinBar(); // 焦点/选区变化若连带滚了容器，这里复位，别把播放条顶出去
+      return true;
+    } catch {
+      return false; // 编辑器已被卸载或尚未重建：交给 restoreSession 兜底
+    }
   }
 
   private emit(): void {

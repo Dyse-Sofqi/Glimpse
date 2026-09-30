@@ -130,7 +130,7 @@ export function hasReaderHighlight(view: EditorView): boolean {
  * 顶部，祖先一滚就被顶出视野 —— 表现为「首次朗读出声时播放条缩进去」，
  * 以及「段落更替时间隙忽有忽无」（滚动与复位来回拉锯）。
  */
-function scrollPosToCenter(view: EditorView, pos: number): void {
+export function scrollPosToCenter(view: EditorView, pos: number): void {
   const scroller = view.scrollDOM;
   if (!scroller) return;
   const block = view.lineBlockAt(pos);
