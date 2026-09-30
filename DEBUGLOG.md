@@ -2,6 +2,22 @@
 
 关键避坑记录，供后期维护快速定位。按版本聚合。
 
+## 未发布 (2026-09-23)
+
+### 面板重新挂载用了 `getRightLeaf(true)`：右栏被多切一个分栏
+
+**现象：** 用户报告「弹了个 notice 后，右侧边栏的音乐标签页移到下半区」。工作区快照对比：`workspaces.json` 里 2026-09-20 保存的「写作」布局中，`glimpse-music-panel` 是右栏**唯一**标签组里的第 7 个标签（叶子 id `980b6256a2548b7f`）；当前 `workspace.json` 中右栏有两个标签组，音乐面板独占 `children[1]`，叶子 id 变为 `d11aea471006ed72`（同文件里其他叶子的 id 逐一对得上）→ 该叶子是被**销毁后重建**的，不是被拖动。
+
+**根因：** 面板丢失后 `ensureViewLoaded()` 走 `getRightLeaf(true)`。Obsidian 1.13 运行时 `getSideLeaf(sideSplit, split)`：`split === true` → 向侧栏 `insertChild(-1, new WorkspaceTabs)` 再塞一个叶子（**新建标签组**）；`split === false` → 取 `children[0]` 后 `insertChild(-1, new WorkspaceLeaf)`（**在首个标签组内新建空叶子**，不触碰已有叶子、不 `setActiveLeaf`）。所以 `true` 恰好把面板拆到了右栏下半区。
+
+**修复：** 改用 `getRightLeaf(false)`，两个挂载入口（`activateView` / `ensureViewLoaded`）统一走 `mountMusicLeaf()`；顺带给 `activateView()` 补 `revealLeaf()`（`setViewState({active:true})` 不展开收起的侧栏）。
+
+**避坑记录：**
+
+1. **`getRightLeaf(split)` 的参数不是「新建标签」而是「新建标签组」** — 旧注释「`getRightLeaf(true)` 新建一个标签，避免 `setViewState` 覆盖右栏已有其他插件视图」把语义理解反了：`false` 返回的是**新建的空叶子**（不覆盖任何视图），`true` 才多切一个分栏。同族 API 佐证：`getLeaf('tab' | true)` 走 `createLeafInTabGroup()`（组内新建标签），`getLeaf('split')` 走 `splitActiveLeaf()`；`createLeafBySplit()` 在不能切分时也回退到 `createLeafInTabGroup()`。
+2. **`createLeafInParent(parent, index)` 会 `setActiveLeaf(新叶子)`**（运行时实现里显式调用）→ 想「静默挂载、不抢占当前激活标签」时不要用它（除非自己把原激活叶子恢复回去，否则 `workspace.getActiveFile()` 会变 null）；`getRightLeaf(false)` 不激活叶子，符合静默语义。另外注意它内部已 `insertChild` 一个新叶子，若再自行 `createLeafInParent` 同组会多留一个空标签。
+3. **本插件被懒加载接管时 hot-reload 不会重载它** — Glimpse 处于「持久化停用 + 会话内运行」态（MDRazor 懒加载接管）时，hot-reload 的 `reload()` 开头 `if (!plugins.enabledPlugins.has(plugin)) return` 会静默跳过：重建 `main.js` 不会生效（本次实测 `workspace.json` / `data.json` 的 mtime 均不变）。要加载新产物需重启 Obsidian 或先在第三方插件设置里启用该插件。
+
 ## 1.0.4 (2026-08-15)
 
 ### 新版设置项行内元素顶部对齐（.setting-item align-items: flex-start）

@@ -1378,7 +1378,7 @@
 
 /* 穿透锁定时隐藏文档绑定按钮与模式下拉 */
 .glimpse-teleprompter.is-locked .glimpse-tp-btn.glimpse-tp-bind,
-.glimpse-teleprompter.is-locked .glimpse-tp-mode {
+.glimpse-teleprompter.is-locked .glimpse-tp-mode-wrap {
   display: none;
 }
 
@@ -1462,34 +1462,82 @@
   text-overflow: ellipsis;
 }
 
-/* 模式切换：下拉列表（逐行提取 / 高亮提取 / 歌词提取），保留原生下拉箭头 */
-select.glimpse-tp-mode {
+/* 模式切换：自绘下拉（原生 select 的弹层是系统级窗口，不随顶栏显隐也无法适配主题）。
+   触发器做成与原生 select 相同的朴素观感：透明底、灰字、居中、小箭头；
+   菜单挂在工具栏内 —— 顶栏隐藏时一起消失；配色全走主题变量，夜间模式自动适配 */
+.glimpse-tp-mode-wrap {
+  position: relative;
+}
+
+.glimpse-tp-mode-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   width: auto;
   min-width: 56px;
   height: 28px;
   padding: 0 4px;
-  border: none;
   border-radius: 6px;
-  background-color: transparent;
-  box-shadow: none;
   color: var(--text-muted);
   font-size: 12px;
-  text-align: center;
-  text-align-last: center; /* Chromium：收起状态的选中值也按 text-align 居中 */
   white-space: nowrap;
   cursor: default;
+  user-select: none;
 }
 
-select.glimpse-tp-mode:hover {
-  background-color: var(--background-modifier-hover);
+.glimpse-tp-mode-btn:hover,
+.glimpse-tp-mode-btn.is-active {
   color: var(--text-normal);
+  background: var(--background-modifier-hover);
 }
 
-/* 弹出选项同样居中 + 默认指针（选项不继承收起态的居中，需显式声明） */
-select.glimpse-tp-mode option {
+.glimpse-tp-mode-btn .glimpse-tp-mode-caret {
+  display: flex;
+  color: var(--text-faint);
+}
+
+.glimpse-tp-mode-btn .glimpse-tp-mode-caret svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* 菜单：贴着控件左缘展开的朴素列表（对齐原生弹层的观感：窄边距、无边框圆角夸张） */
+.glimpse-tp-mode-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  min-width: 100%;
+  display: none;
+  flex-direction: column;
+  padding: 3px 0;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-s);
+  z-index: 10;
+}
+
+.glimpse-tp-mode-menu.is-open {
+  display: flex;
+}
+
+.glimpse-tp-mode-item {
+  padding: 4px 12px;
+  color: var(--text-normal);
+  font-size: 12px;
   text-align: center;
-  text-align-last: center;
+  white-space: nowrap;
   cursor: default;
+  user-select: none;
+}
+
+.glimpse-tp-mode-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.glimpse-tp-mode-item.is-active {
+  color: var(--text-accent);
 }
 
 /* 工具栏按钮提示：默认上方弹出，上方无空间由 JS 翻转到底部 */
@@ -1535,9 +1583,18 @@ select.glimpse-tp-mode option {
   user-select: none;
 }
 
-/* 空内容占位（上一项文本）：透明度再减半 */
-.glimpse-tp-content.is-placeholder {
+/* 空内容占位（上一项文本 / 朗读模式的「未在朗读」）：透明度再减半。
+   nowrap + 不拆字：占位文案很短（4–6 字），窗口偏窄时若允许折行会被拆成
+   「一字一行」的竖排，看起来像排版坏了 —— 宁可让它单行居中展示。
+   选择器只认 .is-placeholder：占位是「内容态」而非某个容器的专属样式 */
+.glimpse-tp-content.is-placeholder,
+.is-placeholder {
   opacity: calc(var(--tp-font-opacity, 0.25) / 2);
+}
+.is-placeholder p {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 /* 状态栏「打开提词器」按钮：悬停复用状态栏 Editor Status 同款样式
@@ -3156,37 +3213,83 @@ select.glimpse-tp-mode option {
   margin-bottom: 12px;
 }
 
-/* === 设置页（音乐页共用） === */
+/* === 设置页（音乐页 / 朗读页共用） === */
 
-/* 文件夹建议下拉 */
+/* 「描述在上、控件独占整行」——**显式选择加入**（.gm-stack-row）。
+   为什么需要：默认布局是「描述在左、控件在同一行右侧」，而本插件的描述普遍很长，
+   .setting-item-info 会一路抢占宽度，把 .setting-item-control 压到 min-content ——
+   实测文本框只剩 140–170px，路径根本看不见。
+
+   谁该加这个类：**需要宽度的文本框**（路径 / URL / 长文本）。
+   按钮 / 下拉 / 滑条 / 开关这些自定宽度的控件保持 Obsidian 原生紧凑排布 ——
+   它们不靠宽度取胜，紧凑排布信息密度更高（服务状态、校验、启动服务、语种、输出格式、
+   语速、预取深度、分段整组等都是原生排布）。 */
+.glimpse-settings .setting-item.gm-stack-row {
+  flex-direction: column;
+  align-items: stretch;
+  row-gap: 8px;
+}
+
+.glimpse-settings .setting-item.gm-stack-row .setting-item-info {
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
+.glimpse-settings .setting-item.gm-stack-row .setting-item-control {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 文本框铺满整行（与「浏览…」「选择」等按钮同排时，吃掉按钮之外的宽度） */
+.glimpse-settings .setting-item.gm-stack-row .setting-item-control input[type="text"],
+.glimpse-settings .setting-item.gm-stack-row .setting-item-control input[type="number"],
+.glimpse-settings .setting-item.gm-stack-row .setting-item-control textarea {
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+
+/* 输入框包裹层（音乐页的目录行专用）：给下拉建议定位，并吃掉按钮之外的剩余宽度 */
 .gm-folder-input-wrap {
   position: relative;
-  width: 100%;
+  flex: 1 1 auto;
+  /* 兜底：任何布局下都不许被挤到看不见 */
+  min-width: 140px;
 }
 
-.gm-folder-input {
+/* 输入框本身沿用 Obsidian 原生 input[type=text] 的外观（高度/圆角/焦点环），
+   这里只负责宽度：铺满包裹层 */
+.gm-folder-input-wrap input.gm-folder-input {
   width: 100%;
-  padding: 4px 8px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  background: var(--background-primary);
-  color: var(--text-normal);
-  font-family: var(--font-text);
-  font-size: var(--font-ui-small);
-  outline: none;
-  transition: border-color 0.15s;
+  min-width: 0;
 }
 
-.gm-folder-input:focus {
-  border-color: var(--text-accent);
+/* 兜底：紧凑排布的行里也会出现「文本框 + 按钮」，一律给个下限宽度 */
+.glimpse-settings .setting-item-control input[type="text"],
+.glimpse-settings .setting-item-control input[type="number"] {
+  min-width: 120px;
+}
+
+/* 兜底：其它标签页里也会出现「文本框 + 按钮」同排的行，一律给个下限宽度 */
+.glimpse-settings .setting-item-control input[type="text"],
+.glimpse-settings .setting-item-control input[type="number"] {
+  min-width: 120px;
 }
 
 .gm-folder-suggestions {
   position: absolute;
   top: 100%;
   left: 0;
-  right: 0;
-  min-width: 100%;
+  /* 输入框现在是整行宽（约 1000px），下拉不必跟着那么宽：
+     按内容收敛，上限 560px，最短 280px（短路径时不至于变成小方块） */
+  right: auto;
+  width: max-content;
+  min-width: min(100%, 280px);
+  max-width: min(100%, 560px);
   max-height: 240px;
   overflow-y: auto;
   background: var(--background-primary);
@@ -3338,3 +3441,236 @@ select.glimpse-tp-mode option {
 }
 
 /* #endregion music */
+
+/* #region reader */
+
+/* 朗读设置页的服务状态指示点 */
+.glimpse-reader-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  vertical-align: middle;
+}
+.glimpse-reader-status-dot.is-running {
+  background: var(--color-green);
+}
+.glimpse-reader-status-dot.is-starting {
+  background: var(--color-orange);
+  animation: glimpse-reader-pulse 1.2s ease-in-out infinite;
+}
+.glimpse-reader-status-dot.is-stopped {
+  background: var(--text-faint);
+}
+.glimpse-reader-status-dot.is-unknown {
+  background: var(--text-faint);
+}
+.glimpse-reader-status-dot.is-broken {
+  background: var(--text-error);
+}
+
+@keyframes glimpse-reader-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* 正在朗读的段：段内文本柔和高亮，胶囊状（与主题 ==mark== 的胶囊同一做法）。
+   放在 CSS 而非 EditorView.theme，便于用户用 CSS 片段覆盖。
+   **刻意不给行加底色**（曾用 --background-modifier-hover）：整行灰底与高亮区间叠在一起、
+   还要盖住段间空隙，观感很吵；朗读位置由 .glimpse-reader-segment 单独表达即可。
+   行装饰（Decoration.line）仍在，保留这个类名作为可自定义的挂点（不要在此加底色）。
+
+   胶囊必须「盖在文字区域外面」而不是贴着文字盒向内收圆角：
+   - 左右 4px padding 把上色区推到文字两侧之外，圆角端点落在文字区域外面，
+     首尾字形不会被圆角吃掉；负 margin 抵消 padding 的占位，行内不跑版、
+     CM6 的坐标测量（光标/选区）不受影响。
+   - 色带只画 85% 高、垂直居中（background-size + no-repeat + center），
+     16px 圆角在 85% 高度上正好收成胶囊两端，而不是撑满整行的圆角矩形。
+   - box-decoration-break: clone：装饰虽按行切开，但行内软换行仍会把一个
+     span 折成多个片段，clone 让每个视觉行都有完整的胶囊两端。 */
+.glimpse-reader-line {
+  /* 无样式：行装饰只作为挂点存在 */
+}
+.glimpse-reader-segment {
+  background-color: transparent;
+  background-image: linear-gradient(rgba(255, 196, 0, 0.28), rgba(255, 196, 0, 0.28));
+  background-size: 100% 85%;
+  background-repeat: no-repeat;
+  background-position: center;
+  border-radius: 16px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding-left: 4px;
+  padding-right: 4px;
+  margin-left: -4px;
+  margin-right: -4px;
+}
+
+/* 播放条挂在 .view-content 的最前面（insertBefore firstChild）。
+   但 markdown leaf 的 .view-content 是「padding: 0 + overflow: hidden +
+   固定高度 calc(100% - header-height)」的块级盒子（app.css 6543 行），
+   而 .markdown-source-view.mod-cm6 是 height: 100%（app.css 3531 行）——
+   两者相加必然溢出容器高度，编辑器底部会被裁掉。
+   把它改成 flex 列容器，让编辑器改用 flex 占满「扣掉播放条之后」的剩余空间，
+   播放条才能真正独占一行而不挤坏布局。用 :has() 限定为挂了播放条时生效。 */
+.workspace-leaf-content[data-type="markdown"] .view-content:has(> .glimpse-reader-bar) {
+  display: flex;
+  flex-direction: column;
+}
+.view-content > .glimpse-reader-bar ~ .markdown-source-view,
+.view-content > .glimpse-reader-bar ~ .markdown-reading-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+
+/* 朗读播放条（注入到笔记顶部） */
+.glimpse-reader-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin: 6px 8px 0 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+  font-size: var(--font-ui-smaller);
+  /* 不参与压缩：view-content 在上面被改成了 flex 列，播放条必须保持自身高度 */
+  flex: 0 0 auto;
+  /* 消息、计数器都可能很长，不设 min-width:0 会按 min-content 撑宽整行，
+     右侧停止按钮就被 view-content 的 overflow:hidden 裁掉（「播放条被遮盖」的根因） */
+  min-width: 0;
+  box-sizing: border-box;
+  /* 不用 sticky：钉住时会吃掉 margin-top（上移），容器复位后又回来（下移），
+     段间更替时就会「间隙忽有忽无」。祖先滚动已由 highlight.ts 的
+     只滚 cm-scroller 从根上避免（那里还有 pinBar 兜底复位）。
+     层级抬到 view-header(z-index:1) 之上，但留在菜单/弹窗/通知层之下 */
+  position: relative;
+  z-index: 50;
+}
+.glimpse-reader-bar.is-error {
+  border-color: var(--text-error);
+}
+.glimpse-reader-bar-button {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.glimpse-reader-bar-button.is-disabled {
+  opacity: 0.4;
+}
+.glimpse-reader-bar-counter {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.glimpse-reader-bar-track {
+  flex: 1 1 auto;
+  min-width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--background-modifier-border);
+  overflow: hidden;
+}
+.glimpse-reader-bar-fill {
+  height: 100%;
+  width: 0;
+  background: var(--color-accent);
+  transition: width 0.2s ease-out;
+}
+.glimpse-reader-bar.is-busy .glimpse-reader-bar-fill {
+  transition: none;
+}
+.glimpse-reader-bar-message {
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 参考音频 / 音色 选择弹窗 */
+.glimpse-reference-audio-hint {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.5;
+  margin: 0 0 8px 0;
+}
+.glimpse-reference-audio-current {
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  word-break: break-all;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin: 0 0 12px 0;
+}
+.glimpse-reference-audio-list,
+.glimpse-voice-picker-list {
+  max-height: 46vh;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+}
+.glimpse-reference-audio-row,
+.glimpse-voice-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.glimpse-reference-audio-row:last-child,
+.glimpse-voice-picker-row:last-child {
+  border-bottom: none;
+}
+.glimpse-reference-audio-row:hover,
+.glimpse-voice-picker-row:not(.is-incomplete):hover {
+  background: var(--background-modifier-hover);
+}
+.glimpse-voice-picker-row.is-incomplete {
+  cursor: default;
+  opacity: 0.6;
+}
+.glimpse-reference-audio-row-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+.glimpse-reference-audio-row-icon svg {
+  width: 14px;
+  height: 14px;
+}
+.glimpse-reference-audio-row-label {
+  flex: 1 1 auto;
+  font-size: var(--font-ui-smaller);
+  word-break: break-all;
+}
+.glimpse-reference-audio-row-size {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  font-variant-numeric: tabular-nums;
+}
+.glimpse-voice-picker-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.glimpse-voice-picker-name {
+  font-size: var(--font-ui-small);
+  color: var(--text-normal);
+}
+.glimpse-voice-picker-meta {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+/* #endregion reader */

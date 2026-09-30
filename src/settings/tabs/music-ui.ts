@@ -145,7 +145,27 @@ function createFolderPicker(
   const music = plugin.music!;
   const setting = new Setting(containerEl)
     .setName(opts.name)
-    .setDesc(opts.desc);
+    .setDesc(opts.desc)
+    // 描述很长，这一行必须让控件独占整行：默认的同行布局里，
+    // 超长描述会把「输入框 + 两个图标按钮」挤成一条缝（实测输入框只剩几十像素）
+    .setClass("gm-stack-row");
+
+  // 输入框：用原生 TextComponent，外观（高度/圆角/焦点环）与其它设置项一致；
+  // 再把它搬进带下拉建议的包裹层，由包裹层吃掉按钮之外的剩余宽度
+  let textInput!: HTMLInputElement;
+  setting.addText((text) => {
+    textInput = text.inputEl;
+    textInput.addClass("gm-folder-input");
+    text.setPlaceholder(opts.placeholder);
+    text.setValue(opts.value);
+  });
+
+  const inputEl = setting.controlEl.createDiv({ cls: "gm-folder-input-wrap" });
+  inputEl.appendChild(textInput);
+
+  // 下拉建议
+  const suggestionsEl = inputEl.createDiv({ cls: "gm-folder-suggestions" });
+  suggestionsEl.hide();
 
   // 「浏览」按钮（桌面端）：打开系统资源管理器选择文件夹
   if (Platform.isDesktopApp) {
@@ -178,21 +198,6 @@ function createFolderPicker(
         new Notice(`歌单已刷新，共 ${music.getSongList().length} 首歌曲`);
       });
   });
-
-  // 输入框
-  const inputEl = setting.controlEl.createDiv({ cls: "gm-folder-input-wrap" });
-  const textInput = inputEl.createEl("input", {
-    cls: "gm-folder-input",
-    attr: {
-      type: "text",
-      placeholder: opts.placeholder,
-      value: opts.value,
-    },
-  });
-
-  // 下拉建议
-  const suggestionsEl = inputEl.createDiv({ cls: "gm-folder-suggestions" });
-  suggestionsEl.hide();
 
   // 取 vault 全部文件夹路径（直接收集 TFolder，含空文件夹）
   const getAllFolders = (): string[] => {

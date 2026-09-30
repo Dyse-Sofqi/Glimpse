@@ -6,6 +6,7 @@ import { render as renderSelection } from "./tabs/selection-ui";
 import { render as renderIndex } from "./tabs/index-ui";
 import { render as renderTeleprompter } from "./tabs/teleprompter-ui";
 import { render as renderMusic } from "./tabs/music-ui";
+import { render as renderReader } from "./tabs/reader-ui";
 
 /** 主标签页定义：id 用于选中判定，render 负责填充该页内容 */
 interface MainTab {
@@ -20,6 +21,7 @@ const MAIN_TABS: MainTab[] = [
   { id: "index", label: "高亮索引", render: (el, tab) => renderIndex(el, tab.plugin) },
   { id: "teleprompter", label: "提词器", render: (el, tab) => renderTeleprompter(el, tab.plugin, tab) },
   { id: "music", label: "音乐", render: (el, tab) => renderMusic(el, tab.plugin, tab) },
+  { id: "reader", label: "朗读", render: (el, tab) => renderReader(el, tab.plugin, tab) },
 ];
 
 export class SettingTab extends PluginSettingTab {
@@ -72,7 +74,7 @@ export class SettingTab extends PluginSettingTab {
       });
     }
 
-    // 四页内容全部渲染，非当前页整体隐藏（切页时不丢失已填写的表单状态）
+    // 六页内容全部渲染，非当前页整体隐藏（切页时不丢失已填写的表单状态）
     for (const tab of MAIN_TABS) {
       const contentEl = containerEl.createDiv({ cls: "glimpse-tab-content" });
       if (this.activeMainTab !== tab.id) contentEl.hide();

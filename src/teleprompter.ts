@@ -1,5 +1,5 @@
 // 提词器 — 桌面歌词式浮动窗口（详见 docs/adr/0001-teleprompter-floating-overlay.md）
-import { ButtonComponent, Component, Editor, MarkdownRenderer, MarkdownView, Notice, Platform, TFile } from "obsidian";
+import { ButtonComponent, Component, Editor, MarkdownRenderer, MarkdownView, Notice, Platform, TFile, setIcon } from "obsidian";
 import GlimpsePlugin from "./main";
 import { copyText } from "./settings/export";
 import { buildGradientImage } from "./settings/settings";
@@ -12,13 +12,14 @@ const TP_MIN_WIDTH = 240; // 窗口最小宽度
 const TP_MIN_VISIBLE_H = 44; // px，窗口纵向至少露出这么高（工具栏可抓取）
 const TP_FONT_SIZES = [32, 40, 50, 64, 80]; // 字体大小循环档位
 
-export type TeleprompterMode = "line" | "highlight" | "lyrics";
+export type TeleprompterMode = "line" | "highlight" | "lyrics" | "reader";
 
 /** 模式下拉选项（顺序即下拉顺序） */
 const TP_MODE_OPTIONS: Array<[TeleprompterMode, string]> = [
   ["line", "逐行提取"],
   ["highlight", "高亮提取"],
   ["lyrics", "歌词提取"],
+  ["reader", "朗读提取"],
 ];
 
 // 窗口状态 —— 步骤 4 持久化到 data.json
@@ -71,7 +72,14 @@ export class TeleprompterWindow extends Component {
   private guideXEl!: HTMLElement;
   private guideYEl!: HTMLElement;
   private bindBtnEl!: ButtonComponent;
-  private modeSelectEl!: HTMLSelectElement;
+  /**
+   * 模式切换：自绘下拉（按钮 + 菜单）。
+   * 不用原生 <select> —— 它的弹层是系统级窗口：既不随顶栏显隐（鼠标离开提词器后
+   * 弹层还挂着），也无法跟随 Obsidian 主题配色（夜间模式下选项仍是白底）。
+   */
+  private modeWrapEl!: HTMLElement;
+  private modeBtnEl!: HTMLElement;
+  private modeMenuEl!: HTMLElement;
   private trackBtnEl!: ButtonComponent;
   private scrollSyncBtnEl!: ButtonComponent;
   private prevBtnEl!: ButtonComponent;
@@ -98,6 +106,8 @@ export class TeleprompterWindow extends Component {
   private followEditor: Editor | null = null; // 跟随文档（绑定 > 活动）的编辑器缓存，轮询直接读
   private pollTimer: number | null = null; // 行模式轮询定时器（事件不可靠时的兜底跟随）
   private lastPollKey = ""; // 最近一次提取的键（"L:行号" / "S:选中文本"），事件与轮询共用
+  private lastReaderKey = ""; // 朗读提取模式：上次渲染的键（"块文本" / "idle"），进度推送高频，去重用
+  private unsubscribeReader: (() => void) | null = null; // 朗读进度订阅退订句柄
 
   constructor(plugin: GlimpsePlugin, manager: TeleprompterManager, state: TeleprompterWindowState) {
     super();
@@ -125,9 +135,16 @@ export class TeleprompterWindow extends Component {
     // （refreshLine/startPolling 均守卫 line 模式，高亮模式由本调用接手）
     if (this.state.mode === "highlight") void this.initHighlightMode();
     else if (this.state.mode === "lyrics") this.refreshLyrics();
+    else if (this.state.mode === "reader") this.refreshReader();
     // 歌词模式：订阅音乐模块播放状态（timeupdate 高频推送，refreshLyrics 内按行去重）
     this.plugin.music?.onLyricsStateChange(this._onMusicState);
     this.register(() => this.plugin.music?.removeLyricsStateListener(this._onMusicState));
+    // 朗读提取模式：订阅朗读进度（播放推进/换段/停止都会推送，refreshReader 内去重）
+    this.unsubscribeReader = this.plugin.readerController.subscribe(() => this.refreshReader());
+    this.register(() => {
+      this.unsubscribeReader?.();
+      this.unsubscribeReader = null;
+    });
     // 注：悬停 ↑/↓ 键盘导航已移除 —— capture 劫持与编辑器原生导航冲突，
     // 上一项/下一项由滚轮与工具栏按钮承担（无键盘冲突）
     // 切换文档/叶子时刷新绑定按钮文本、行内容并重启轮询（startPolling 内会重解析跟随编辑器）
@@ -322,14 +339,32 @@ export class TeleprompterWindow extends Component {
     this.bindBtnEl.buttonEl.addClass("is-interactive");
     this.bindBtnEl.setButtonText("—");
     this.bindBtnEl.onClick(() => this.toggleBinding());
-    // 模式切换 —— 下拉列表：逐行提取 / 高亮提取 / 歌词提取
-    this.modeSelectEl = toolbar.createEl("select", { cls: "glimpse-tp-mode" });
+    // 模式切换 —— 自绘下拉：逐行提取 / 高亮提取 / 歌词提取 / 朗读提取（见 TP_MODE_OPTIONS）。
+    // 用 div 而非 <button>：主题对 button 的默认样式（内边距/背景/字重）会让它看起来像按钮
+    const modeWrap = (this.modeWrapEl = toolbar.createDiv("glimpse-tp-mode-wrap"));
+    this.modeBtnEl = modeWrap.createDiv("glimpse-tp-mode-btn");
+    this.modeBtnEl.createSpan({ cls: "glimpse-tp-mode-label" });
+    setIcon(this.modeBtnEl.createSpan({ cls: "glimpse-tp-mode-caret" }), "chevron-down");
+    this.modeMenuEl = modeWrap.createDiv("glimpse-tp-mode-menu");
     for (const [value, label] of TP_MODE_OPTIONS) {
-      this.modeSelectEl.createEl("option", { value, text: label });
+      const item = this.modeMenuEl.createDiv({ cls: "glimpse-tp-mode-item", text: label });
+      item.dataset.mode = value;
+      item.addEventListener("click", () => {
+        this.closeModeMenu();
+        if (value !== this.state.mode) void this.setMode(value);
+      });
     }
-    this.modeSelectEl.addEventListener("change", () => {
-      void this.setMode(this.modeSelectEl.value as TeleprompterMode);
+    this.modeBtnEl.addEventListener("click", () => this.toggleModeMenu());
+    // 弹层开着时：点击提词器之外的区域、按 Esc、或鼠标离开提词器窗口，都随顶栏一起收起。
+    // 菜单是 root 的 DOM 子节点，移入菜单不会触发 root 的 mouseleave —— 不会误关
+    this.registerDomEvent(document, "mousedown", (event: MouseEvent) => {
+      if (!this.modeMenuEl?.hasClass("is-open")) return;
+      if (!this.modeWrapEl.contains(event.target as Node)) this.closeModeMenu();
     });
+    this.registerDomEvent(document, "keydown", (event: KeyboardEvent) => {
+      if (event.key === "Escape") this.closeModeMenu();
+    });
+    root.addEventListener("mouseleave", () => this.closeModeMenu());
     // 跟踪光标 —— 行模式光标跟随开关（默认关，独立于模式）
     // 非交互按钮：穿透锁定时随其他非交互按钮一并隐藏
     this.trackBtnEl = addBtn("text-cursor", "跟踪光标", () => this.toggleTrackCursor());
@@ -397,7 +432,7 @@ export class TeleprompterWindow extends Component {
     root.addEventListener(
       "wheel",
       e => {
-        if ((e.target as HTMLElement).closest?.("select")) return; // 模式下拉交给原生滚动
+        if ((e.target as HTMLElement).closest?.(".glimpse-tp-mode-wrap")) return; // 模式下拉交给原生滚动
         e.preventDefault();
         if (e.deltaY > 0) this.nextItem();
         else this.prevItem();
@@ -405,12 +440,12 @@ export class TeleprompterWindow extends Component {
       { passive: false }
     );
 
-    // 拖拽 —— 整个窗口均可拖动（按钮 / 缩放手柄 / 原生下拉除外）
+    // 拖拽 —— 整个窗口均可拖动（按钮 / 缩放手柄 / 模式下拉除外）
     root.addEventListener("mousedown", e => {
       const t = e.target as HTMLElement;
       if (t.closest(".glimpse-tp-btn")) return; // 按钮（含交互按钮）
       if (t.closest(".glimpse-tp-resize")) return; // 宽度缩放手柄
-      if (t.closest("select")) return; // 模式下拉：preventDefault 会阻止选项列表弹出
+      if (t.closest(".glimpse-tp-mode-wrap")) return; // 模式下拉：按下不应触发拖拽
       this.startDrag(e);
     });
   }
@@ -489,9 +524,17 @@ export class TeleprompterWindow extends Component {
       列表符号等伪元素由这些类渲染，裸 probe 量不到其宽度，会导致宽度自适应偏窄、末字符换行 */
   private measureNaturalWidth(): number {
     const probe = document.createElement("div");
-    probe.style.cssText =
-      "position:fixed;left:-99999px;top:0;visibility:hidden;white-space:nowrap;width:max-content;" +
-      "padding:0;margin:0;";
+    // 静态样式经 setCssProps 下发（审核规则 no-static-styles-assignment 禁止静态样式直改）
+    probe.setCssProps({
+      position: "fixed",
+      left: "-99999px",
+      top: "0",
+      visibility: "hidden",
+      whiteSpace: "nowrap",
+      width: "max-content",
+      padding: "0",
+      margin: "0",
+    });
     // 实际字号：内容区 inline fontPx 生效。但 .glimpse-tp-content 类规则 font-size:50px
     // 会覆盖 probe 的继承字号 → 克隆容器必须显式带当前字号，否则测量恒为 50px（第三档）
     const fontPx = getComputedStyle(this.contentEl).fontSize;
@@ -502,10 +545,14 @@ export class TeleprompterWindow extends Component {
     // 内容克隆进带真实渲染类的容器（inline 覆盖 padding/margin 避免计入容器自身留白）
     const contentWrap = probe.createDiv();
     contentWrap.className = this.contentEl.className;
-    contentWrap.style.cssText =
-      "width:max-content;white-space:nowrap;padding:0;margin:0;text-align:left;font-size:" +
-      fontPx +
-      ";";
+    contentWrap.setCssProps({
+      width: "max-content",
+      whiteSpace: "nowrap",
+      padding: "0",
+      margin: "0",
+      textAlign: "left",
+      fontSize: fontPx,
+    });
     for (const child of Array.from(this.contentEl.children)) {
       contentWrap.appendChild(child.cloneNode(true));
     }
@@ -673,9 +720,33 @@ export class TeleprompterWindow extends Component {
   }
 
   private updateModeSelect() {
-    if (!this.modeSelectEl) return;
-    this.modeSelectEl.value = this.state.mode;
-    this.setTpTooltip(this.modeSelectEl, () => "模式切换");
+    if (!this.modeBtnEl) return;
+    const label =
+      TP_MODE_OPTIONS.find(([value]) => value === this.state.mode)?.[1] ?? "";
+    const labelEl = this.modeBtnEl.querySelector<HTMLElement>(".glimpse-tp-mode-label");
+    if (labelEl) labelEl.textContent = label;
+    // 菜单里高亮当前模式
+    for (const item of Array.from(this.modeMenuEl?.children ?? [])) {
+      (item as HTMLElement).toggleClass(
+        "is-active",
+        (item as HTMLElement).dataset.mode === this.state.mode
+      );
+    }
+    this.setTpTooltip(this.modeBtnEl, () => "模式切换");
+  }
+
+  private toggleModeMenu(): void {
+    if (this.modeMenuEl.hasClass("is-open")) {
+      this.closeModeMenu();
+    } else {
+      this.modeMenuEl.addClass("is-open");
+      this.modeBtnEl.addClass("is-active");
+    }
+  }
+
+  private closeModeMenu(): void {
+    this.modeMenuEl?.removeClass("is-open");
+    this.modeBtnEl?.removeClass("is-active");
   }
 
   private updateTrackBtn() {
@@ -839,7 +910,8 @@ export class TeleprompterWindow extends Component {
 
   async setMode(mode: TeleprompterMode) {
     this.state.mode = mode;
-    // 行模式启轮询跟随光标；高亮/歌词模式关（歌词跟随播放推送，不跟编辑器）
+    // 行模式启轮询跟随光标；其余模式关
+    // （高亮/朗读跟随各自的数据源，歌词跟随播放推送，都不跟编辑器）
     if (mode === "line") this.startPolling();
     else this.stopPolling();
     this.updateModeSelect();
@@ -848,6 +920,9 @@ export class TeleprompterWindow extends Component {
     } else if (mode === "lyrics") {
       this.lastLyricsKey = ""; // 强制重渲染当前歌词行
       this.refreshLyrics();
+    } else if (mode === "reader") {
+      this.lastReaderKey = ""; // 强制重渲染当前朗读块（或占位）
+      this.refreshReader();
     } else {
       this.refreshLine();
     }
@@ -904,6 +979,33 @@ export class TeleprompterWindow extends Component {
     music.seekActivePlayer((state.lyrics[idx]?.timestamp ?? 0) / 1000);
   }
 
+  // ---------- 朗读提取模式 ----------
+
+  /**
+   * 朗读模式：展示朗读当前正在读的块（细分开启时是当前子区间，否则整段），
+   * 随播放自动推进。数据源是 `readerController.getCurrentText()`，进度推送时重取。
+   *
+   * 去重键用 `idle` 表示「未在朗读」—— 不能用空串：初始值就是空串，
+   * 那么窗口一打开就处于朗读模式、且尚未朗读时，占位会被去重掉、什么都不显示。
+   * 切模式时把键清空，保证从别的模式回来一定重渲染（内容元素那时装着别的内容）。
+   */
+  private refreshReader() {
+    if (this.state.mode !== "reader") return;
+    const text = this.plugin.readerController.getCurrentText().trim();
+    const key = text || "idle";
+    if (key === this.lastReaderKey) return; // 内容未变，不重渲染
+    this.lastReaderKey = key;
+    if (text) {
+      this.renderContent(text);
+    } else {
+      // 未在朗读：半透明占位（与歌词模式的「未在播放歌曲」同一套），
+      // 且清掉上一次的朗读块，避免它继续以占位透明度留在窗口里
+      this.lastText = "";
+      this.contentEl.toggleClass("is-placeholder", true);
+      this.renderMarkdown("未在朗读");
+    }
+  }
+
   private async showLine(line: number, text?: string) {
     this.currentLine = Math.max(line, 0);
     if (text === undefined) {
@@ -933,6 +1035,8 @@ export class TeleprompterWindow extends Component {
       if (this.state.scrollSync) this.syncLineCursor();
     } else if (this.state.mode === "lyrics") {
       this.stepLyrics(-1);
+    } else if (this.state.mode === "reader") {
+      // 朗读模式内容由播放推进，没有 seek 能力 → 无「上一项」可走，保持跟随
     } else {
       // 匹配尚未加载（如重启恢复后首滚）：先扫再导航，滚动即触发获取
       if (!this.matches.length) await this.ensureMatches();
@@ -948,6 +1052,8 @@ export class TeleprompterWindow extends Component {
       if (this.state.scrollSync) this.syncLineCursor();
     } else if (this.state.mode === "lyrics") {
       this.stepLyrics(1);
+    } else if (this.state.mode === "reader") {
+      // 同上：朗读位置由音频时钟驱动
     } else {
       if (!this.matches.length) await this.ensureMatches();
       this.showMatchIndex(this.currentIndex + 1);
@@ -1025,7 +1131,8 @@ export class TeleprompterWindow extends Component {
 
   /** 双击：光标跳到捕获文本所在行、选中对应文本并聚焦编辑器。
       高亮模式 → 尽量选中匹配文本段（归一化后找不到则回退整行）;
-      行模式 → 选中整行;选中覆盖 → 保留编辑器现有选择（即对应文本），仅聚焦 */
+      行模式 → 选中整行;选中覆盖 → 保留编辑器现有选择（即对应文本），仅聚焦；
+      朗读模式 → 跳朗读所在的编辑器（朗读跟随编辑器，故取其当前光标行） */
   private jumpToCapturedLine() {
     if (this.state.mode === "lyrics") return; // 歌词模式无文档行可跳
     const src = this.resolveDoc();
@@ -1045,7 +1152,9 @@ export class TeleprompterWindow extends Component {
 
     const line = this.state.mode === "highlight"
       ? (this.matches[this.currentIndex]?.line ?? ed.getCursor().line)
-      : this.currentLine;
+      : this.state.mode === "reader"
+        ? ed.getCursor().line // 朗读位置就在编辑器里，直接用它的光标行
+        : this.currentLine;
     const targetLine = Math.max(line, 0);
     const lineText = ed.getLine(targetLine) ?? "";
 

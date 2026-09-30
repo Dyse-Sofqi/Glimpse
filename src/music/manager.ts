@@ -2,7 +2,7 @@
  * 音乐模块管理器：歌单扫描与富化、播放控制（播放模式/倍速/音量）、
  * 播放状态分发（侧边栏订阅）。音乐功能的中枢。
  */
-import { Notice, Platform, TFile, type App, type Plugin } from "obsidian";
+import { Notice, Platform, TFile, type App, type Plugin, type WorkspaceLeaf } from "obsidian";
 import { MUSIC_VIEW_TYPE, PLAY_MODES, SPEED_OPTIONS, blobOf, type PlayMode } from "./shared";
 import { isAudioFile, isWindowsAbsolutePath, buildAudioSong, sidecarLrcPath } from "./songScanner";
 import { resolveAudioSourceByPath, readMp3TagHead, readM4aTagHead, readAudioHeadBytes, parseTagsForPlugin, parseM4aTags, type AudioSource, type Mp3Tags } from "./tags";
@@ -944,21 +944,32 @@ export class MusicManager {
       this.app.workspace.revealLeaf(existing[0]);
       return;
     }
-    const rightLeaf = this.app.workspace.getRightLeaf(false);
-    if (rightLeaf) {
-      await rightLeaf.setViewState({ type: MUSIC_VIEW_TYPE, active: true });
-    }
+    const leaf = this.mountMusicLeaf();
+    if (!leaf) return;
+    await leaf.setViewState({ type: MUSIC_VIEW_TYPE, active: true });
+    // 新建标签时 setViewState 不会展开收起的侧栏，显式 reveal（与「已存在」路径一致）
+    this.app.workspace.revealLeaf(leaf);
   }
 
-  /** 静默挂载音乐面板标签页：不展开侧栏、不抢占当前激活标签（区别于 activateView 的 reveal）。
-   *  getRightLeaf(true) 新建一个标签，避免 setViewState 覆盖右栏已有其他插件视图 */
+  /** 静默挂载音乐面板标签页：不展开侧栏、不抢占当前激活标签（区别于 activateView 的 reveal） */
   async ensureViewLoaded() {
     const existing = this.app.workspace.getLeavesOfType(MUSIC_VIEW_TYPE);
     if (existing.length > 0) return;
-    const rightLeaf = this.app.workspace.getRightLeaf(true);
-    if (rightLeaf) {
-      await rightLeaf.setViewState({ type: MUSIC_VIEW_TYPE });
-    }
+    const leaf = this.mountMusicLeaf();
+    if (leaf) await leaf.setViewState({ type: MUSIC_VIEW_TYPE });
+  }
+
+  /**
+   * 在右侧边栏「已有标签组」内新建一个空标签并返回（右栏不可用时返回 null）。
+   *
+   * 参数必须是 false：Obsidian 运行时（1.13 实测）的 getRightLeaf(false) 取
+   * rightSplit.children[0] 后 insertChild 一个**新建的空叶子** —— 不触碰组内已有
+   * 叶子、也不激活它，因此不会覆盖其他插件的视图（如「仓库同步」）；
+   * 而 getRightLeaf(true) 是 insertChild 一个**新标签组**（WorkspaceTabs）到
+   * rightSplit 末尾，等于在右栏再切一个分栏：音乐面板因此掉到右栏下半区。
+   */
+  private mountMusicLeaf(): WorkspaceLeaf | null {
+    return this.app.workspace.getRightLeaf(false);
   }
 
   onunload() {

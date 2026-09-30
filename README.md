@@ -13,7 +13,7 @@
 
 ![License](https://img.shields.io/github/license/Dyse-Sofqi/Glimpse?style=flat-square\&label=License)
 
-> **关键词**：动态高亮、选择高亮、持久高亮、正则查询、捕获组、自定义 CSS、CSS 自动补全、高亮器描述、高亮索引、提词器、光标联动、滚动条标记、缩略图、文字渐变、字幕投影、滚动同步、穿透锁定、文档绑定、分组管理、导入导出、音乐播放、歌词面板、卡拉OK逐字高亮、在线歌词、多平台下载
+> **关键词**：动态高亮、选择高亮、持久高亮、正则查询、捕获组、自定义 CSS、CSS 自动补全、高亮器描述、高亮索引、提词器、光标联动、滚动条标记、缩略图、文字渐变、字幕投影、滚动同步、穿透锁定、文档绑定、分组管理、导入导出、音乐播放、歌词面板、卡拉OK逐字高亮、在线歌词、多平台下载、笔记朗读、语音合成（TTS）、播放条、内容过滤、标点细分高亮、GPT-SoVITS、Qwen3-TTS、Windows 本地语音
 
 根据选中内容或搜索关键词动态高亮文本的 Obsidian 插件，主要功能：
 
@@ -21,6 +21,7 @@
 - **持久高亮**：按正则/关键词查询持久标记，支持捕获组、父行、开始/结束 widget、自定义 CSS（内置带 CSS 自动补全的代码编辑器）与高亮器描述，配标签组管理与一键导入导出
 - **高亮索引**：自动检索 `==高亮==` 文本，按文档标题层级组织为侧边栏索引，支持光标联动与键盘导航
 - **提词器（桌面端）**：歌词式浮动提词窗口，跟随文档/光标实时显示，支持 100–900 字重、文字渐变、字幕投影、穿透锁定、文档绑定、滚动同步与多实例
+- **朗读（桌面端）**：把当前笔记念出来——先按 17 项规则把 Markdown 过滤成「该被听见的内容」，再按标点三级分段、逐段合成、边播边取下一段，同时高亮正在读的那一块（可细到当前分句）；可从文档开头 / 光标处 / 选区起读，支持预取、暂停续播、自动滚动、光标跟随与三种 TTS 引擎（本地 GPT-SoVITS / Qwen3-TTS / 零安装的 Windows 本地语音）
 - **音乐**：侧边栏歌词音乐面板——三标签页歌单（网易云**账号歌单**同步到本地 / 在线歌单四平台搜索下载 / 本地歌单自定义分组与拖拽排序）、逐字卡拉OK高亮与双语注释、歌词自动跟随（手动滚动即暂停）、音频文件夹（MP3/FLAC/M4A/OGG，支持库外绝对路径）作歌单、四平台在线歌词获取、下载前试听与推荐歌单
 
 目前仅支持源码模式（Source）和实时预览模式（Live Preview）。阅读模式（Reading）和旧版编辑器暂不支持。
@@ -106,25 +107,26 @@
 
 桌面歌词式浮动提词窗口，跟随文档内容实时显示，适合提词、朗读、讲解场景。仅桌面端可用。
 
-- **三种内容模式**：
+- **四种内容模式**：
   - **行提取**：默认静态显示（打开/切换文档时提取一次），点击工具栏「跟踪光标」开启光标跟随——光标移动自动提取所在行（轮询检测，绑定/活动文档均可）；滚轮/按钮可手动切换上一行、下一行
   - **高亮提取**：按顺序显示 `==...==` 高亮匹配，适合按稿朗读
   - **歌词提取**：展示音乐模块当前正在播放的歌词行，随播放进度自动换行（按歌曲 + 行号去重，不被高频状态推送重绘）；上一项/下一项/滚轮跳转到相邻歌词行的时间戳（暂停时同样生效）；无播放会话时显示「未在播放歌曲」占位，前奏未唱到第一行显示「♪ 前奏 ♪」
+  - **朗读提取**：展示朗读当前正在读的那一块，随播放自动推进（开启「高亮按标点细分」时细到当前分句）；内容直接取编辑器里的原文片段，因此 Markdown 记号会正常渲染；未在朗读时显示「未在朗读」占位。内容由音频时钟驱动，没有可 seek 的「上一项/下一项」
   - **选中提取**：选中文本时临时覆盖显示选中内容，取消选中自动恢复
-- **模式切换**：工具栏下拉列表（逐行提取 / 高亮提取 / 歌词提取），保留原生下拉箭头、收起值与弹出选项均居中；窗口拖拽/滚轮逻辑对下拉豁免（选项可正常弹出），穿透锁定时隐藏
+- **模式切换**：工具栏自绘下拉（逐行提取 / 高亮提取 / 歌词提取 / 朗读提取）——带 `chevron-down` 下拉箭头，弹出菜单跟随 Obsidian 主题配色并高亮当前项（原生 `<select>` 的弹层是系统级窗口，既不随顶栏显隐也不跟随主题，故未采用），收起值与弹出选项均居中；点击提词器之外、按 Esc、鼠标离开窗口都会收起；窗口拖拽/滚轮逻辑对下拉整块豁免（选项区可正常滚动），穿透锁定时隐藏
 - **高亮索引联动**：点击高亮索引卡片自动绑定该文档并切换到高亮提取模式；双击提词器文本区同步选中索引中对应卡片；开启滚动同步后，上一项/下一项切换同样联动选中对应卡片
 - **滚动同步**：工具栏「穿透锁定」右侧按钮（lucide `link`）开启后，上一项/下一项切换同步触发——逐行模式光标跳转对应上一/下一行，高亮模式选中索引中对应上一/下一项卡片；穿透锁定时随非交互按钮一并隐藏
 - **文档绑定**：将窗口固定到某个文档，不再跟随活动文档；已锁定后再次点击绑定按钮直接解除锁定，不会转向锁定当前活动文档
 - **穿透锁定**：窗口整体穿透鼠标（仅保留交互按钮），不遮挡编辑；背景全透明统一由「隐藏背景」按钮控制，穿透锁定本身不再改动背景；锁定状态下按钮栏同样仅在鼠标悬停时显示，移出窗口自动隐藏，「跟踪光标」「滚动同步」按钮随其他非交互按钮一并隐藏
 - **隐藏背景**：激活后窗口背景全透明（悬停/拖拽也不显示），未激活时背景色常显且透明度引用设置界面所设的背景透明度；激活时正文文字自动附加字幕投影
-- **文字投影（字幕效果）**：隐藏背景时为正文文字附加柔和投影（`drop-shadow`，严格位于文字之下），设置「文字阴影」折叠分组可调投影开关、水平/垂直偏移、模糊半径、不透明度（均带重置按钮），默认右偏 2px/下偏 3px/模糊 6px/不透明度 35%
+- **文字投影（字幕效果）**：隐藏背景时为正文文字附加柔和投影（`drop-shadow`，严格位于文字之下），设置「文字阴影」折叠分组可调投影开关、水平/垂直偏移、模糊半径、不透明度（均带重置按钮），默认右偏 2px/下偏 2px/模糊 2px/不透明度 40%
 - **文字渐变**：正文文字渐变色，设置「文字渐变」折叠分组提供渐变开关（覆盖「字体颜色」）、线性/径向类型、整体/逐字范围（逐字模式每字独立裁切渐变，emoji 等组合字符不拆碎）、渐变角度与颜色停靠点编辑器（增删/位置/色板，按位置排序），附与提词器同参数的实时预览
 - **宽度自适应**：按内容最宽行自动适配宽度（切换上一项/下一项不增宽），宽度钳制视口上限，长文本换行不溢出；右缘可拖拽调整并自动锁定，宽度锁定后仍可直接拖拽，新宽度继承为锁定宽度
 - **拖拽吸附**：贴近视口边缘或中心线时自动吸附，附辅助线提示
 - **位置稳定**：窗口位置由用户决定，内容高度变化（换行、改字号、宽度自适应重算）不会移动窗口；重启后按保存的位置原样恢复，不再因恢复后的行文变高被抬升
 - **字体大小**：32/40/50/64/80px 五档循环
 - **字体 / 字重 / 颜色**：设置中可调正文字体（本机字体选择模态窗，`queryLocalFonts()` 枚举、兜底候选表测宽；多选 + 拖拽调优先级，首个可用字体优先生效、缺失自动顺延；支持搜索、预览与自定义字体输入）、字重（跟随主题 / 100–900）与文字颜色（色板，点击即应用；「清除」恢复跟随主题），均带「重置为初始值」按钮
-- **工具栏**：模式切换为下拉列表（逐行提取 / 高亮提取 / 歌词提取）；跟踪光标（`text-cursor`，光标跟随开关）、上一项/下一项（`arrow-big-left`/`arrow-big-right`）、宽度锁定（`move-horizontal`）、穿透锁定（`lock`/`unlock`）、隐藏背景（`eye-off`）、字体档位图标（`heading-1`~`heading-5`）均为语义化 lucide 图标；按钮提示默认在上方弹出、上方无空间时自动翻转到底部；穿透锁定时仅保留上一项/下一项、穿透锁定、关闭等交互按钮；设置按钮直达提词器设置页
+- **工具栏**：模式切换为下拉列表（逐行提取 / 高亮提取 / 歌词提取 / 朗读提取）；跟踪光标（`text-cursor`，光标跟随开关）、上一项/下一项（`arrow-big-left`/`arrow-big-right`）、宽度锁定（`move-horizontal`）、穿透锁定（`lock`/`unlock`）、隐藏背景（`eye-off`）、字体档位图标（`heading-1`~`heading-5`）均为语义化 lucide 图标；按钮提示默认在上方弹出、上方无空间时自动翻转到底部；穿透锁定时仅保留上一项/下一项、穿透锁定、关闭等交互按钮；设置按钮直达提词器设置页
 - **透明度**：设置中可调字体透明度（默认 100%）与背景透明度（默认 80%），两项均带「重置为初始值」按钮（lucide `rotate-ccw`）；背景色、边框与外轮廓阴影常显，透明度实时生效
 - **主题适配**：切换浅色/深色主题时窗口背景色即时更新，无需重启
 - **渲染样式**：内容复用主题与自定义 CSS（标题、代码块、内联格式等），仅字体大小由提词器控制；单行渲染前自动去掉行首缩进，嵌套列表等缩进行按无缩进列表/文本展示，不被误判为代码块
@@ -135,6 +137,54 @@
 - **状态持久化**：关闭后重新打开即恢复上次窗口的位置、尺寸、模式、绑定、跟踪光标等状态；已关闭窗口的状态跨重启保留，Obsidian 重启后重开仍可恢复，已关闭的窗口不会在重启后自动弹出；**窗口位置按保存值原样恢复**，不再因恢复后的行文变高被抬升
 - **空行回退**：当前行为空时显示上一项内容（半透明占位）
 - **命令**：「打开提词器」「关闭所有提词器」，支持多实例
+
+### 朗读（桌面端）
+
+把当前笔记念出来：文本先过滤成「该被听见的内容」，再切成段、逐段合成、边读边取下一段，并高亮正在读的那一块。仅桌面端可用（要起子进程与本地语音服务），且只支持源码模式与实时预览模式。
+
+**开始朗读**
+
+- **三种起点**：命令面板「朗读：从头读 / 从光标读 / 读选区」；正文右键菜单也有「朗读：从光标读」——右键的位置就是朗读起点
+- **播放条**：朗读开始后注入当前笔记顶部，提供播放/暂停、停止、段计数（`n / N`）与段内进度细条（分段长度不均，故不显示百分比）；服务准备与失败自动重试的进度也在这条上显示
+- **命令**：「朗读：播放/暂停」「朗读：停止」可绑定快捷键
+
+**文本过滤（17 项，逐项可关）**
+
+- 过滤 YAML frontmatter、围栏代码块、行内代码、表格、标题记号、引用记号、callout 标记、列表记号、`#标签`、链接与网址、图片嵌入、`[[双链]]`（保留显示名）、emoji、`==高亮==` 记号、星号、下划线、反斜杠转义；另有「跳过含指定短语的整行」「跳过以指定前缀开头的整行」两条整行规则
+- 引用块里的代码块、表格、列表同样会被过滤；callout 的 `[!note]` 类型标记不会被念出来，标题与正文保留
+- 过滤只影响朗读：高亮位置靠偏移映射换回原文坐标，因此过滤掉链接与 Markdown 记号后，编辑器里亮起的仍是原文对应位置
+
+**分段与首字延迟**
+
+- 按标点三级切分：句末标点（含英文句点，缩略语与小数不误切）为强边界、顿号逗号分号为弱边界（需累积够字数，默认 36 字才切）、另有段内硬上限（默认 150 字）与段落换行
+- 列表项、标题、callout 标记行作为结构断点强制断开，列表不会被念成一大段；段尾标点串不会单独成段，纯标点行（如单独一行的省略号）不会送进合成
+- **首段短、后续渐进加长**：首段默认 15 字（首字约 3 秒出声），之后按「本段音频够不够覆盖下一段合成」逐段加长，段间不出现静默等待；设置页提供「低首字延迟（推荐）」「简单分段」两套预设，首段上限滑块可手动微调
+- 「朗读：预览分段（不发声）」打印过滤后字符数、段数、预估合成与音频时长、首段文本与映射自检结果，方便对照着调参数
+
+**高亮与视图联动**
+
+- 正在读的段用编辑器原生装饰高亮（复用主题与自定义 CSS），换行、缩放、切换主题都不跑偏
+- **高亮按标点细分**：开启后段内高亮推进到当前分句，而不是整段一次亮起；段尾标点不纳入高亮（避免「亮完一整句再多亮一个句号」的观感）
+- **自动滚动**到当前段；可选**光标跟随**（默认关——开启后编辑器光标跟着朗读走，会接管光标）；可选**锁定编辑器**
+
+**三种 TTS 引擎**
+
+- **GPT-SoVITS**（默认）：连接本机 `api_v2.py` 服务（默认 `127.0.0.1:9880`），可设置安装根目录（含同名双层目录自动定位）、GPT / SoVITS 权重（**按同名基名成对选择**，防止错配静默产出错误音色）、参考音频与参考文本、朗读语种与参考语言、输出格式（默认 ogg，体积约为 wav 的 1/8.4）与语速（0.5–2.0x）；可一键「启动本地服务」「停止本地服务」「重启本地服务」，插件会记住自己启动的进程（重启 Obsidian 后仍能认领并停止），**不会去动你自己启动的服务**
+- **Qwen3-TTS**：VoiceDesign 用一段自然语言描述音色（如「温柔的年轻女声」），随每个请求发送、改完即生效；插件会生成桥接服务脚本并拉起（默认 `127.0.0.1:9872`），提供「一键准备环境」（装依赖、按显卡驱动装 CUDA 版 torch、写脚本）、推理设备与语种设置。注意该引擎不支持语速调节，且明显比 GPT-SoVITS 慢，适合短段与音色设计
+- **Windows 本地语音**（零安装兜底）：直接调用 Windows 自带的 SAPI5 语音，不需要安装任何东西；可选系统语音、语速（0.5–2.0x）与音量，并带「试听」
+- 切换引擎时会自动停掉**由本插件启动**的另外两套服务以释放显存，外部启动的服务只提示、不动
+
+**服务与诊断**
+
+- 设置页「朗读 → 服务」显示**服务状态**（未运行 / 启动中 / 运行中（由本插件启动）/ 运行中（外部启动，本插件不会去停它））与**推理健康度**（未知 / 正常 / 异常——进程活着不代表能推理，健康度由真实合成结果驱动）
+- 「朗读：环境诊断」逐项检查子进程能力、Python 解释器、安装根目录、权重、参考音频、服务可达性、**语音合成自检**（真的合成一小段）、原生文件对话框、音频解码等，并以一条通知汇总结果
+- 「朗读：查看服务日志」查看服务最近输出（中文路径按 GBK 回退解码，不会乱码）；另有「朗读：强制停止服务（按端口）」应对进程归属丢失的情况
+
+**说明与限制**
+
+- 朗读依赖本地服务与子进程，**仅桌面端可用**；阅读模式（Reading）不支持
+- 朗读过程中编辑文档：高亮会跟着文本变更平移，但已在合成的段队列不会重排，位置可能失配
+- 目前是段级高亮（可选推进到分句），尚无逐词高亮；也没有续读位置持久化与音频导出
 
 ### 音乐
 
@@ -173,17 +223,19 @@
 
 ### 设置
 
-设置界面按功能分为五个页签：
+设置界面按功能分为六个页签：
 
 - **选择高亮**：高亮选中文本出现位置开关；高亮延迟（毫秒，需 ≥200）；缩略图开关；选择检索的字符串上限滑杆（2-60，默认 30，带「恢复默认」按钮）
 - **持久高亮**：自定义样式的创建、编辑、删除，标签组管理与一键导入导出。表单含名称、描述、背景色（可留空）、搜索词/表达式（带正则开关）、标记开关，以及带 CSS 自动补全的代码编辑器，并提供「清空当前编辑」一键复位
 - **高亮索引**：「启动时默认打开高亮索引」开关，开启后插件启动时自动启用索引标签页
 - **提词器**：字体（本机字体选择）、字重（跟随主题 / 100–900）、字体颜色、字体透明度（默认 100%）、背景透明度（默认 80%），均带「重置为初始值」按钮；可折叠「文字阴影」分组（投影开关、水平/垂直偏移、模糊半径、不透明度）与「文字渐变」分组（渐变开关、类型、范围、角度、颜色停靠点，附实时预览）；选中提取模式与状态栏按钮开关
 - **音乐**：音频文件夹选择器（「浏览」按钮打开系统资源管理器选择，带刷新按钮与搜索下拉，支持库外盘符绝对路径）、逐字高亮开关、底部状态栏适配开关（开启后保留 view-content 默认样式，面板底部为悬浮的应用状态栏预留安全区留白；关闭则移除该默认样式贴边铺满，适配状态栏相对布局的主题）、歌词自动滚动开关、试听缓存释放；「下载」分组为四平台可折叠 Cookie 行（启用勾选、状态徽标、「打开登录页」直达平台登录页、可点击复制的 document.cookie 代码芯片、测试连接、清除，默认收起防凭证暴露）
+- **朗读**：TTS 引擎下拉；朗读（预取深度、自动滚动、光标跟随、高亮按标点细分、锁定编辑器、卸载/退出时是否停止本地服务）；分段（单段上限、弱边界阈值、分段预设、首段上限与「预览分段」）；内容过滤（17 项逐项开关 + 两条整行跳过规则）；服务与声音（GPT-SoVITS：服务状态与推理健康度、校验安装根目录、环境诊断、启动本地服务、音色选择与应用于服务、GPT / SoVITS 权重、参考音频与参考音频目录、参考音频语言、朗读语种、输出格式、语速）；服务与声音（Qwen3-TTS：服务状态、一键准备环境、校验模型目录、检查 Python 环境、推理设备、启动本地服务、音色预设与音色描述、朗读语种、环境诊断）；环境与声音（Windows 本地语音：环境状态与诊断、语音列表、语速、音量、试听）
 
 ### 限制
 
 - 阅读（Reading）模式暂不支持动态高亮
+- 朗读（桌面端）：依赖本地语音服务与子进程，仅桌面端可用；阅读（Reading）模式不支持；朗读期间编辑文档时，已在合成的段队列不会重排，高亮位置可能失配
 - 音乐：库外绝对路径音频/下载写盘为桌面端功能；移动端仅支持 vault 内音频播放，在线歌词/下载接口在移动端可能因 Referer 头被剥离而不可用
 
 ### 赞助
@@ -203,7 +255,7 @@
 
 ## English README
 
-> **Keywords**: dynamic highlighting, selection highlighting, persistent highlighting, regex queries, capture groups, custom CSS, CSS autocompletion, highlighter description, highlight index, teleprompter, cursor-linked selection, scrollbar markers, minimap, text gradient, subtitle drop shadow, scroll sync, click-through lock, document binding, group management, import/export, music player, lyrics panel, karaoke word highlighting, online lyrics, multi-platform download
+> **Keywords**: dynamic highlighting, selection highlighting, persistent highlighting, regex queries, capture groups, custom CSS, CSS autocompletion, highlighter description, highlight index, teleprompter, cursor-linked selection, scrollbar markers, minimap, text gradient, subtitle drop shadow, scroll sync, click-through lock, document binding, group management, import/export, music player, lyrics panel, karaoke word highlighting, online lyrics, multi-platform download, note read-aloud, text-to-speech (TTS), player bar, content filtering, clause-level highlighting, GPT-SoVITS, Qwen3-TTS, Windows local voice
 
 An Obsidian plugin that dynamically highlights text based on cursor selection or search query. Key features:
 
@@ -211,6 +263,7 @@ An Obsidian plugin that dynamically highlights text based on cursor selection or
 - **Persistent highlighting**: mark text persistently via regex/keyword queries, with capture groups, line/start/end widgets, custom CSS (a built-in code editor with CSS autocompletion), a per-highlighter description, group management, and one-click import/export
 - **Highlight index**: auto-scans `==highlighted==` text and organizes it into a sidebar index by heading hierarchy, with cursor-linked selection and keyboard navigation
 - **Teleprompter (desktop only)**: karaoke-style floating teleprompter windows that follow the document/cursor in real time, with font weights 100–900, text gradient, subtitle drop shadow, click-through lock, document binding, scroll sync, and multi-instance support
+- **Read aloud (desktop only)**: reads the current note out loud — Markdown is first filtered down to "what should be heard" by 17 rules, then split into segments at punctuation boundaries and synthesized one segment at a time while the next is fetched, with the segment being read highlighted (optionally down to the current clause); start from the top of the document, the cursor or the selection, with prefetching, pause/resume, auto-scroll, cursor following and three TTS engines (local GPT-SoVITS / Qwen3-TTS / the zero-install Windows local voice)
 - **Music**: a sidebar lyrics music panel — a three-tab playlist (NetEase **account playlists** synced to local / online playlists searched and downloaded across four platforms / local songs with custom groups and drag ordering), karaoke word-by-word highlighting with bilingual annotations, auto-following lyrics (paused the moment you scroll manually), an audio folder (MP3/FLAC/M4A/OGG, absolute paths outside the vault supported) as the playlist, four-platform online lyrics fetching, preview-before-download and recommended playlists
 
 Currently supports Source mode and Live Preview mode. Reading mode and the legacy editor are not supported.
@@ -296,25 +349,26 @@ Automatically scans the active document for `==...==` wrapped Obsidian standard 
 
 Karaoke-style floating teleprompter windows that follow document content in real time — for cue cards, reading aloud, or lectures. Desktop only.
 
-- **Three content modes**:
+- **Four content modes**:
   - **Line extract**: static by default (extracts once when opened or when switching documents); click the "Track Cursor" button in the toolbar to enable cursor-following — the line under the cursor is auto-extracted as it moves (poll-based detection, bound or active document); wheel/buttons step up/down one line manually
   - **Highlight extract**: cycles through `==...==` matches in order — great for scripted reading
   - **Lyrics extract**: shows the currently playing lyric line from the music module, advancing with playback (deduplicated by song + line index so high-frequency state pushes never re-render); prev/next/wheel seek to the adjacent lyric line's timestamp (also while paused); a dim "not playing" hint appears with no session, and "♪ intro ♪" before the first line is sung
+  - **Reader extract**: shows the block currently being read aloud, advancing automatically with playback (down to the current clause when "clause-level highlighting" is on); the content is taken straight from the editor's original text, so Markdown markers render normally; a "not reading" placeholder appears when nothing is being read. The content is driven by the audio clock, so there is no seekable previous/next item
   - **Selection extract**: temporarily overrides the content with selected text, auto-restores on deselect
-- **Mode switch**: a toolbar dropdown (line / highlight / lyrics extract) keeping the native arrow, with the collapsed value and the popup options both centered; the window's drag/wheel handlers exempt the dropdown so its popup opens normally, and it is hidden while click-through locked
+- **Mode switch**: a hand-drawn toolbar dropdown (line / highlight / lyrics / reader extract) — with a `chevron-down` caret, a popup menu that follows the Obsidian theme colours and highlights the active item (a native `<select>` opens a system-level popup that neither follows the toolbar's visibility nor the theme, so it was dropped), with the collapsed value and the popup options both centered; it closes when you click outside the teleprompter, press Esc, or move the mouse out of the window; the window's drag/wheel handlers exempt the whole dropdown (so the option list scrolls normally), and it is hidden while click-through locked
 - **Highlight index integration**: clicking an index card binds that document and switches to highlight-extract mode; double-clicking the teleprompter text area selects the matching index card, and with scroll-sync on, prev/next steps select the corresponding card too
 - **Scroll sync**: the button (lucide `link`) right of the click-through lock — when active, prev/next also syncs: line-extract mode moves the editor cursor to the previous/next line, highlight-extract mode selects the previous/next index card; hidden with the other non-interactive buttons while locked
 - **Document binding**: pin the window to a specific document instead of following the active one; once bound, clicking the bind button again always unbinds instead of binding the currently active document
 - **Click-through lock**: whole window becomes mouse-transparent (interactive buttons kept), never blocks the editor; the lock itself no longer changes the background — full background transparency is handled solely by the "Hide Background" button; while locked the toolbar shows only on hover and fades out on mouse-leave, and the "Track Cursor" / "Scroll Sync" buttons are hidden with the other non-interactive buttons
 - **Hide Background**: when active, the window background becomes fully transparent (including hover/drag states) and the text automatically gets a subtitle drop shadow; when inactive, the background color stays visible with the opacity set in the settings
-- **Text shadow (subtitle effect)**: while the background is hidden, a soft drop shadow (`drop-shadow`, strictly beneath the text) is added to the teleprompter text; the collapsible "Text Shadow" settings group adjusts the shadow toggle, horizontal/vertical offset, blur radius and opacity (each with a reset button), defaulting to right 2px / down 3px / blur 6px / opacity 35%
+- **Text shadow (subtitle effect)**: while the background is hidden, a soft drop shadow (`drop-shadow`, strictly beneath the text) is added to the teleprompter text; the collapsible "Text Shadow" settings group adjusts the shadow toggle, horizontal/vertical offset, blur radius and opacity (each with a reset button), defaulting to right 2px / down 2px / blur 2px / opacity 40%
 - **Text gradient**: gradient coloring for the teleprompter text; the collapsible "Text Gradient" settings group offers a gradient toggle (overrides "Font Color"), linear/radial type, whole-text/per-character scope (per-character mode clips the gradient independently for each glyph, emoji and combined characters stay intact), gradient angle, and a color-stop editor (add/remove, position, palette, sorted by position), with a live preview sharing the teleprompter's parameters
 - **Width auto-fit**: width adapts to the content's widest line (prev/next never grows the window), clamped to the viewport so long text wraps without overflowing; the right edge is draggable and auto-locks, and stays draggable while locked — the new width inherits as the locked value
 - **Drag snapping**: snaps to viewport edges and center lines with guide overlays
 - **Stable position**: the window's position is yours — content-height changes (line changes, font-size changes, width re-fitting) never move it; after a restart it comes back exactly where it was saved instead of being lifted by taller restored content
 - **Font size**: cycles 32/40/50/64/80px
 - **Font / weight / color**: adjustable in settings — the body font uses a local-font picker modal (`queryLocalFonts()` enumeration, falling back to canvas measurement over a candidate list; multi-select with drag-to-reorder priority — the first available font wins, missing ones fall through; search, self-preview, and custom-font input included), font weight is a dropdown (follow theme / 100–900), and text color is a palette applied live ("Clear" restores the theme default); each has a "Reset to initial value" button
-- **Toolbar**: the mode toggle is a dropdown (line / highlight / lyrics extract); track cursor (`text-cursor`, cursor-following toggle), prev/next (`arrow-big-left`/`arrow-big-right`), width lock (`move-horizontal`), click-through lock (`lock`/`unlock`), hide background (`eye-off`), and font-size slot icons (`heading-1`~`heading-5`) all use semantic lucide icons; button tooltips default to popping above and flip below only when there is no room above; when locked, only interactive buttons (prev/next, lock, close) remain; the settings button jumps straight to the teleprompter settings page
+- **Toolbar**: the mode toggle is a dropdown (line / highlight / lyrics / reader extract); track cursor (`text-cursor`, cursor-following toggle), prev/next (`arrow-big-left`/`arrow-big-right`), width lock (`move-horizontal`), click-through lock (`lock`/`unlock`), hide background (`eye-off`), and font-size slot icons (`heading-1`~`heading-5`) all use semantic lucide icons; button tooltips default to popping above and flip below only when there is no room above; when locked, only interactive buttons (prev/next, lock, close) remain; the settings button jumps straight to the teleprompter settings page
 - **Opacity**: font opacity (default 100%) and background opacity (default 80%) adjustable in settings, each with a "Reset to initial value" button (lucide `rotate-ccw`); the background color, border and outline shadow are always visible and the opacity applies live
 - **Theme adaptation**: the window background updates instantly when toggling light/dark themes — no restart needed
 - **Theme / custom CSS styling**: content reuses theme and user CSS snippets (headings, code blocks, inline formatting); only font size is controlled by the teleprompter. Leading tabs/spaces are stripped before rendering a single line, so indented content (e.g. nested list items) renders as unindented list/text instead of a code block
@@ -325,6 +379,54 @@ Karaoke-style floating teleprompter windows that follow document content in real
 - **State persistence**: closing a window and reopening it restores its position, size, mode, binding, track-cursor toggle, and more; closed-window states survive an Obsidian restart (reopening still restores them), and closed windows never auto-reopen on restart; **the window position comes back exactly as saved** instead of being lifted by taller restored content
 - **Empty-line fallback**: shows previous item's text (half-opacity placeholder) when the current line is empty
 - **Commands**: "打开提词器" and "关闭所有提词器", multiple instances supported
+
+### Reading aloud (desktop only)
+
+Reads the current note out loud: the text is first filtered down to "what should be heard", then split into segments, synthesized one segment at a time while the next is fetched, with the segment being read highlighted. Desktop only (it spawns child processes and talks to local speech services), and it supports only Source mode and Live Preview mode.
+
+**Starting a session**
+
+- **Three starting points**: the command palette's "Read aloud: from top / from cursor / read selection"; the editor's right-click menu also offers "Read aloud: from cursor" — the clicked position is the starting point
+- **Player bar**: injected at the top of the current note once reading starts, with play/pause, stop, a segment counter (`n / N`) and a thin in-segment progress bar (segment lengths are uneven, so no percentage is shown); service preparation and automatic retry-after-failure progress also appear on this bar
+- **Commands**: "Read aloud: play/pause" and "Read aloud: stop" can be bound to hotkeys
+
+**Content filtering (17 toggles)**
+
+- Filters YAML frontmatter, fenced code blocks, inline code, tables, heading markers, quote markers, callout markers, list markers, `#tags`, links and URLs, image embeds, `[[wikilinks]]` (keeping the display name), emoji, `==highlight==` markers, asterisks, underscores and backslash escapes; two whole-line rules — "skip lines containing a given phrase" and "skip lines starting with a given prefix" — are also available
+- Code blocks, tables and lists inside blockquotes are filtered as well; a callout's `[!note]` type marker is never read out, while its title and body are kept
+- Filtering affects reading only: highlight positions are mapped back to original-document coordinates by an offset map, so after links and Markdown markers are filtered out the editor still lights up the corresponding original positions
+
+**Segmentation & first-word latency**
+
+- Three-level splitting at punctuation: end-of-sentence punctuation (including the English period; abbreviations and decimals are never split) is a strong boundary, enumeration commas, commas and semicolons are weak boundaries (they need enough accumulated characters — the default is 36 characters before splitting), plus an in-segment hard cap (default 150 characters) and paragraph breaks
+- List items, headings and callout marker lines act as structural breaks and force a split, so a list is never read as one giant segment; a trailing punctuation run never becomes its own segment, and pure punctuation lines (e.g. an ellipsis alone on a line) are never sent to synthesis
+- **Short first segment, then progressively longer**: the first segment defaults to 15 characters (first word out in about 3 seconds), after which segments grow one by one based on whether "this segment's audio is long enough to cover synthesizing the next one", so there is never a silent wait between segments; the settings page offers "Low first-word latency (recommended)" and "Simple segmentation" presets, and the first-segment cap slider can be fine-tuned by hand
+- "Read aloud: preview segments (silent)" prints the filtered character count, segment count, estimated synthesis and audio durations, the first segment's text and a mapping self-check, making it easy to tune parameters against
+
+**Highlighting & view linkage**
+
+- The segment being read is highlighted with the editor's native decorations (reusing the theme and custom CSS), staying accurate across line changes, zooming and theme switches
+- **Clause-level highlighting**: when on, the segment's highlight advances to the current clause instead of lighting up the whole segment at once; trailing punctuation is not included in the highlight (avoiding the "the whole sentence lights up and then one more period lights up" feel)
+- **Auto-scroll** to the current segment; an optional **cursor follow** (off by default — when on, the editor cursor follows the reading and takes over the cursor); an optional **lock editor**
+
+**Three TTS engines**
+
+- **GPT-SoVITS** (default): connects to a local `api_v2.py` service (default `127.0.0.1:9880`), with an install root setting (including automatic detection of a same-named double-nested directory), GPT / SoVITS weights (**selected in pairs by matching base name**, preventing mismatches from silently producing the wrong voice), reference audio and reference text, reading language and reference language, output format (default ogg, roughly 1/8.4 the size of wav) and speed (0.5–2.0x); one-click "Start local service", "Stop local service" and "Restart local service" are provided, and the plugin remembers the process it started (it can still claim and stop it after an Obsidian restart) — it **never touches a service you started yourself**
+- **Qwen3-TTS**: VoiceDesign takes a natural-language description of the voice (e.g. "a gentle young female voice"), sent with every request and taking effect as soon as it is edited; the plugin generates a bridge service script and launches it (default `127.0.0.1:9872`), offering one-click environment setup (installing dependencies, installing the CUDA build of torch for your GPU driver, writing the script), plus inference device and language settings. Note that this engine does not support speed adjustment and is noticeably slower than GPT-SoVITS, suiting short segments and voice design
+- **Windows local voice** (zero-install fallback): calls Windows' built-in SAPI5 voices directly with nothing to install; you can pick the system voice, speed (0.5–2.0x) and volume, and it has a "Preview" button
+- Switching engines automatically stops the other two services **that this plugin started** to free VRAM; externally started services are only reported, never stopped
+
+**Service & diagnostics**
+
+- The settings page's "Read aloud → Service" shows **service status** (not running / starting / running (started by this plugin) / running (started externally — this plugin will not stop it)) and **inference health** (unknown / OK / failing — a live process does not mean it can infer; health is driven by real synthesis results)
+- "Read aloud: environment diagnostics" checks child-process capability, the Python interpreter, the install root, weights, reference audio, service reachability, a **speech synthesis self-test** (it really synthesizes a short clip), native file dialogs, audio decoding and more, then summarizes the results in a single notice
+- "Read aloud: view service log" shows the service's latest output (Chinese paths fall back to GBK decoding instead of garbling); "Read aloud: force-stop service (by port)" covers the case where process ownership has been lost
+
+**Notes & limitations**
+
+- Reading aloud depends on local services and child processes and is **desktop only**; Reading mode is not supported
+- Editing the document while reading: the highlight pans with the text changes, but segments already queued for synthesis are not re-ordered, so positions can drift
+- Highlighting is currently segment-level (optionally advancing to the clause), with no word-level highlighting yet; there is also no resume-position persistence and no audio export
 
 ### Music
 
@@ -363,17 +465,19 @@ A sidebar lyrics music panel (click the music ribbon icon or run the "Open music
 
 ### Settings
 
-The settings dialog is organized into five tabs:
+The settings dialog is organized into six tabs:
 
 - **Selection**: toggle highlighting all occurrences of the selected text; highlight delay in milliseconds (≥200); minimap toggle; a "Max selection length" slider (2-60, default 30, with a "Restore default" button)
 - **Persistent**: create, edit, and delete highlighters, group management, one-click import/export. The form covers name, description, background color (may be left empty), search term/expression (with a regex toggle), mark toggles and a code editor with CSS autocompletion, plus a one-click "Clear current edit" reset
 - **Highlight index**: "Startup auto-open highlight index" toggle — enables the index tab on plugin load
 - **Teleprompter**: font (local-font picker), font weight (follow theme / 100–900), font color, font opacity (default 100%) and background opacity (default 80%), each with a "Reset to initial value" button; collapsible "Text Shadow" group (shadow toggle, horizontal/vertical offset, blur radius, opacity) and "Text Gradient" group (gradient toggle, type, scope, angle, color stops, with a live preview); selection-extract mode and status-bar button toggles
 - **Music**: audio folder picker (a "Browse" button opens the system file explorer to pick a folder, plus a refresh button and search dropdown; absolute Windows paths supported), karaoke highlighting toggle, a bottom-status-bar adapt toggle (when on, the Obsidian default `view-content` styles are kept so the panel bottom reserves safe-area space for the floating app status bar; when off, those defaults are removed and the panel fills edge-to-edge — for themes with a relative status bar), lyrics auto-scroll toggle, preview cache flush; the "Download" group holds collapsible per-platform cookie rows (enable checkbox, status badge, an "Open login page" button that jumps straight to the platform's login page, a click-to-copy `document.cookie` code chip, test connection, clear — collapsed by default); platform-priority drag ordering was removed (results are relevance-sorted) and drag-to-reorder platform priority
+- **Reading aloud**: the TTS engine dropdown; Read aloud (prefetch depth, auto-scroll, cursor follow, clause-level highlighting, lock editor, whether to stop local services on unload/quit); Segmentation (max segment length, weak-boundary threshold, segmentation presets, first-segment cap and "Preview segments"); Content filtering (17 individual toggles + two whole-line skip rules); Service & voices (GPT-SoVITS: service status and inference health, verify install root, environment diagnostics, start local service, voice selection and apply to service, GPT / SoVITS weights, reference audio and reference audio folder, reference audio language, reading language, output format, speed); Service & voices (Qwen3-TTS: service status, one-click environment setup, verify model folder, check Python environment, inference device, start local service, voice presets and voice description, reading language, environment diagnostics); Environment & voices (Windows local voice: environment status and diagnostics, voice list, speed, volume, preview)
 
 ### Limitations
 
 - Reading mode does not support dynamic selection highlighting
+- Reading aloud (desktop only): depends on local speech services and child processes, so it is desktop-only; Reading mode is not supported; while reading, editing the document does not re-order segments already queued for synthesis, so highlight positions can drift
 - Music: audio outside the vault (absolute paths) and download-to-disk are desktop-only; on mobile only in-vault audio playback works, and online lyrics/download APIs may be unavailable because the Referer header is stripped
 
 ### Sponsorship

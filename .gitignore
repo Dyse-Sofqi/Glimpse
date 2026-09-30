@@ -21,3 +21,17 @@ data.json
 
 # AI assistant working files
 .workbuddy-ai/
+
+# 朗读模块的运行时产物 —— 都不是源码，不该进仓库
+#   reader-service.json / reader-qwen-service.json     服务进程归属记录（PID/端口/启动时间）
+#   reader-service.log / reader-qwen-service.log       服务子进程的 stdout/stderr（会持续增长）
+#   reader-qwen-server.py                             插件生成的桥接服务脚本（真源码在 src/reader/tts/qwen-server-script.ts）
+#   qwen-env-setup.log                                环境准备过程的日志
+#   reader-voice/                                     导入的参考音频副本（二进制，属于用户数据）
+reader-service.json
+reader-qwen-service.json
+reader-service.log
+reader-qwen-service.log
+reader-qwen-server.py
+qwen-env-setup.log
+reader-voice/

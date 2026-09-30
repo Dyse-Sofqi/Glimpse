@@ -3,6 +3,8 @@ import { SelectionHighlightOptions } from "../highlighters/selection";
 import type { TeleprompterWindowState } from "../teleprompter";
 import type { MusicSettings } from "../music/settings-types";
 import { DEFAULT_MUSIC_SETTINGS } from "../music/settings-types";
+import type { ReaderSettings } from "../reader/settings-types";
+import { DEFAULT_READER_SETTINGS } from "../reader/settings-types";
 
 interface SearchConfig {
   value: string;
@@ -41,6 +43,8 @@ export interface GlimpseSettings {
   teleprompter: TeleprompterSettings;
   /** 音乐模块（侧边栏歌词面板/歌单/多平台下载），持久化在 data.json 的 music 字段 */
   music: MusicSettings;
+  /** 朗读模块（分段 + 本机 GPT-SoVITS），持久化在 data.json 的 reader 字段 */
+  reader: ReaderSettings;
 }
 
 export interface HighlightIndexSettings {
@@ -54,17 +58,17 @@ export const DEFAULT_BG_OPACITY = 80;
 
 // 正文字体/字重/颜色初始值 —— 取自当前实际使用配置
 export const DEFAULT_FONT_FAMILY =
-  "Segoe UI, Source Han Serif SC VF, Source Han Sans SC VF";
-export const DEFAULT_FONT_WEIGHT = 800;
+  "Smiley Sans, Source Han Serif SC VF, Source Han Sans SC VF";
+export const DEFAULT_FONT_WEIGHT: number | null = null;
 export const DEFAULT_FONT_COLOR = "#B00000";
 
 // 文字阴影初始值（隐藏背景时的字幕投影）——
-// 右偏 2px / 下偏 3px / 模糊 6px / 不透明度 35%，设置界面重置按钮恢复到此值
+// 右偏 2px / 下偏 2px / 模糊 2px / 不透明度 40%，设置界面重置按钮恢复到此值
 export const DEFAULT_SHADOW_ENABLED = true;
 export const DEFAULT_SHADOW_OFFSET_X = 2;
-export const DEFAULT_SHADOW_OFFSET_Y = 3;
-export const DEFAULT_SHADOW_BLUR = 6;
-export const DEFAULT_SHADOW_OPACITY = 35;
+export const DEFAULT_SHADOW_OFFSET_Y = 2;
+export const DEFAULT_SHADOW_BLUR = 2;
+export const DEFAULT_SHADOW_OPACITY = 40;
 
 // 文字渐变（覆盖「字体颜色」，背景裁切到文字）
 export type GradientType = "linear" | "radial";
@@ -76,10 +80,10 @@ export interface GradientStop {
 export const DEFAULT_GRADIENT_ENABLED = true;
 export const DEFAULT_GRADIENT_TYPE: GradientType = "linear";
 export const DEFAULT_GRADIENT_SCOPE: GradientScope = "char";
-export const DEFAULT_GRADIENT_ANGLE = 180; // 线性渐变角度，180 = 从上到下
+export const DEFAULT_GRADIENT_ANGLE = 160; // 线性渐变角度，180 = 从上到下
 export const DEFAULT_GRADIENT_STOPS: GradientStop[] = [
-  { color: "#FF8D4D", pos: 0 },
-  { color: "#E70F0F", pos: 100 },
+  { color: "#F2643C", pos: 0 },
+  { color: "#C60C0C", pos: 100 },
 ];
 
 /** 按停靠位置排序后拼出 CSS 渐变图片值；无停靠点返回空串 */
@@ -107,13 +111,13 @@ export interface TeleprompterSettings {
   fontColor: string | null; // 正文字体颜色（hex），null = 跟随主题
   shadowEnabled: boolean; // 隐藏背景时文字阴影开关，默认开
   shadowOffsetX: number; // 阴影水平偏移（px，可负），默认 2
-  shadowOffsetY: number; // 阴影垂直偏移（px，可负），默认 3
-  shadowBlur: number; // 阴影模糊半径（px），默认 6
-  shadowOpacity: number; // 阴影不透明度 0-100，默认 35
+  shadowOffsetY: number; // 阴影垂直偏移（px，可负），默认 2
+  shadowBlur: number; // 阴影模糊半径（px），默认 2
+  shadowOpacity: number; // 阴影不透明度 0-100，默认 40
   gradientEnabled: boolean; // 文字渐变开关，默认开（开启后覆盖 fontColor）
   gradientType: GradientType; // linear | radial，默认 linear
   gradientScope: GradientScope; // block = 整体一条渐变 | char = 每字独立渐变，默认 char
-  gradientAngle: number; // 线性渐变角度 0-360，默认 180
+  gradientAngle: number; // 线性渐变角度 0-360，默认 160
   gradientStops: GradientStop[]; // 颜色停靠点（位置 %），默认橙红两停靠
   selectionExtractEnabled: boolean; // 选中提取模式，默认开
   statusBarButton: boolean; // 状态栏「打开提词器」按钮，默认开
@@ -160,4 +164,10 @@ export const DEFAULT_SETTINGS: GlimpseSettings = {
     closed: [],
   },
   music: { ...DEFAULT_MUSIC_SETTINGS, downloadSources: { ...DEFAULT_MUSIC_SETTINGS.downloadSources } },
+  reader: {
+    ...DEFAULT_READER_SETTINGS,
+    filters: { ...DEFAULT_READER_SETTINGS.filters },
+    segment: { ...DEFAULT_READER_SETTINGS.segment },
+    tts: { ...DEFAULT_READER_SETTINGS.tts },
+  },
 };
