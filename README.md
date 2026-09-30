@@ -165,7 +165,7 @@
 
 - 正在读的段用编辑器原生装饰高亮（复用主题与自定义 CSS），换行、缩放、切换主题都不跑偏
 - **高亮按标点细分**：开启后段内高亮推进到当前分句，而不是整段一次亮起；段尾标点不纳入高亮（避免「亮完一整句再多亮一个句号」的观感）
-- **自动滚动**到当前段；可选**光标跟随**（默认关——开启后编辑器光标跟着朗读走，会接管光标）；可选**锁定编辑器**
+- **自动滚动**到当前段；可选**光标跟随**（默认关——开启后编辑器光标跟着朗读走）；光标跟随会**为用户操作让路**：编辑器里有选区、或你刚编辑过（约 8 秒内）时朗读不去抢光标，停手且没有选区后自动恢复——因此双击定位选中的那段文字、以及边听边改都不会被朗读打断；可选**锁定编辑器**
 
 **三种 TTS 引擎**
 
@@ -407,7 +407,7 @@ Reads the current note out loud: the text is first filtered down to "what should
 
 - The segment being read is highlighted with the editor's native decorations (reusing the theme and custom CSS), staying accurate across line changes, zooming and theme switches
 - **Clause-level highlighting**: when on, the segment's highlight advances to the current clause instead of lighting up the whole segment at once; trailing punctuation is not included in the highlight (avoiding the "the whole sentence lights up and then one more period lights up" feel)
-- **Auto-scroll** to the current segment; an optional **cursor follow** (off by default — when on, the editor cursor follows the reading and takes over the cursor); an optional **lock editor**
+- **Auto-scroll** to the current segment; an optional **cursor follow** (off by default — when on, the editor cursor follows the reading); cursor follow **defers to whatever you are doing**: it never takes the cursor while the editor has a selection, or for about 8 seconds after your last edit, then resumes automatically once you stop and nothing is selected — so both the text selected by a double-click and any editing-while-listening stay uninterrupted; an optional **lock editor**
 
 **Three TTS engines**
 

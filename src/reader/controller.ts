@@ -10,7 +10,7 @@ import { ChangeSet } from "@codemirror/state";
 import { MarkdownView, Notice } from "obsidian";
 import type GlimpsePlugin from "../main";
 import { clauseIndexAt, clauseRawSpans, segmentContentRawRange, type ClauseSpan, type RawSpan } from "./clause-highlight";
-import { applyReaderHighlight, hasReaderHighlight, mapRangeThroughDelta, scrollPosToCenter, setReaderDocChangeListener } from "./highlight";
+import { applyReaderHighlight, hasReaderHighlight, mapRangeThroughDelta, scrollPosToCenter, setReaderDocChangeListener, shouldHoldCursorForUser } from "./highlight";
 import {
   createElementAudioPlayback,
   createUrlAudioPlayback,
@@ -19,6 +19,14 @@ import {
 } from "./playback";
 import { buildSegments, trimSegmentAtCursor, type Segment } from "./segmenter";
 import type { PositionMap } from "./text-pipeline";
+
+/**
+ * 「光标跟随」为用户操作让路的窗口（毫秒）。
+ *
+ * 取 8 秒而不是更短：窗口太短会在用户还在改一句话的中途就过期，光标随即被朗读抢走
+ * （那正是要避免的打断）；太长则只是在用户确实闲下来后多等一会儿，代价很小。
+ */
+const CURSOR_FOLLOW_GRACE_MS = 8000;
 
 export interface ReaderProgress {
   state: ReaderState;
@@ -71,6 +79,8 @@ export class ReaderController {
   private docDelta: ChangeSet | null = null;
   /** 上面这条变更链对应的编辑器；只累计它所绑定的那个编辑器的事务 */
   private deltaView: EditorView | null = null;
+  /** 最近一次用户编辑 / 双击定位的时间戳（供「光标跟随」让路窗口判断） */
+  private lastUserActivityAt = 0;
 
   constructor(private readonly plugin: GlimpsePlugin) {
     // 累计变更：只认朗读会话绑定的编辑器，且只在分段之后（分段时基线清零）
@@ -78,6 +88,8 @@ export class ReaderController {
       if (view !== this.deltaView) return;
       // 第一笔编辑直接作为链头（它的 length 必须是分段时的文档长度，此时成立）
       this.docDelta = this.docDelta ? this.docDelta.compose(changes) : changes;
+      // 用户正在编辑 → 「光标跟随」先让路，别把光标从输入位置挪走
+      this.lastUserActivityAt = Date.now();
     });
     this.queue = new SegmentQueue({
       engine: plugin.readerEngine,
@@ -281,6 +293,9 @@ export class ReaderController {
         view.editor.offsetToPos(range.from),
         view.editor.offsetToPos(range.to)
       );
+      // 本次选区是我们自己设的：显式记为用户活动，让「光标跟随」在这段时间里别来抢光标
+      // （选区变更不会触发文档变更钩子，所以这里必须自己记）
+      this.lastUserActivityAt = Date.now();
       scrollPosToCenter(cm, range.from);
       view.editor.focus();
       this.pinBar(); // 焦点/选区变化若连带滚了容器，这里复位，别把播放条顶出去
@@ -324,6 +339,20 @@ export class ReaderController {
   private baselineSegmentation(view: MarkdownView): void {
     this.deltaView = this.cmViewOf(view);
     this.docDelta = null;
+    // 新会话：让「光标跟随」立刻生效（否则刚编辑完就点朗读，头 8 秒会莫名不跟随）
+    this.lastUserActivityAt = 0;
+  }
+
+  /**
+   * 「光标跟随」是否该为用户操作让路（有选区 / 刚编辑过）。
+   * 判定规则是纯函数（highlight.shouldHoldCursorForUser），此处只负责取实时状态。
+   */
+  private shouldHoldCursor(cm: EditorView): boolean {
+    return shouldHoldCursorForUser({
+      selectionEmpty: cm.state.selection.main.empty,
+      msSinceUserActivity: Date.now() - this.lastUserActivityAt,
+      graceMs: CURSOR_FOLLOW_GRACE_MS,
+    });
   }
 
   /**
@@ -395,11 +424,14 @@ export class ReaderController {
       return;
     }
     try {
+      // 「光标跟随」为用户操作让路：双击定位选中的那段文字、或正在编辑时都不抢光标
+      // （判定见 shouldHoldCursor；用户停手且没有选区后自动恢复跟随）
+      const follow = this.plugin.settings.reader.cursorFollow && !this.shouldHoldCursor(cm);
       applyReaderHighlight(
         cm,
         live,
         this.plugin.settings.reader.autoScroll,
-        this.plugin.settings.reader.cursorFollow
+        follow
       );
     } catch {
       /* 编辑器不可用：高亮暂丢可接受，切回时 restoreHighlight 会补发 */

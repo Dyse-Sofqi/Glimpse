@@ -166,6 +166,25 @@ export function applyReaderHighlight(
 }
 
 /**
+ * 「光标跟随」是否应该为用户操作让路。
+ *
+ * 两个条件任一成立就让路，**都不成立时自动恢复** —— 没有需要手动解除的挂起状态：
+ *   1. 编辑器里有非空选区 —— 移动光标等于毁掉选区（双击定位选中的那段文字正属此类）；
+ *   2. 距上一次编辑不到 `graceMs` —— 用户正在打字，此刻把光标挪到朗读行会打断输入。
+ *
+ * 时间戳只由**文档变更**与**双击定位**刷新，**不能**把朗读自己挪光标也算成「用户活动」：
+ * 那会让 grace 窗口被无限续期（朗读每次推进都刷新），光标跟随永远恢复不了。
+ */
+export function shouldHoldCursorForUser(opts: {
+  selectionEmpty: boolean;
+  msSinceUserActivity: number;
+  graceMs: number;
+}): boolean {
+  if (!opts.selectionEmpty) return true;
+  return opts.graceMs > 0 && opts.msSinceUserActivity < opts.graceMs;
+}
+
+/**
  * 把光标移到 pos 所在**行**的行首。
  *
  * 为什么锚行首而不是块首：一段常跨多行（段落内软换行、`\n\n` 段落断点后的续行），
