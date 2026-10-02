@@ -13,7 +13,7 @@
 
 ![License](https://img.shields.io/github/license/Dyse-Sofqi/Glimpse?style=flat-square\&label=License)
 
-> **关键词**：动态高亮、选择高亮、持久高亮、正则查询、捕获组、自定义 CSS、CSS 自动补全、高亮器描述、高亮索引、提词器、光标联动、滚动条标记、缩略图、文字渐变、字幕投影、滚动同步、穿透锁定、文档绑定、分组管理、导入导出、音乐播放、歌词面板、卡拉OK逐字高亮、在线歌词、多平台下载、笔记朗读、语音合成（TTS）、播放条、内容过滤、标点细分高亮、GPT-SoVITS、Qwen3-TTS、Windows 本地语音
+> **关键词**：动态高亮、选择高亮、持久高亮、正则查询、捕获组、自定义 CSS、CSS 自动补全、高亮器描述、高亮索引、提词器、光标联动、滚动条标记、缩略图、文字渐变、字幕投影、滚动同步、穿透锁定、文档绑定、分组管理、导入导出、正则查找替换、替换预览、音乐播放、歌词面板、卡拉OK逐字高亮、在线歌词、多平台下载、笔记朗读、语音合成（TTS）、播放条、内容过滤、标点细分高亮、音频导出、生成音频文件、GPT-SoVITS、Qwen3-TTS、Windows 本地语音
 
 根据选中内容或搜索关键词动态高亮文本的 Obsidian 插件，主要功能：
 
@@ -21,7 +21,8 @@
 - **持久高亮**：按正则/关键词查询持久标记，支持捕获组、父行、开始/结束 widget、自定义 CSS（内置带 CSS 自动补全的代码编辑器）与高亮器描述，配标签组管理与一键导入导出
 - **高亮索引**：自动检索 `==高亮==` 文本，按文档标题层级组织为侧边栏索引，支持光标联动与键盘导航
 - **提词器（桌面端）**：歌词式浮动提词窗口，跟随文档/光标实时显示，支持 100–900 字重、文字渐变、字幕投影、穿透锁定、文档绑定、滚动同步与多实例
-- **朗读（桌面端）**：把当前笔记念出来——先按 17 项规则把 Markdown 过滤成「该被听见的内容」，再按标点三级分段、逐段合成、边播边取下一段，同时高亮正在读的那一块（可细到当前分句）；可从文档开头 / 光标处 / 选区起读，支持预取、暂停续播、自动滚动、光标跟随与三种 TTS 引擎（本地 GPT-SoVITS / Qwen3-TTS / 零安装的 Windows 本地语音）
+- **朗读（桌面端）**：把当前笔记念出来——先按 17 项规则把 Markdown 过滤成「该被听见的内容」，再按标点三级分段、逐段合成、边播边取下一段，同时高亮正在读的那一块（可细到当前分句）；可从文档开头 / 光标处 / 选区起读，支持预取、暂停续播、自动滚动、光标跟随与三种 TTS 引擎（本地 GPT-SoVITS / Qwen3-TTS / 零安装的 Windows 本地语音）；选中文字还可一键导出为**单个音频文件**
+- **正则查找替换**：当前笔记（或选区）内的正则查找、替换与替换预览——`Ctrl+H` / 命令 / 右键呼出，命中的文本实时点亮在编辑器里，替换前后对照与匹配列表可点击定位，支持 `$1` / `$<name>` 捕获组引用与 `\n` 转义，逐处写回、一步撤销（移植自 obsidian-regex-replace，详见致谢）
 - **音乐**：侧边栏歌词音乐面板——三标签页歌单（网易云**账号歌单**同步到本地 / 在线歌单四平台搜索下载 / 本地歌单自定义分组与拖拽排序）、逐字卡拉OK高亮与双语注释、歌词自动跟随（手动滚动即暂停）、音频文件夹（MP3/FLAC/M4A/OGG，支持库外绝对路径）作歌单、四平台在线歌词获取、下载前试听与推荐歌单
 
 目前仅支持源码模式（Source）和实时预览模式（Live Preview）。阅读模式（Reading）和旧版编辑器暂不支持。
@@ -184,7 +185,25 @@
 
 - 朗读依赖本地服务与子进程，**仅桌面端可用**；阅读模式（Reading）不支持
 - 朗读过程中编辑文档：高亮与提词器内容会随文本变更**自动换算位置**（不会整体偏移）；但已在合成/播放中的段仍是编辑前的文字——音频不会因编辑重新合成或重排
-- 目前是段级高亮（可选推进到分句），尚无逐词高亮；也没有续读位置持久化与音频导出
+- 目前是段级高亮（可选推进到分句），尚无逐词高亮；也没有续读位置持久化（音频导出已支持，见下节）
+
+**生成音频文件**
+
+- **入口**：选中文字 → 正文右键「朗读：生成音频文件」（无选区时菜单项不出现），或命令「朗读：生成音频文件（选区）」——与朗读共用同一条分段链与引擎，声音、语速、过滤规则与「朗读选区」完全一致
+- **单文件输出**：长选区按朗读规则分段逐段合成后拼成**一个**音频文件——多段 WAV 重打包（拷贝首段 fmt 头、PCM 顺序拼接并校验采样率/位深/声道一致），OGG 直接链接拼接，单段原样落盘；文件名 = 选区摘录 + 时间戳，同名自动加后缀不覆盖
+- **保存目录**：设置 → 朗读 →「生成音频文件 → 保存目录」，「浏览…」按钮打开系统资源管理器选择；留空则保存到系统下载文件夹
+- 服务未运行时自动准备服务，进度显示在常驻通知上；**桌面端限定**
+
+### 正则查找替换
+
+当前笔记（或选区）内的正则查找、替换与替换预览。入口三条：命令面板「打开正则替换」、正文右键「正则替换…」，或编辑器里按 `Ctrl+H`——该热键默认属于核心命令「替换」，插件会接管它（仅在编辑器上下文、恰好 Ctrl+H 时生效；输入法组词、其他弹窗、macOS 场景一律让路；原生「替换」仍可从命令面板进入或改绑其他快捷键）。
+
+- **查找**：输入正则即时显示匹配计数，命中的文本同步点亮在编辑器里（输入即刷新、关闭即清除，不落盘、不参与撤销）；支持 `i` 忽略大小写 / `m` 多行 / `s` 点号匹配换行三个标志与「仅替换选区」；替换总是作用于**全部匹配**（匹配计数 = 替换处数，g 恒定隐含）
+- **替换预览**：替换前/替换后对照文本（窗口裁剪锚定第一处匹配，大文档不整篇渲染）+ 匹配列表（前 10 处）；预览里的高亮片段与列表项**可点击定位**到编辑器对应位置
+- **替换语法**：`$1` / `$<name>` / `$&` / `$$` 引用捕获组，`\n` / `\t` 转义；非法正则以错误行提示，不会清空已输入内容
+- **写回**：「一处匹配 = 一条 change」批量事务——一次事务即一步撤销，光标由 CM 自动映射，选区外内容零扰动
+- **历史记录**：替换成功后自动去重留存，弹窗底部可回填；上限与预览开关在设置页「正则替换」页签调整
+- 打开弹窗时若已有较短选区（<100 字符）会自动转义预填为查找模式；输入框内按 Enter 直接触发替换
 
 ### 音乐
 
@@ -225,17 +244,18 @@
 
 设置界面按功能分为六个页签：
 
-- **选择高亮**：高亮选中文本出现位置开关；高亮延迟（毫秒，需 ≥200）；缩略图开关；选择检索的字符串上限滑杆（2-60，默认 30，带「恢复默认」按钮）
+- **选择高亮**：高亮选中文本出现位置开关；高亮延迟（毫秒，需 ≥200）；缩略图开关；选择检索的字符串上限滑杆（2-60，默认 30，带「恢复默认」按钮）；「高亮索引」设置项并入本页末尾（启动时默认打开高亮索引）
 - **持久高亮**：自定义样式的创建、编辑、删除，标签组管理与一键导入导出。表单含名称、描述、背景色（可留空）、搜索词/表达式（带正则开关）、标记开关，以及带 CSS 自动补全的代码编辑器，并提供「清空当前编辑」一键复位
-- **高亮索引**：「启动时默认打开高亮索引」开关，开启后插件启动时自动启用索引标签页
 - **提词器**：字体（本机字体选择）、字重（跟随主题 / 100–900）、字体颜色、字体透明度（默认 100%）、背景透明度（默认 80%），均带「重置为初始值」按钮；可折叠「文字阴影」分组（投影开关、水平/垂直偏移、模糊半径、不透明度）与「文字渐变」分组（渐变开关、类型、范围、角度、颜色停靠点，附实时预览）；选中提取模式与状态栏按钮开关
 - **音乐**：音频文件夹选择器（「浏览」按钮打开系统资源管理器选择，带刷新按钮与搜索下拉，支持库外盘符绝对路径）、逐字高亮开关、底部状态栏适配开关（开启后保留 view-content 默认样式，面板底部为悬浮的应用状态栏预留安全区留白；关闭则移除该默认样式贴边铺满，适配状态栏相对布局的主题）、歌词自动滚动开关、试听缓存释放；「下载」分组为四平台可折叠 Cookie 行（启用勾选、状态徽标、「打开登录页」直达平台登录页、可点击复制的 document.cookie 代码芯片、测试连接、清除，默认收起防凭证暴露）
-- **朗读**：TTS 引擎下拉；朗读（预取深度、自动滚动、光标跟随、高亮按标点细分、锁定编辑器、卸载/退出时是否停止本地服务）；分段（单段上限、弱边界阈值、分段预设、首段上限与「预览分段」）；内容过滤（17 项逐项开关 + 两条整行跳过规则）；服务与声音（GPT-SoVITS：服务状态与推理健康度、校验安装根目录、环境诊断、启动本地服务、音色选择与应用于服务、GPT / SoVITS 权重、参考音频与参考音频目录、参考音频语言、朗读语种、输出格式、语速）；服务与声音（Qwen3-TTS：服务状态、一键准备环境、校验模型目录、检查 Python 环境、推理设备、启动本地服务、音色预设与音色描述、朗读语种、环境诊断）；环境与声音（Windows 本地语音：环境状态与诊断、语音列表、语速、音量、试听）
+- **朗读**：TTS 引擎下拉；朗读（预取深度、自动滚动、光标跟随、高亮按标点细分、锁定编辑器、卸载/退出时是否停止本地服务）；生成音频文件（保存目录，可「浏览…」用系统资源管理器选择，留空 = 系统下载文件夹）；分段（单段上限、弱边界阈值、分段预设、首段上限与「预览分段」）；内容过滤（17 项逐项开关 + 两条整行跳过规则）；服务与声音（GPT-SoVITS：服务状态与推理健康度、校验安装根目录、环境诊断、启动本地服务、音色选择与应用于服务、GPT / SoVITS 权重、参考音频与参考音频目录、参考音频语言、朗读语种、输出格式、语速）；服务与声音（Qwen3-TTS：服务状态、一键准备环境、校验模型目录、检查 Python 环境、推理设备、启动本地服务、音色预设与音色描述、朗读语种、环境诊断）；环境与声音（Windows 本地语音：环境状态与诊断、语音列表、语速、音量、试听）
+- **正则替换**：替换预览开关；历史记录上限滑杆（0-50，0 = 不记录）与「清空历史记录」按钮；「打开正则替换」入口按钮
 
 ### 限制
 
 - 阅读（Reading）模式暂不支持动态高亮
 - 朗读（桌面端）：依赖本地语音服务与子进程，仅桌面端可用；阅读（Reading）模式不支持；朗读期间编辑文档时，高亮与提词器会随文本变更自动换算位置，但已在合成/播放中的段仍是编辑前的文字
+- 正则查找替换：作用于当前笔记或选区，暂不支持全库批量替换；预览为同步计算，超长文档上每次输入需重跑匹配，可能有轻微延迟
 - 音乐：库外绝对路径音频/下载写盘为桌面端功能；移动端仅支持 vault 内音频播放，在线歌词/下载接口在移动端可能因 Referer 头被剥离而不可用
 
 ### 赞助
@@ -248,14 +268,15 @@
 
 感谢 @chrisgrieser（aka @pseudometa）提供的插件创意和反馈。  
 感谢 @chetachiezikeuzor 的插件设置界面代码，灵感来自 <https://github.com/chetachiezikeuzor/highlightr-Plugin/>  
-感谢 @eatgrass 与 @fhb263：「音乐」模块基于 [LyricFlux](https://github.com/fhb263/obsidian-lyricflux) 与 [obsidian-lyric](https://github.com/eatgrass/obsidian-lyric)（均为 MIT 许可）修改而来
+感谢 @eatgrass 与 @fhb263：「音乐」模块基于 [LyricFlux](https://github.com/fhb263/obsidian-lyricflux) 与 [obsidian-lyric](https://github.com/eatgrass/obsidian-lyric)（均为 MIT 许可）修改而来  
+感谢 @bongho：「正则查找替换」模块的引擎与交互参考 [obsidian-regex-replace](https://github.com/bongho/obsidian-regex-replace) 移植而来（纯逻辑引擎、替换预览与高亮渲染的原始设计均出自该项目，在此致以谢意）
 
 ---
 
 
 ## English README
 
-> **Keywords**: dynamic highlighting, selection highlighting, persistent highlighting, regex queries, capture groups, custom CSS, CSS autocompletion, highlighter description, highlight index, teleprompter, cursor-linked selection, scrollbar markers, minimap, text gradient, subtitle drop shadow, scroll sync, click-through lock, document binding, group management, import/export, music player, lyrics panel, karaoke word highlighting, online lyrics, multi-platform download, note read-aloud, text-to-speech (TTS), player bar, content filtering, clause-level highlighting, GPT-SoVITS, Qwen3-TTS, Windows local voice
+> **Keywords**: dynamic highlighting, selection highlighting, persistent highlighting, regex queries, capture groups, custom CSS, CSS autocompletion, highlighter description, highlight index, teleprompter, cursor-linked selection, scrollbar markers, minimap, text gradient, subtitle drop shadow, scroll sync, click-through lock, document binding, group management, import/export, regex find & replace, replace preview, music player, lyrics panel, karaoke word highlighting, online lyrics, multi-platform download, note read-aloud, text-to-speech (TTS), player bar, content filtering, clause-level highlighting, audio export, generate audio file, GPT-SoVITS, Qwen3-TTS, Windows local voice
 
 An Obsidian plugin that dynamically highlights text based on cursor selection or search query. Key features:
 
@@ -263,7 +284,8 @@ An Obsidian plugin that dynamically highlights text based on cursor selection or
 - **Persistent highlighting**: mark text persistently via regex/keyword queries, with capture groups, line/start/end widgets, custom CSS (a built-in code editor with CSS autocompletion), a per-highlighter description, group management, and one-click import/export
 - **Highlight index**: auto-scans `==highlighted==` text and organizes it into a sidebar index by heading hierarchy, with cursor-linked selection and keyboard navigation
 - **Teleprompter (desktop only)**: karaoke-style floating teleprompter windows that follow the document/cursor in real time, with font weights 100–900, text gradient, subtitle drop shadow, click-through lock, document binding, scroll sync, and multi-instance support
-- **Read aloud (desktop only)**: reads the current note out loud — Markdown is first filtered down to "what should be heard" by 17 rules, then split into segments at punctuation boundaries and synthesized one segment at a time while the next is fetched, with the segment being read highlighted (optionally down to the current clause); start from the top of the document, the cursor or the selection, with prefetching, pause/resume, auto-scroll, cursor following and three TTS engines (local GPT-SoVITS / Qwen3-TTS / the zero-install Windows local voice)
+- **Read aloud (desktop only)**: reads the current note out loud — Markdown is first filtered down to "what should be heard" by 17 rules, then split into segments at punctuation boundaries and synthesized one segment at a time while the next is fetched, with the segment being read highlighted (optionally down to the current clause); start from the top of the document, the cursor or the selection, with prefetching, pause/resume, auto-scroll, cursor following and three TTS engines (local GPT-SoVITS / Qwen3-TTS / the zero-install Windows local voice); selected text can also be exported as **a single audio file** in one click
+- **Regex find & replace**: regex search, replace and replace preview inside the current note (or the selection) — summoned with `Ctrl+H`, a command or the context menu, with the matches lighting up live in the editor, a clickable before/after preview and match list, `$1` / `$<name>` capture-group references and `\n` escapes, and per-match write-back with a single undo step (ported from obsidian-regex-replace, see the acknowledgments)
 - **Music**: a sidebar lyrics music panel — a three-tab playlist (NetEase **account playlists** synced to local / online playlists searched and downloaded across four platforms / local songs with custom groups and drag ordering), karaoke word-by-word highlighting with bilingual annotations, auto-following lyrics (paused the moment you scroll manually), an audio folder (MP3/FLAC/M4A/OGG, absolute paths outside the vault supported) as the playlist, four-platform online lyrics fetching, preview-before-download and recommended playlists
 
 Currently supports Source mode and Live Preview mode. Reading mode and the legacy editor are not supported.
@@ -426,7 +448,25 @@ Reads the current note out loud: the text is first filtered down to "what should
 
 - Reading aloud depends on local services and child processes and is **desktop only**; Reading mode is not supported
 - Editing the document while reading: the highlight and the teleprompter text **re-map to the current document automatically** (they no longer drift as a whole); segments already synthesised or playing still read the pre-edit text, though — the audio is never re-synthesised or re-ordered because of an edit
-- Highlighting is currently segment-level (optionally advancing to the clause), with no word-level highlighting yet; there is also no resume-position persistence and no audio export
+- Highlighting is currently segment-level (optionally advancing to the clause), with no word-level highlighting yet; there is also no resume-position persistence (audio export is now supported — see below)
+
+**Generate audio file**
+
+- **Entry points**: select text → right-click "朗读：生成音频文件" (the item only appears with a non-empty selection), or the command "朗读：生成音频文件（选区）" — it shares the reader's exact segmentation chain and engine, so the voice, speed and filtering match "read the selection" one to one
+- **Single-file output**: long selections are segmented and synthesized per the reading rules, then joined into **one** audio file — multiple WAV segments are repacked (the first segment's fmt header is copied verbatim, PCM streams concatenated, with sample rate / bit depth / channel count verified), OGG is concatenated by chaining, and a single segment is written untouched; the file name is the selection excerpt + a timestamp, and duplicates get a numeric suffix instead of overwriting
+- **Save folder**: Settings → Reading aloud → "Generate audio file → Save folder", with a "Browse…" button that opens the system file explorer; when left empty the file goes to the system Downloads folder
+- The service is prepared automatically when it is not running, and progress shows on a persistent notice; **desktop only**
+
+### Regex Find & Replace
+
+Regex search, replace and replace preview inside the current note (or the selection). Three entry points: the command palette's "打开正则替换", the context menu's "正则替换…", or `Ctrl+H` in the editor — that hotkey belongs to the core "Replace" command by default, and the plugin takes it over (only in the editor context and for exactly Ctrl+H; IME composition, other modals and macOS all fall through; the native "Replace" remains reachable from the command palette or by rebinding).
+
+- **Search**: the match count updates as you type, and the hits light up live inside the editor (refreshed on every keystroke, cleared when the dialog closes — nothing persisted, nothing in the undo stack); `i` / `m` / `s` flags and a "selection only" toggle are supported; replacement always applies to **every match** (match count = replacements made, with `g` permanently implied)
+- **Replace preview**: a before/after comparison (window-clipped and anchored on the first match, so large documents are never rendered whole) plus a match list (first 10 entries); both the highlighted fragments and the list items are **clickable** to jump to that position in the editor
+- **Replacement syntax**: `$1` / `$<name>` / `$&` / `$$` capture-group references and `\n` / `\t` escapes; an invalid regex is reported on an error line without clearing what you typed
+- **Write-back**: replacements are dispatched as "one match = one change" in a single transaction — one undo step, the cursor mapped by CM, and content outside the selection untouched
+- **History**: successful replacements are stored deduplicated and can be recalled at the bottom of the dialog; the cap and the preview toggle live in the settings' "正则替换" tab
+- Opening the dialog with a short selection (<100 characters) pre-fills the pattern with the escaped selection; Enter in either input triggers the replace
 
 ### Music
 
@@ -467,17 +507,18 @@ A sidebar lyrics music panel (click the music ribbon icon or run the "Open music
 
 The settings dialog is organized into six tabs:
 
-- **Selection**: toggle highlighting all occurrences of the selected text; highlight delay in milliseconds (≥200); minimap toggle; a "Max selection length" slider (2-60, default 30, with a "Restore default" button)
+- **Selection**: toggle highlighting all occurrences of the selected text; highlight delay in milliseconds (≥200); minimap toggle; a "Max selection length" slider (2-60, default 30, with a "Restore default" button); the "Highlight index" setting now lives at the end of this tab ("Startup auto-open highlight index")
 - **Persistent**: create, edit, and delete highlighters, group management, one-click import/export. The form covers name, description, background color (may be left empty), search term/expression (with a regex toggle), mark toggles and a code editor with CSS autocompletion, plus a one-click "Clear current edit" reset
-- **Highlight index**: "Startup auto-open highlight index" toggle — enables the index tab on plugin load
 - **Teleprompter**: font (local-font picker), font weight (follow theme / 100–900), font color, font opacity (default 100%) and background opacity (default 80%), each with a "Reset to initial value" button; collapsible "Text Shadow" group (shadow toggle, horizontal/vertical offset, blur radius, opacity) and "Text Gradient" group (gradient toggle, type, scope, angle, color stops, with a live preview); selection-extract mode and status-bar button toggles
 - **Music**: audio folder picker (a "Browse" button opens the system file explorer to pick a folder, plus a refresh button and search dropdown; absolute Windows paths supported), karaoke highlighting toggle, a bottom-status-bar adapt toggle (when on, the Obsidian default `view-content` styles are kept so the panel bottom reserves safe-area space for the floating app status bar; when off, those defaults are removed and the panel fills edge-to-edge — for themes with a relative status bar), lyrics auto-scroll toggle, preview cache flush; the "Download" group holds collapsible per-platform cookie rows (enable checkbox, status badge, an "Open login page" button that jumps straight to the platform's login page, a click-to-copy `document.cookie` code chip, test connection, clear — collapsed by default); platform-priority drag ordering was removed (results are relevance-sorted) and drag-to-reorder platform priority
-- **Reading aloud**: the TTS engine dropdown; Read aloud (prefetch depth, auto-scroll, cursor follow, clause-level highlighting, lock editor, whether to stop local services on unload/quit); Segmentation (max segment length, weak-boundary threshold, segmentation presets, first-segment cap and "Preview segments"); Content filtering (17 individual toggles + two whole-line skip rules); Service & voices (GPT-SoVITS: service status and inference health, verify install root, environment diagnostics, start local service, voice selection and apply to service, GPT / SoVITS weights, reference audio and reference audio folder, reference audio language, reading language, output format, speed); Service & voices (Qwen3-TTS: service status, one-click environment setup, verify model folder, check Python environment, inference device, start local service, voice presets and voice description, reading language, environment diagnostics); Environment & voices (Windows local voice: environment status and diagnostics, voice list, speed, volume, preview)
+- **Reading aloud**: the TTS engine dropdown; Read aloud (prefetch depth, auto-scroll, cursor follow, clause-level highlighting, lock editor, whether to stop local services on unload/quit); Generate audio file (the save folder, pickable via the system file explorer with "Browse…", empty = the Downloads folder); Segmentation (max segment length, weak-boundary threshold, segmentation presets, first-segment cap and "Preview segments"); Content filtering (17 individual toggles + two whole-line skip rules); Service & voices (GPT-SoVITS: service status and inference health, verify install root, environment diagnostics, start local service, voice selection and apply to service, GPT / SoVITS weights, reference audio and reference audio folder, reference audio language, reading language, output format, speed); Service & voices (Qwen3-TTS: service status, one-click environment setup, verify model folder, check Python environment, inference device, start local service, voice presets and voice description, reading language, environment diagnostics); Environment & voices (Windows local voice: environment status and diagnostics, voice list, speed, volume, preview)
+- **Regex replace**: the replace-preview toggle; a history-limit slider (0-50, 0 = off) and a "Clear history" button; an "Open regex replace" entry button
 
 ### Limitations
 
 - Reading mode does not support dynamic selection highlighting
 - Reading aloud (desktop only): depends on local speech services and child processes, so it is desktop-only; Reading mode is not supported; while reading, editing the document does not re-order segments already queued for synthesis, so highlight positions can drift
+- Regex find & replace: operates on the current note or the selection only — vault-wide batch replacement is not supported; the preview computes synchronously, so on very long documents every keystroke re-runs the match and a slight delay is possible
 - Music: audio outside the vault (absolute paths) and download-to-disk are desktop-only; on mobile only in-vault audio playback works, and online lyrics/download APIs may be unavailable because the Referer header is stripped
 
 ### Sponsorship
@@ -490,4 +531,5 @@ If Glimpse helps you, consider supporting the author:
 
 Thanks to @chrisgrieser (aka @pseudometa) for the plugin concept and feedback.  
 Thanks to @chetachiezikeuzor for the settings UI code, inspired by <https://github.com/chetachiezikeuzor/highlightr-Plugin/>  
-Thanks to @eatgrass and @fhb263: the Music module is modified from [LyricFlux](https://github.com/fhb263/obsidian-lyricflux) and [obsidian-lyric](https://github.com/eatgrass/obsidian-lyric) (both MIT licensed)
+Thanks to @eatgrass and @fhb263: the Music module is modified from [LyricFlux](https://github.com/fhb263/obsidian-lyricflux) and [obsidian-lyric](https://github.com/eatgrass/obsidian-lyric) (both MIT licensed)  
+Thanks to @bongho: the Regex find & replace module is ported with reference to [obsidian-regex-replace](https://github.com/bongho/obsidian-regex-replace) — the original designs of its pure-logic engine, replace preview and highlight rendering all come from that project, with gratitude

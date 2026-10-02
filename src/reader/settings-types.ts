@@ -198,6 +198,11 @@ export interface ReaderSettings {
   /** 朗读时锁定编辑器交互 */
   lockEditor: boolean;
   /**
+   * 「生成音频文件」的保存目录（选中文本右键导出）。空 = 系统下载文件夹。
+   * 目录通过设置页「浏览…」用系统资源管理器对话框指定。
+   */
+  generateAudioPath: string;
+  /**
    * 插件卸载（含热重载）与 Obsidian 退出时是否停止本地服务。
    *
    * 默认 false（保留）：冷启动要 20–65 秒，每次重载都重启代价太大；
@@ -319,6 +324,7 @@ export const DEFAULT_READER_SETTINGS: ReaderSettings = {
   cursorFollow: false,
   highlightClauses: true,
   lockEditor: false,
+  generateAudioPath: "",
   stopServiceOnUnload: false,
 };
 

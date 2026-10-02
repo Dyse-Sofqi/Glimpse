@@ -31,6 +31,10 @@ import { isWindows } from "./reader/node-bridge";
 import { ReaderController } from "./reader/controller";
 import { ReaderPlayerBar } from "./reader/player-bar";
 import { readerHighlightExtension } from "./reader/highlight";
+import { generateAudioFileFromText } from "./reader/audio-export";
+import { searchHighlightExtension } from "./regex-replace/highlight";
+import { RegexReplaceModal } from "./regex-replace/replace-modal";
+import { DEFAULT_REGEX_REPLACE_SETTINGS } from "./regex-replace/types";
 import { SettingTab } from "./settings/ui";
 import { HIGHLIGHT_INDEX_VIEW, HighlightIndexView } from "./highlight-index-view";
 import { TeleprompterManager } from "./teleprompter";
@@ -172,6 +176,8 @@ export default class GlimpsePlugin extends Plugin {
     this.extensions.push(this.staticHighlighter);
     // 朗读段级高亮：CM6 装饰器，自动跟随换行/主题，无需 DOM 测量
     this.extensions.push(readerHighlightExtension());
+    // 正则替换：Modal 打开期间的实时命中高亮（效果由 Modal 推入/清除）
+    this.extensions.push(searchHighlightExtension());
     this.updateStyles();
     this.registerEditorExtension(this.extensions);
     this.initCSS();
@@ -184,6 +190,49 @@ export default class GlimpsePlugin extends Plugin {
       name: "打开高亮索引",
       callback: () => this.openHighlightIndex(),
     });
+
+    // 正则替换：命令 + 正文右键菜单
+    this.addCommand({
+      id: "open-regex-replace",
+      name: "打开正则替换",
+      editorCallback: (editor) => new RegexReplaceModal(this, editor).open(),
+    });
+    this.registerEvent(
+      this.app.workspace.on("editor-menu", (menu, editor, view) => {
+        if (!(view instanceof MarkdownView)) return;
+        menu.addItem((item) =>
+          item
+            .setTitle("正则替换…")
+            .setIcon("regex")
+            .onClick(() => new RegexReplaceModal(this, editor).open())
+        );
+      })
+    );
+    // Ctrl+H 接管为正则替换面板。核心命令「替换」默认占着这个键，而 Obsidian
+    // 对与现有命令冲突的插件默认热键不会分配（hotkeys 声明无效），所以要拿到这个键
+    // 只能在 window 捕获阶段拦截并拦下传播。条件刻意收窄，其余场景一律让路：
+    //   - 仅编辑器上下文（与核心「替换」的作用域一致）；
+    //   - 恰好 Ctrl+H，无 Shift/Alt/Win 组合；
+    //   - 输入法组词期间不抢；
+    //   - 有其他 Modal（快速切换器、设置、确认框等）开着时不抢；
+    //   - macOS 不抢 —— Cmd+H 是系统级「隐藏窗口」。
+    this.registerDomEvent(
+      window,
+      "keydown",
+      (event: KeyboardEvent) => {
+        if (Platform.isMacOS) return;
+        if (!event.ctrlKey || event.altKey || event.shiftKey || event.metaKey) return;
+        if (event.key !== "h" && event.key !== "H") return;
+        if (event.isComposing) return;
+        if (document.querySelector(".modal-container")) return;
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!view) return;
+        event.preventDefault();
+        event.stopPropagation();
+        new RegexReplaceModal(this, view.editor).open();
+      },
+      { capture: true }
+    );
 
     // 提词器 —— 桌面端专用（ADRs/0001）
     this.register(() => this.teleprompterManager.onunload());
@@ -303,7 +352,19 @@ export default class GlimpsePlugin extends Plugin {
     addReadCommand("reader-read-from-top", "朗读：从头读", "top");
     addReadCommand("reader-read-from-cursor", "朗读：从光标读", "cursor");
     addReadCommand("reader-read-from-selection", "朗读：读选区", "selection");
-    // 正文右键菜单：从光标读 —— 右键的位置就是朗读起点，比命令面板更直接
+    // 朗读导出：选中文本 → 单个音频文件（与朗读共用分段链与引擎）
+    this.addCommand({
+      id: "reader-generate-audio",
+      name: "朗读：生成音频文件（选区）",
+      checkCallback: checking => {
+        if (!Platform.isDesktop) return false; // 写盘走 Node fs，移动端没有这条通路
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!view || !view.editor.getSelection().trim()) return false;
+        if (!checking) void this.generateAudioFromSelection(view);
+        return true;
+      },
+    });
+    // 正文右键菜单：朗读入口 + 选区导出（导出仅在有选区时出现，避免误触）
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor, view) => {
         if (!(view instanceof MarkdownView)) return;
@@ -312,6 +373,14 @@ export default class GlimpsePlugin extends Plugin {
             .setTitle("朗读：从光标读")
             .setIcon("play")
             .onClick(() => this.beginReading(view, "cursor"))
+        );
+        if (!Platform.isDesktop) return;
+        if (!editor.getSelection().trim()) return;
+        menu.addItem(item =>
+          item
+            .setTitle("朗读：生成音频文件")
+            .setIcon("file-audio")
+            .onClick(() => void this.generateAudioFromSelection(view))
         );
       })
     );
@@ -399,6 +468,10 @@ export default class GlimpsePlugin extends Plugin {
     );
     this.settings.reader.windows = Object.assign(
       {}, DEFAULT_READER_SETTINGS.windows, data?.reader?.windows ?? {},
+    );
+    // 正则替换设置深层合并（history 数组随整体覆盖即可，默认本来就是空数组）
+    this.settings.regexReplace = Object.assign(
+      {}, DEFAULT_REGEX_REPLACE_SETTINGS, data?.regexReplace ?? {},
     );
     // 首段上限旧默认 25 → 新默认 15（配合「首段渐进」可无空档地降低首字延迟）。
     // 只在用户没动过这个值（仍等于旧默认）时迁移，避免覆盖他自己的调整
@@ -864,6 +937,37 @@ export default class GlimpsePlugin extends Plugin {
       console.error("朗读失败", error);
       new Notice(`朗读失败：${detail}`, 10000);
     });
+  }
+
+  /**
+   * 选中文本 → 音频文件（右键菜单与命令共用的入口）。
+   *
+   * 合成可能要跑很多段（长选区），进度挂在常驻 Notice 上；完成后报保存路径。
+   * 与朗读共用同一条分段链与引擎 —— 声音、语速、过滤规则完全一致。
+   */
+  private async generateAudioFromSelection(view: MarkdownView): Promise<void> {
+    const selection = view.editor.getSelection();
+    if (!selection.trim()) {
+      new Notice("没有选中内容");
+      return;
+    }
+    const notice = new Notice("正在生成音频文件…", 0);
+    try {
+      const result = await generateAudioFileFromText(this, selection, message =>
+        notice.setMessage(message)
+      );
+      notice.hide();
+      if ("error" in result) {
+        new Notice(`生成音频失败：${result.error}`, 15000);
+        return;
+      }
+      new Notice(`音频已保存：${result.path}`, 20000);
+    } catch (error) {
+      notice.hide();
+      const detail = error instanceof Error ? error.message : String(error);
+      console.error("生成音频文件失败", error);
+      new Notice(`生成音频失败：${detail}`, 15000);
+    }
   }
 
   /**

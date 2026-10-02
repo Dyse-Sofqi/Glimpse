@@ -304,6 +304,19 @@ export function render(
     renderGptSoVitsSections(containerEl, plugin, ctx);
   }
 
+  // 「生成音频文件」：与引擎无关的导出配置（选中文本右键 →「朗读：生成音频文件」）
+  new Setting(containerEl).setName("生成音频文件").setHeading();
+  ctx.pathField(
+    "保存目录",
+    "生成音频的保存位置；留空则保存到系统下载文件夹。保存的文件名 = 选区摘录 + 时间戳",
+    () => settings().generateAudioPath,
+    value => {
+      settings().generateAudioPath = value;
+    },
+    "例如 D:\\Audio（留空用下载文件夹）",
+    "directory"
+  );
+
   new Setting(containerEl).setName("朗读").setHeading();
 
   new Setting(containerEl)

@@ -5,6 +5,8 @@ import type { MusicSettings } from "../music/settings-types";
 import { DEFAULT_MUSIC_SETTINGS } from "../music/settings-types";
 import type { ReaderSettings } from "../reader/settings-types";
 import { DEFAULT_READER_SETTINGS } from "../reader/settings-types";
+import type { RegexReplaceSettings } from "../regex-replace/types";
+import { DEFAULT_REGEX_REPLACE_SETTINGS } from "../regex-replace/types";
 
 interface SearchConfig {
   value: string;
@@ -45,6 +47,8 @@ export interface GlimpseSettings {
   music: MusicSettings;
   /** 朗读模块（分段 + 本机 GPT-SoVITS），持久化在 data.json 的 reader 字段 */
   reader: ReaderSettings;
+  /** 正则替换（查找/替换/预览 Modal），持久化在 data.json 的 regexReplace 字段 */
+  regexReplace: RegexReplaceSettings;
 }
 
 export interface HighlightIndexSettings {
@@ -170,4 +174,6 @@ export const DEFAULT_SETTINGS: GlimpseSettings = {
     segment: { ...DEFAULT_READER_SETTINGS.segment },
     tts: { ...DEFAULT_READER_SETTINGS.tts },
   },
+  // history 数组单独展开 —— 不拷贝的话默认值数组会被各处共享引用
+  regexReplace: { ...DEFAULT_REGEX_REPLACE_SETTINGS, history: [] },
 };

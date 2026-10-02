@@ -64,4 +64,17 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin) {
           plugin.updateSelectionHighlighter();
         });
     });
+
+  // 高亮索引的设置项并入本页（原独立标签页已移除，为主标签栏减负）
+  new Setting(containerEl).setName("高亮索引").setHeading();
+  new Setting(containerEl)
+    .setName("启动时默认打开高亮索引")
+    .addToggle(toggle => {
+      toggle
+        .setValue(plugin.settings.highlightIndex.autoOpenRightLeaf)
+        .onChange(async value => {
+          plugin.settings.highlightIndex.autoOpenRightLeaf = value;
+          await plugin.saveSettings();
+        });
+    });
 }

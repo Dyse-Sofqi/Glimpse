@@ -3,10 +3,10 @@ import GlimpsePlugin from "../main";
 import type { ValueEditor } from "./css-editor";
 import { render as renderPersistent } from "./tabs/persistent-ui";
 import { render as renderSelection } from "./tabs/selection-ui";
-import { render as renderIndex } from "./tabs/index-ui";
 import { render as renderTeleprompter } from "./tabs/teleprompter-ui";
 import { render as renderMusic } from "./tabs/music-ui";
 import { render as renderReader } from "./tabs/reader-ui";
+import { render as renderRegexReplace } from "./tabs/regex-replace-ui";
 
 /** 主标签页定义：id 用于选中判定，render 负责填充该页内容 */
 interface MainTab {
@@ -17,11 +17,12 @@ interface MainTab {
 
 const MAIN_TABS: MainTab[] = [
   { id: "persistent", label: "持久高亮", render: (el, tab) => renderPersistent(el, tab.plugin, tab) },
+  // 高亮索引设置已并入「选择高亮」页（tabs/index-ui.ts 已删除）
   { id: "selection", label: "选择高亮", render: (el, tab) => renderSelection(el, tab.plugin) },
-  { id: "index", label: "高亮索引", render: (el, tab) => renderIndex(el, tab.plugin) },
   { id: "teleprompter", label: "提词器", render: (el, tab) => renderTeleprompter(el, tab.plugin, tab) },
   { id: "music", label: "音乐", render: (el, tab) => renderMusic(el, tab.plugin, tab) },
   { id: "reader", label: "朗读", render: (el, tab) => renderReader(el, tab.plugin, tab) },
+  { id: "replace", label: "正则替换", render: (el, tab) => renderRegexReplace(el, tab.plugin) },
 ];
 
 export class SettingTab extends PluginSettingTab {

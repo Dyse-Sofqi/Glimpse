@@ -3674,3 +3674,144 @@
 }
 
 /* #endregion reader */
+
+/* #region regex replace */
+
+/* 正则查找替换 Modal */
+.glimpse-replace-modal .glimpse-replace-field {
+  margin-bottom: 10px;
+}
+.glimpse-replace-modal .glimpse-replace-field > label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.glimpse-replace-modal .glimpse-replace-input {
+  width: 100%;
+  font-family: var(--font-monospace);
+}
+.glimpse-replace-modal .glimpse-replace-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-bottom: 10px;
+}
+.glimpse-replace-modal .glimpse-replace-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.glimpse-replace-modal .glimpse-replace-count {
+  margin: 2px 0 8px;
+  color: var(--text-muted);
+}
+.glimpse-replace-modal .glimpse-replace-count.is-error {
+  color: var(--text-error);
+}
+
+/* 预览区：等宽字体 + 滚动；Before/After 与匹配列表 */
+.glimpse-replace-modal .glimpse-replace-preview {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+.glimpse-replace-modal .glimpse-replace-preview > label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.glimpse-replace-modal .glimpse-replace-preview-body {
+  max-height: 38vh;
+  overflow-y: auto;
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.glimpse-replace-modal .glimpse-replace-preview-section {
+  margin-bottom: 8px;
+}
+.glimpse-replace-modal .glimpse-replace-preview-section strong,
+.glimpse-replace-modal .glimpse-replace-list-section strong {
+  display: block;
+  margin-bottom: 2px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.glimpse-replace-modal .glimpse-replace-hit {
+  /* 命中高亮：Obsidian 的变量名是 --text-highlight-bg（没有 --text-highlight），
+     再带字面量兜底 —— 变量缺失时 background 整条失效变透明，宁可冗余不可失明 */
+  background: var(--text-highlight-bg, rgba(255, 208, 0, 0.4));
+  border-radius: 2px;
+  cursor: pointer;
+}
+.glimpse-replace-modal .glimpse-replace-result {
+  /* 替换段用半透明绿：rgba(var(--…-rgb), a) 是 Obsidian 自己的主题写法，
+     -rgb 变量同样带字面量兜底 */
+  background: rgba(var(--background-modifier-success-rgb, 0, 200, 120), 0.3);
+  border-radius: 2px;
+}
+.glimpse-replace-modal .glimpse-replace-truncated {
+  color: var(--text-faint);
+}
+.glimpse-replace-modal .glimpse-replace-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 22vh;
+  overflow-y: auto;
+}
+.glimpse-replace-modal .glimpse-replace-list-item {
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-monospace);
+  font-size: 12px;
+}
+.glimpse-replace-modal .glimpse-replace-list-item:hover {
+  background: var(--background-modifier-hover);
+}
+.glimpse-replace-modal .glimpse-replace-hit-text {
+  color: var(--text-normal);
+}
+.glimpse-replace-modal .glimpse-replace-result-text {
+  color: var(--text-accent);
+}
+.glimpse-replace-modal .glimpse-replace-more {
+  color: var(--text-faint);
+  cursor: default;
+}
+.glimpse-replace-modal .glimpse-replace-history {
+  margin-bottom: 10px;
+}
+.glimpse-replace-modal .glimpse-replace-history > label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.glimpse-replace-modal .glimpse-replace-history select {
+  width: 100%;
+}
+.glimpse-replace-modal .glimpse-replace-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.glimpse-replace-modal .glimpse-replace-buttons button {
+  margin: 0;
+}
+
+/* 编辑器内的实时命中高亮（Modal 打开期间） */
+.glimpse-replace-match {
+  background: var(--text-highlight-bg, rgba(255, 208, 0, 0.4));
+  border-radius: 2px;
+}
+
+/* #endregion regex replace */

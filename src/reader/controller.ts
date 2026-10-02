@@ -672,8 +672,10 @@ export class ReaderController {
    *
    * Qwen3-TTS 没有必填的音频类配置（音色描述可空），Windows 本地语音
    * 用的是系统装好的语音 —— 两者都不该被这条检查拦住（否则兜底引擎根本起不来）。
+   *
+   * 公开给「生成音频文件」复用：导出与朗读走同一套引擎，门槛必须一致。
    */
-  private validateConfig(): string | null {
+  validateConfig(): string | null {
     if (this.plugin.settings.reader.provider !== "gpt-sovits") return null;
     const tts = this.plugin.settings.reader.tts;
     if (!tts.refAudioPath.trim()) {
