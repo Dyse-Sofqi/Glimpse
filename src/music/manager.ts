@@ -11,6 +11,10 @@ import { previewAudio, type DownloadSong } from "./downloadManager";
 import { VirtualAudioPlayer } from "./virtualPlayer";
 import type { VirtualPlayerState } from "./virtualPlayer";
 import { DEFAULT_LYRIC_OFFSET, type MusicSettings, type SongGroups } from "./settings-types";
+import {
+  configureCookieSink, hydratePlatformCookie, isCookiePlatform, sanitizeCookie,
+  type CookiePlatform,
+} from "./cookieJar";
 
 /** 侧边栏展示用的歌单项 */
 export interface MusicSong {
@@ -106,6 +110,31 @@ export class MusicManager {
     this._playMode = PLAY_MODES.includes(musicSettings.playMode) ? musicSettings.playMode : "sequential";
     this._playbackRate = musicSettings.playbackRate ?? 1;
     this._volume = musicSettings.volume ?? 75;
+    // Cookie 播种 + 续期回写：请求前用设置里的值播种，响应里 Set-Cookie 续期后由这里落盘
+    const initial = plugin.settings?.music?.platformCookies ?? musicSettings.platformCookies ?? {};
+    for (const key of Object.keys(initial)) {
+      if (isCookiePlatform(key)) hydratePlatformCookie(key, initial[key] ?? "");
+    }
+    configureCookieSink((key, cookie) => void this.persistPlatformCookie(key, cookie));
+  }
+
+  /**
+   * 平台 Cookie 被服务端续期后落盘（仅存本地 data.json）。
+   * 立即写：续期本身是低频事件（只在服务端真的回吐新 Cookie 时触发），且必须及时持久化，
+   * 否则用户重启 Obsidian 后又回到旧凭证。
+   */
+  private async persistPlatformCookie(key: CookiePlatform, cookie: string): Promise<void> {
+    const value = sanitizeCookie(cookie);
+    if (!value) return;
+    // 同步写回内存设置（plugin.settings.music 与 musicSettings 同一引用，两者都覆盖以兼容旧结构）
+    const liveCookies = this.plugin.settings?.music?.platformCookies;
+    if (liveCookies && typeof liveCookies === "object") liveCookies[key] = value;
+    this.musicSettings.platformCookies = { ...this.musicSettings.platformCookies, [key]: value };
+    const stamp = { ...(this.musicSettings.platformCookiesUpdatedAt ?? {}), [key]: Date.now() };
+    this.musicSettings.platformCookiesUpdatedAt = stamp;
+    try {
+      await this.plugin.saveSettings();
+    } catch { /* 落盘失败不影响本次请求（下次续期会再写一次） */ }
   }
 
   getSettings(): MusicSettings {

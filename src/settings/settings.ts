@@ -74,6 +74,23 @@ export const DEFAULT_SHADOW_OFFSET_Y = 2;
 export const DEFAULT_SHADOW_BLUR = 2;
 export const DEFAULT_SHADOW_OPACITY = 40;
 
+// 毛玻璃（backdrop-filter 模糊并提饱和窗口背后的内容）——
+// 模糊 16px 与索引卡片观感接近；设置界面重置按钮恢复到此值
+export const DEFAULT_GLASS_ENABLED = true;
+export const DEFAULT_GLASS_BLUR = 16;
+
+// 文字描边（正文字形轮廓描线，桌面歌词风格）——
+// 默认开启、外侧描边、1px 白色（毛玻璃/半透明背景与深色主题上都清晰）；
+// 颜色 null = 默认描边色（DEFAULT_STROKE_COLOR_VALUE），设置界面重置按钮恢复到此值。
+// 描边方式：glyph = 字形描边（-webkit-text-stroke 沿字形，可见约一半线宽）；
+// outer = 外侧描边（SVG feMorphology 膨胀滤镜，完整线宽外露，大线宽下斜角略方）
+export type StrokeMode = "glyph" | "outer";
+export const DEFAULT_STROKE_ENABLED = true;
+export const DEFAULT_STROKE_MODE: StrokeMode = "outer";
+export const DEFAULT_STROKE_COLOR: string | null = null;
+export const DEFAULT_STROKE_COLOR_VALUE = "#FFFFFF";
+export const DEFAULT_STROKE_WIDTH = 1;
+
 // 文字渐变（覆盖「字体颜色」，背景裁切到文字）
 export type GradientType = "linear" | "radial";
 export type GradientScope = "block" | "char"; // block = 整个内容区一条渐变；char = 每字独立渐变
@@ -113,11 +130,17 @@ export interface TeleprompterSettings {
   fontFamily: string; // 正文字体栈，逗号分隔；靠前且本机存在的字体优先生效，空串 = 跟随主题
   fontWeight: number | null; // 正文字重，null = 跟随主题
   fontColor: string | null; // 正文字体颜色（hex），null = 跟随主题
+  glassEnabled: boolean; // 毛玻璃开关：backdrop-filter 模糊窗口背后的内容，默认开
+  glassBlur: number; // 毛玻璃模糊半径（px），默认 16
   shadowEnabled: boolean; // 隐藏背景时文字阴影开关，默认开
   shadowOffsetX: number; // 阴影水平偏移（px，可负），默认 2
   shadowOffsetY: number; // 阴影垂直偏移（px，可负），默认 2
   shadowBlur: number; // 阴影模糊半径（px），默认 2
   shadowOpacity: number; // 阴影不透明度 0-100，默认 40
+  strokeEnabled: boolean; // 文字描边开关（字形轮廓描线，始终生效），默认关
+  strokeMode: StrokeMode; // glyph = 字形描边 | outer = 外侧描边（SVG 膨胀滤镜），默认 glyph
+  strokeWidth: number; // 描边线宽（px），默认 3
+  strokeColor: string | null; // 描边颜色（hex），null = 默认描边色（白）
   gradientEnabled: boolean; // 文字渐变开关，默认开（开启后覆盖 fontColor）
   gradientType: GradientType; // linear | radial，默认 linear
   gradientScope: GradientScope; // block = 整体一条渐变 | char = 每字独立渐变，默认 char
@@ -152,11 +175,17 @@ export const DEFAULT_SETTINGS: GlimpseSettings = {
     fontFamily: DEFAULT_FONT_FAMILY,
     fontWeight: DEFAULT_FONT_WEIGHT,
     fontColor: DEFAULT_FONT_COLOR,
+    glassEnabled: DEFAULT_GLASS_ENABLED,
+    glassBlur: DEFAULT_GLASS_BLUR,
     shadowEnabled: DEFAULT_SHADOW_ENABLED,
     shadowOffsetX: DEFAULT_SHADOW_OFFSET_X,
     shadowOffsetY: DEFAULT_SHADOW_OFFSET_Y,
     shadowBlur: DEFAULT_SHADOW_BLUR,
     shadowOpacity: DEFAULT_SHADOW_OPACITY,
+    strokeEnabled: DEFAULT_STROKE_ENABLED,
+    strokeMode: DEFAULT_STROKE_MODE,
+    strokeWidth: DEFAULT_STROKE_WIDTH,
+    strokeColor: DEFAULT_STROKE_COLOR,
     gradientEnabled: DEFAULT_GRADIENT_ENABLED,
     gradientType: DEFAULT_GRADIENT_TYPE,
     gradientScope: DEFAULT_GRADIENT_SCOPE,

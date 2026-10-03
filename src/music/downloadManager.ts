@@ -37,6 +37,7 @@ import {
   buildKuwoLyricUrl, parseKuwoLyricResponse,
 } from "./kuwoMusic";
 import { MUSIC_SOURCES, type MusicSource, asArrayBuffer } from "./shared";
+import { refreshCookieFromResponse, resolvePlatformCookie, splitSetCookieHeader } from "./cookieJar";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 /** QQ「测试连接」用的免费探针歌曲（许嵩《素颜 (Live)》，2026-09 实测免登录可拿直链） */
@@ -328,13 +329,13 @@ export async function fetchPlaylistSongs(source: PlaylistSource, playlistId: str
  * Cookie 无效 / 未配置时抛错（message 为用户可读原因）。
  */
 export async function fetchNeteaseAccountPlaylists(cookie: string): Promise<RecommendedPlaylist[]> {
-  const c = (cookie ?? "").trim();
+  const c = resolvePlatformCookie("netease", cookie);
   if (!c) throw new Error("未配置网易云 Cookie，请到 设置 → 音乐 → 网易云音乐 粘贴登录 Cookie");
   // 1. 账号信息 → uid（code===200 不代表已登录：匿名 Cookie 同样返回 200 但 profile=null）
   const acct = encryptWeApi(JSON.stringify({ csrf_token: "" }));
   const acctRes = await httpPost(NETEASE_ACCOUNT_API,
     `params=${encodeURIComponent(acct.params)}&encSecKey=${encodeURIComponent(acct.encSecKey)}`,
-    { "Cookie": c });
+    { "Cookie": c, platform: "netease" });
   if (!acctRes) throw new Error("获取账号信息失败（网络或接口变更）");
   const info = parseAccountLoginState(new TextDecoder().decode(acctRes.data));
   if (!info.ok) throw new Error("网易云 Cookie 无效或已过期，请重新登录复制");
@@ -349,7 +350,7 @@ export async function fetchNeteaseAccountPlaylists(cookie: string): Promise<Reco
     const req = encryptWeApi(JSON.stringify({ uid, offset, limit: 200, includeVideo: true, csrf_token: "" }));
     const res = await httpPost(NETEASE_USER_PLAYLIST_API,
       `params=${encodeURIComponent(req.params)}&encSecKey=${encodeURIComponent(req.encSecKey)}`,
-      { "Cookie": c });
+      { "Cookie": c, platform: "netease" });
     if (!res) break;
     let lists: Array<Record<string, unknown>> = [];
     let more = false;
@@ -434,12 +435,13 @@ export async function testPlatformConnection(
   source: string,
   cookie: string,
 ): Promise<{ ok: boolean; message: string }> {
-  const c = (cookie ?? "").trim();
+  // Cookie 按各自平台解析（会话内可能已被续期，优先用它），传进来的值只属于本次测试的平台
   if (source === "netease") {
+    const c = resolvePlatformCookie("netease", cookie);
     if (!c) return { ok: false, message: "未粘贴网易云 Cookie" };
     const { params, encSecKey } = encryptWeApi(JSON.stringify({ csrf_token: "" }));
     const body = `params=${encodeURIComponent(params)}&encSecKey=${encodeURIComponent(encSecKey)}`;
-    const res = await httpPost(NETEASE_ACCOUNT_API, body, { "Cookie": c });
+    const res = await httpPost(NETEASE_ACCOUNT_API, body, { "Cookie": c, platform: "netease" });
     if (!res) return { ok: false, message: "请求失败（网络或接口变更）" };
     // code===200 不代表已登录：匿名 Cookie（缺 MUSIC_U）同样返回 200 但 profile=null，
     // 必须以 profile.userId 判定，否则会出现「测试有效但账号歌单报 Cookie 过期」的假阳性
@@ -454,6 +456,7 @@ export async function testPlatformConnection(
     return { ok: true, message: info.vipType !== 0 ? "网易云 Cookie 有效（会员）" : "网易云 Cookie 有效（普通账号）" };
   }
   if (source === "qq") {
+    const c = resolvePlatformCookie("qq", cookie);
     // 实测（2026-09）：旧 GetUserInfo 校验端点对新版网页登录体系恒返 500003（有效 Cookie 也如此），
     // 不能再作为 Cookie 有效性判据；且免费歌曲 vkey 无 Cookie 也能拿直链。
     // 故改为探测「下载通道可用性」：无 Cookie 直接告知免费可下；有 Cookie 用已知免费歌验证通道。
@@ -461,7 +464,7 @@ export async function testPlatformConnection(
       return { ok: true, message: "QQ 下载通道可用：免费歌曲无需 Cookie 可直接下载；VIP 歌曲需绿钻账号的有效 Cookie" };
     }
     const guid = makeGuid();
-    const vkeyRes = await httpGet(buildQqVkeyUrl(buildQqVkeyBody(QQ_PROBE_SONGMID, guid, extractQqUin(c) || "0")), 0, undefined, { "Referer": QQ_REFERER, "Cookie": c });
+    const vkeyRes = await httpGet(buildQqVkeyUrl(buildQqVkeyBody(QQ_PROBE_SONGMID, guid, extractQqUin(c) || "0")), 0, undefined, { "Referer": QQ_REFERER, "Cookie": c, platform: "qq" });
     const purl = vkeyRes ? parseQqPurl(new TextDecoder().decode(vkeyRes.data)) : "";
     if (!purl) {
       return { ok: false, message: "QQ 下载通道异常（接口可能变更），免费歌曲也可能受影响，请稍后重试" };
@@ -469,12 +472,14 @@ export async function testPlatformConnection(
     return { ok: true, message: "QQ 下载通道可用：免费歌曲可直接下载；VIP 歌曲需绿钻账号的有效 Cookie（以下载实测为准）" };
   }
   if (source === "kugou") {
-    if (!c) return { ok: false, message: "未粘贴酷狗 Cookie" };
+    const kugouCookie = resolvePlatformCookie("kugou", cookie);
+    if (!kugouCookie) return { ok: false, message: "未粘贴酷狗 Cookie" };
     const res = await httpGet(KUGOU_VIP_ROLEINFO_URL, 0, undefined, {
       "User-Agent": UA,
       "Accept": "*/*",
       "Host": "vip.kugou.com",
-      "Cookie": c,
+      "Cookie": kugouCookie,
+      platform: "kugou",
     });
     if (!res) return { ok: false, message: "请求失败（网络或接口变更）" };
     const info = parseKugouRoleinfo(new TextDecoder().decode(res.data));
@@ -603,12 +608,11 @@ export async function previewAudio(
     }
     // QQ：免费歌曲免登录可直接拿直链；Cookie（绿钻）用于 VIP 歌曲
     if (song.source === "qq") {
-      const qqCookie = (cookies.qq ?? "").trim();
+      const qqCookie = resolvePlatformCookie("qq", cookies.qq);
       onProgress?.(null, `正在试听 ${song.name}…`);
       const guid = makeGuid();
       const uin = extractQqUin(qqCookie) || "0";
-      const qqHeaders: Record<string, string> = { "Referer": QQ_REFERER };
-      if (qqCookie) qqHeaders.Cookie = qqCookie;
+      const qqHeaders: Record<string, string> = { "Referer": QQ_REFERER, "Cookie": qqCookie, platform: "qq" };
       const vkeyRes = await httpGet(buildQqVkeyUrl(buildQqVkeyBody(song.songmid ?? "", guid, uin)), 0, undefined, qqHeaders);
       if (!vkeyRes) return { ok: false, message: "获取 QQ 播放地址失败" };
       const purl = parseQqPurl(new TextDecoder().decode(vkeyRes.data));
@@ -805,7 +809,7 @@ export interface NeteaseCloudIndex {
 
 /** 云盘已存歌曲索引（需 Cookie；weapi/v1/cloud/get 分页拉全量，不足一页即到末尾） */
 export async function fetchNeteaseCloudIndex(cookie: string): Promise<NeteaseCloudIndex> {
-  const c = (cookie ?? "").trim();
+  const c = resolvePlatformCookie("netease", cookie);
   if (!c) throw new Error("未配置网易云 Cookie");
   const ids = new Set<string>();
   const fileNames = new Set<string>();
@@ -813,7 +817,7 @@ export async function fetchNeteaseCloudIndex(cookie: string): Promise<NeteaseClo
   const limit = 300;
   for (let offset = 0, page = 0; page < 40; offset += limit, page++) {
     const req = encryptWeApi(JSON.stringify({ limit, offset, csrf_token: "" }));
-    const res = await httpPost(NETEASE_CLOUD_GET_API, weapiForm(req), { "Cookie": c });
+    const res = await httpPost(NETEASE_CLOUD_GET_API, weapiForm(req), { "Cookie": c, platform: "netease" });
     if (!res) break;
     let data: Array<Record<string, unknown>> = [];
     try {
@@ -844,10 +848,12 @@ async function downloadNeteaseVipBytes(
   cookie: string,
   onProgress: (received: number, total: number | null, label: string) => void,
 ): Promise<Uint8Array | null> {
+  // 用会话内最新 Cookie（可能已被前面的请求自动续期），而不是调用方传入的旧值
+  const c = resolvePlatformCookie("netease", cookie);
   // 1. 校验会员：weapi/nuser/account/get
   const { params, encSecKey } = encryptWeApi(JSON.stringify({ csrf_token: "" }));
   const accountBody = `params=${encodeURIComponent(params)}&encSecKey=${encodeURIComponent(encSecKey)}`;
-  const accountRes = await httpPost(NETEASE_ACCOUNT_API, accountBody, { "Cookie": cookie });
+  const accountRes = await httpPost(NETEASE_ACCOUNT_API, accountBody, { "Cookie": c, platform: "netease" });
   if (!accountRes) return null;
   const vip = parseVipAccountResponse(new TextDecoder().decode(accountRes.data));
   // 需登录有效（ok）且为会员（vipType!==0）才走 VIP 直链；普通账号/登录失效均回退外链
@@ -862,7 +868,7 @@ async function downloadNeteaseVipBytes(
   });
   for (const level of ["lossless", "hires", "exhigh"]) {
     const eapiParams = encryptEApi("/eapi/song/enhance/player/url/v1", eapiPayload(level));
-    const eapiRes = await httpPost(NETEASE_EAPI_URL, `params=${encodeURIComponent(eapiParams)}`, { "Cookie": cookie });
+    const eapiRes = await httpPost(NETEASE_EAPI_URL, `params=${encodeURIComponent(eapiParams)}`, { "Cookie": c, platform: "netease" });
     if (!eapiRes) continue;
     const url = parseNeteasePlayUrl(new TextDecoder().decode(eapiRes.data));
     if (url) {
@@ -875,7 +881,7 @@ async function downloadNeteaseVipBytes(
   const weapiReq = JSON.stringify({ ids: [String(songId)], br: 320000 });
   const weapi = encryptWeApi(weapiReq);
   const weapiBody = `params=${encodeURIComponent(weapi.params)}&encSecKey=${encodeURIComponent(weapi.encSecKey)}`;
-  const weapiRes = await httpPost(NETEASE_WEAPI_URL, weapiBody, { "Cookie": cookie });
+  const weapiRes = await httpPost(NETEASE_WEAPI_URL, weapiBody, { "Cookie": c, platform: "netease" });
   if (!weapiRes) return null;
   const weapiUrl = parseNeteasePlayUrl(new TextDecoder().decode(weapiRes.data));
   if (!weapiUrl) return null;
@@ -943,12 +949,11 @@ async function downloadQq(
   onProgress?: DownloadProgressCallback,
 ): Promise<{ ok: boolean; message: string }> {
   // 免费歌曲无需 Cookie 可直接拿直链；Cookie（绿钻）用于 VIP 歌曲
-  const qqCookie = (cookies.qq ?? "").trim();
+  const qqCookie = resolvePlatformCookie("qq", cookies.qq);
   onProgress?.(null, "正在获取 QQ 播放地址…");
   const guid = makeGuid();
   const uin = extractQqUin(qqCookie) || "0";
-  const qqHeaders: Record<string, string> = { "Referer": QQ_REFERER };
-  if (qqCookie) qqHeaders.Cookie = qqCookie;
+  const qqHeaders: Record<string, string> = { "Referer": QQ_REFERER, "Cookie": qqCookie, platform: "qq" };
   const vkeyUrl = buildQqVkeyUrl(buildQqVkeyBody(song.songmid ?? "", guid, uin));
   const vkeyRes = await httpGet(vkeyUrl, 0, undefined, qqHeaders);
   if (!vkeyRes) return { ok: false, message: "获取 QQ 播放地址失败" };
@@ -1180,6 +1185,45 @@ async function fetchKugouLyrics(song: DownloadSong): Promise<string | null> {
   return null;
 }
 
+/**
+ * 传输层内部标记：`platform` 用于标注「这个请求带的是哪个平台的登录 Cookie」，
+ * 只供续期回写定位平台用，绝不能作为请求头发出去，故出站前摘掉。
+ */
+function stripTransportMarkers(headers?: Record<string, string>): Record<string, string> | undefined {
+  if (!headers) return undefined;
+  const out: Record<string, string> = {};
+  for (const k of Object.keys(headers)) {
+    if (k === "platform") continue;
+    out[k] = headers[k];
+  }
+  return out;
+}
+
+/** 归一化 Node/浏览器拿到的响应头（键统一小写；多个 Set-Cookie 用逗号拼接后按边界切回） */
+function normalizeResponseHeaders(raw: any): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const k of Object.keys(raw ?? {})) {
+    const v = raw[k];
+    const key = k.toLowerCase();
+    if (typeof v === "string") headers[key] = v;
+    else if (Array.isArray(v)) headers[key] = key === "set-cookie" ? splitSetCookieHeader(v.join(", ")).join(", ") : v.join(",");
+  }
+  return headers;
+}
+
+/**
+ * Cookie 续期回写钩子：请求带的是哪个平台的 Cookie（由 extraHeaders.platform 标注），
+ * 就把该平台响应头里的 Set-Cookie 合并回本地保存值（域名+名字白名单见 cookieJar）。
+ * 只做续期，不做过期预测；未变化时不触发落盘。
+ */
+function writeBackCookieRefresh(url: string, responseHeaders: Record<string, string> | undefined, extraHeaders?: Record<string, string>): void {
+  const platform = extraHeaders?.platform;
+  if (!platform || !responseHeaders) return;
+  try {
+    refreshCookieFromResponse(url, responseHeaders, platform);
+  } catch { /* 续期失败不影响本次请求结果 */ }
+}
+
 /** GET 拿字节+响应头：Node http/https（绕过 CSP、可带 Referer/Cookie）优先，失败回退浏览器 fetch */
 async function httpGet(
   url: string,
@@ -1230,7 +1274,7 @@ function nodeGet(
       path: u.pathname + u.search,
       method: "GET",
       agent: getKeepAliveAgent(isHttps),
-      headers: { "User-Agent": UA, Referer: REFERER, ...extraHeaders },
+      headers: { "User-Agent": UA, Referer: REFERER, ...stripTransportMarkers(extraHeaders) },
     }, (res: any) => {
       const status = res.statusCode ?? 0;
       const loc = res.headers?.location;
@@ -1241,23 +1285,19 @@ function nodeGet(
         return;
       }
       if (status !== 200) { res.resume(); resolve(null); return; }
+      const headers = normalizeResponseHeaders(res.headers);
+      writeBackCookieRefresh(url, headers, extraHeaders);
       let total: number | null = null;
-      const cr = res.headers?.["content-range"];
+      const cr = headers["content-range"];
       if (typeof cr === "string") {
         const m = /\/\s*(\d+)\s*$/.exec(cr);
         if (m) total = Number(m[1]);
       }
       if (total === null) {
-        const cl = res.headers?.["content-length"];
+        const cl = headers["content-length"];
         if (typeof cl === "string" && cl) total = Number(cl);
       }
       if (total === null || !Number.isFinite(total)) total = null;
-      const headers: Record<string, string> = {};
-      for (const k of Object.keys(res.headers ?? {})) {
-        const v = res.headers[k];
-        if (typeof v === "string") headers[k.toLowerCase()] = v;
-        else if (Array.isArray(v)) headers[k.toLowerCase()] = v.join(",");
-      }
       const chunks: Buffer[] = [];
       let received = 0;
       res.on("data", (c: Buffer) => {
@@ -1295,10 +1335,10 @@ async function fetchGet(
       signal.addEventListener("abort", () => controller.abort(), { once: true });
     }
     try {
-      const res = await fetch(url, { signal: controller.signal, headers: extraHeaders });
+      const res = await fetch(url, { signal: controller.signal, headers: stripTransportMarkers(extraHeaders) });
       if (!res.ok) return null;
-      const headers: Record<string, string> = {};
-      res.headers.forEach((v, k) => { headers[k.toLowerCase()] = v; });
+      const headers = normalizeResponseHeaders(res.headers);
+      writeBackCookieRefresh(url, headers, extraHeaders);
       const totalStr = res.headers.get("content-length");
       const total = totalStr ? Number(totalStr) : null;
       if (!res.body) return { status: res.status, data: new Uint8Array(await res.arrayBuffer()), headers };
@@ -1367,7 +1407,7 @@ function nodePost(
         Referer: REFERER,
         "Content-Type": "application/x-www-form-urlencoded",
         "Content-Length": Buffer.byteLength(body),
-        ...extraHeaders,
+        ...stripTransportMarkers(extraHeaders),
       },
     }, (res: any) => {
       const status = res.statusCode ?? 0;
@@ -1378,12 +1418,8 @@ function nodePost(
         return;
       }
       if (status !== 200) { res.resume(); resolve(null); return; }
-      const headers: Record<string, string> = {};
-      for (const k of Object.keys(res.headers ?? {})) {
-        const v = res.headers[k];
-        if (typeof v === "string") headers[k.toLowerCase()] = v;
-        else if (Array.isArray(v)) headers[k.toLowerCase()] = v.join(",");
-      }
+      const headers = normalizeResponseHeaders(res.headers);
+      writeBackCookieRefresh(url, headers, extraHeaders);
       const chunks: Buffer[] = [];
       res.on("data", (c: Buffer) => chunks.push(c));
       res.on("end", () => resolve({ status, data: new Uint8Array(Buffer.concat(chunks)), headers }));
@@ -1421,11 +1457,11 @@ async function fetchPost(
         method: "POST",
         body,
         signal: controller.signal,
-        headers: { "Content-Type": "application/x-www-form-urlencoded", ...extraHeaders },
+        headers: { "Content-Type": "application/x-www-form-urlencoded", ...stripTransportMarkers(extraHeaders) },
       });
       if (!res.ok) return null;
-      const headers: Record<string, string> = {};
-      res.headers.forEach((v, k) => { headers[k.toLowerCase()] = v; });
+      const headers = normalizeResponseHeaders(res.headers);
+      writeBackCookieRefresh(url, headers, extraHeaders);
       return { status: res.status, data: new Uint8Array(await res.arrayBuffer()), headers };
     } finally { clearTimeout(timer); }
   } catch {

@@ -12,6 +12,19 @@ import {
 import { formatBytes } from "../../music/tagSize";
 import { isWindowsAbsolutePath } from "../../music/songScanner";
 import { MUSIC_SOURCES, type MusicSource } from "../../music/shared";
+import { getBaselineCookie, getJarCookie, getStoredPlatformCookie, hydratePlatformCookie, sanitizeCookie, type CookiePlatform } from "../../music/cookieJar";
+
+/** 平台标识收窄（MusicSource 的成员与 CookiePlatform 完全一致，这里显式转换以便类型安全地查 JAR） */
+const asCookiePlatform = (key: MusicSource): CookiePlatform => key as CookiePlatform;
+
+/** Cookie 续期时间戳 → `MM-DD HH:mm`（设置页状态徽标展示用） */
+function formatCookieStamp(ms?: number): string {
+  if (!ms || !Number.isFinite(ms)) return "";
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 /** 平台元信息（Cookie 行渲染用）：loginUrl 供「打开登录页」按钮直达；
  *  酷狗/酷我无稳定直达登录页，用官网首页（登录入口在页面右上角） */
@@ -391,7 +404,11 @@ function createCookieRow(
   site: string,
 ): void {
   const settings = plugin.music!.getSettings();
-  const value = settings.platformCookies[key] ?? "";
+  const cookieKey = asCookiePlatform(key);
+  const raw = settings.platformCookies[key] ?? "";
+  // 播种 JAR 并取归一化值：手工粘贴常带换行/多余空格，归一化后同一份值也便于与续期结果比较
+  const value = raw ? hydratePlatformCookie(cookieKey, raw) : "";
+  if (raw && value !== raw) settings.platformCookies = { ...settings.platformCookies, [key]: value };
   const enabled = settings.downloadSources[key] !== false;
   const row = containerEl.createDiv({ cls: "gm-cookie-row" });
   row.dataset.source = key; // 供「平台优先级」换序时按 source 重排/刷新序号
@@ -409,11 +426,19 @@ function createCookieRow(
   });
 
   header.createSpan({ cls: "gm-cookie-name", text: name });
-  const statusEl = header.createSpan({
-    cls: "gm-cookie-status",
-    text: value ? `已配置（${value.length} 字符）` : "未配置",
-  });
-  if (value) statusEl.addClass("gm-cookie-status-on");
+  const statusEl = header.createSpan({ cls: "gm-cookie-status" });
+  /** 状态徽标：已配置（N 字符）+ 可选「已自动续期 时间」；每次展示都按当前 JAR/设置实时计算 */
+  const refreshStatus = (): void => {
+    const live = getJarCookie(cookieKey, getStoredPlatformCookie(settings, cookieKey));
+    const hasValue = !!live;
+    statusEl.setText(
+      hasValue
+        ? `已配置（${live.length} 字符）${live !== getBaselineCookie(cookieKey) ? ` · 已自动续期 ${formatCookieStamp(settings.platformCookiesUpdatedAt?.[key])}` : ""}`
+        : "未配置",
+    );
+    statusEl.toggleClass("gm-cookie-status-on", hasValue);
+  };
+  refreshStatus();
   header.createSpan({ cls: "gm-cookie-chevron", text: "▸" });
 
   const body = row.createDiv({ cls: "gm-cookie-body" });
@@ -421,11 +446,12 @@ function createCookieRow(
   textarea.value = value;
   textarea.placeholder = `登录 ${site} 后 F12 → 控制台输入 document.cookie 复制整段`;
   textarea.addEventListener("input", () => {
-    const v = textarea.value.trim();
+    const v = sanitizeCookie(textarea.value);
     settings.platformCookies = { ...settings.platformCookies, [key]: v };
+    // 手动重新粘贴/清空 → 之前的「自动续期」标记失效
+    settings.platformCookiesUpdatedAt = { ...settings.platformCookiesUpdatedAt, [key]: 0 };
     void plugin.saveSettings();
-    statusEl.setText(v ? `已配置（${v.length} 字符）` : "未配置");
-    statusEl.toggleClass("gm-cookie-status-on", !!v);
+    refreshStatus();
   });
   // 获取提示：QQ 的登录凭证 Cookie（qqmusic_key/qm_keyst）为 HttpOnly，控制台 document.cookie 读不到，
   // 必须从网络面板复制请求头；其余平台 document.cookie 可用，做成可点击代码芯片（点击复制，图标短暂变 ✓ 反馈）
@@ -447,6 +473,11 @@ function createCookieRow(
       hint.createSpan({ text: " 并回车执行 → 复制控制台输出，粘贴到上方输入框。仅存本地 data.json。" });
     }
   }
+  // 续期说明：服务端在响应头里回吐新 Cookie 时会自动合并保存（域名+名字白名单），不必重去 F12 复制
+  body.createDiv({
+    cls: "gm-cookie-hint",
+    text: "Cookie 会自动续期：平台在响应头里回吐新凭证时，插件自动合并保存（仅限该平台的登录凭证，仅存本地 data.json），续期后状态徽标会标注「已自动续期」时间。彻底失效（异地登录/风控作废）时仍需重新登录复制一次。",
+  });
   const actions = body.createDiv({ cls: "gm-cookie-body-actions" });
   const loginBtn = actions.createEl("button", { text: "打开登录页", cls: "gm-cookie-login-btn" });
   loginBtn.setAttribute("title", `在系统浏览器打开 ${site} 的登录页面`);
@@ -458,9 +489,11 @@ function createCookieRow(
   actions.createEl("button", { text: "清除", cls: "mod-cta" }).addEventListener("click", () => {
     textarea.value = "";
     settings.platformCookies = { ...settings.platformCookies, [key]: "" };
+    settings.platformCookiesUpdatedAt = { ...settings.platformCookiesUpdatedAt, [key]: 0 };
     void plugin.saveSettings();
-    statusEl.setText("未配置");
-    statusEl.removeClass("gm-cookie-status-on");
+    // 同步清掉会话内值（否则 JAR 里的旧凭证还会被下一个请求带出去）
+    hydratePlatformCookie(cookieKey, "");
+    refreshStatus();
     testResultEl.setText("");
   });
 
@@ -469,12 +502,21 @@ function createCookieRow(
     testBtn.disabled = true;
     testBtn.setText("测试中…");
     testResultEl.setText("");
-    const res = await testPlatformConnection(key, textarea.value.trim());
+    // 判断输入框内容是否就是 JAR 里那份（用户直接点测试）：是则用 JAR（可能已被前面请求续期），
+    // 否则按用户新粘贴的值播种后再测，避免用旧凭证去测刚改过的 Cookie
+    const typed = sanitizeCookie(textarea.value);
+    const live = getJarCookie(cookieKey);
+    if (typed === live || typed === getBaselineCookie(cookieKey)) hydratePlatformCookie(cookieKey, typed);
+    const res = await testPlatformConnection(key, typed);
+    // 请求过程里若发生续期，把续期后的值回填到输入框（用户没填内容时不动，保持「未粘贴」语义）
+    const after = getJarCookie(cookieKey);
+    if (typed && after && after !== typed) textarea.value = after;
     testBtn.disabled = false;
     testBtn.setText("测试连接");
     testResultEl.setText(res.ok ? "✓ " + res.message : "✗ " + res.message);
     testResultEl.toggleClass("gm-cookie-test-ok", res.ok);
     testResultEl.toggleClass("gm-cookie-test-bad", !res.ok);
+    refreshStatus();
   });
 
   header.addEventListener("click", () => {

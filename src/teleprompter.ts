@@ -2,7 +2,7 @@
 import { ButtonComponent, Component, Editor, MarkdownRenderer, MarkdownView, Notice, Platform, TFile, setIcon } from "obsidian";
 import GlimpsePlugin from "./main";
 import { copyText } from "./settings/export";
-import { buildGradientImage } from "./settings/settings";
+import { buildGradientImage, DEFAULT_STROKE_COLOR_VALUE } from "./settings/settings";
 import { HighlightIndexView, HIGHLIGHT_INDEX_VIEW } from "./highlight-index-view";
 import type { MusicState } from "./music/manager";
 
@@ -11,6 +11,9 @@ const TP_SNAP_CENTER = 10; // px，贴近视口中心线的吸附距离
 const TP_MIN_WIDTH = 240; // 窗口最小宽度
 const TP_MIN_VISIBLE_H = 44; // px，窗口纵向至少露出这么高（工具栏可抓取）
 const TP_FONT_SIZES = [32, 40, 50, 64, 80]; // 字体大小循环档位
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const TP_STROKE_FILTER_ID = "glimpse-tp-stroke-outer"; // 外侧描边 SVG 滤镜 id（styles.css url() 引用）
 
 export type TeleprompterMode = "line" | "highlight" | "lyrics" | "reader";
 
@@ -103,6 +106,7 @@ export class TeleprompterWindow extends Component {
   private lastText = ""; // 上一个非空内容（空内容占位回退）
   private selectionOverride = false; // 选中提取模式正在覆盖内容
   private renderSeq = 0; // 渲染序号：防异步渲染竞态（旧渲染不覆盖新内容）
+  private renderSettled = false; // 渲染收敛标志：异步渲染进行中不做宽度适配（内容残缺，量了会闪）
   private followEditor: Editor | null = null; // 跟随文档（绑定 > 活动）的编辑器缓存，轮询直接读
   private pollTimer: number | null = null; // 行模式轮询定时器（事件不可靠时的兜底跟随）
   private lastPollKey = ""; // 最近一次提取的键（"L:行号" / "S:选中文本"），事件与轮询共用
@@ -186,6 +190,29 @@ export class TeleprompterWindow extends Component {
         this.applySettings();
       })
     );
+
+    // 宽度再适配触发器 —— 渲染完成回调之外的三道兜底，保证背景始终贴合内容：
+    // 1) ResizeObserver：内容盒子事后变化（字体迟载、主题切换、逐字渐变重包、异步迟到写入）即时再适配；
+    //    渲染进行中跳过（contentEl 被 empty 后逐帧量到残缺内容，宽度会来回闪）
+    // 2) viewport resize：可用宽度变化，钳制结果随之变化
+    // 3) 1s 周期再同步：任何漏触发（异步渲染回调丢失等）导致的宽度失配自愈
+    // 拖宽进行中一律让路：拖宽直接写根宽，再适配会把宽度抢回去
+    const refitIfSettled = () => {
+      if (this.rootEl.hasClass("is-resizing")) return;
+      if (!this.renderSettled || !this.contentEl.firstChild) return;
+      if (!this.state.widthLocked) this.autoFitWidth();
+      this.capContentHeight();
+    };
+    const contentRO = new ResizeObserver(refitIfSettled);
+    contentRO.observe(this.contentEl);
+    this.register(() => contentRO.disconnect());
+    this.registerDomEvent(window, "resize", refitIfSettled);
+    const reconcileTimer = window.setInterval(() => {
+      if (this.state.widthLocked || this.rootEl.hasClass("is-resizing")) return;
+      if (!this.contentEl.firstChild) return;
+      this.autoFitWidth();
+    }, 1000);
+    this.register(() => window.clearInterval(reconcileTimer));
   }
 
   /** 状态变更后持久化到 data.json（构造期间跳过） */
@@ -198,12 +225,21 @@ export class TeleprompterWindow extends Component {
     const tp = this.plugin.settings.teleprompter;
     this.rootEl.style.setProperty("--tp-font-opacity", String(tp.fontOpacity / 100));
     this.rootEl.style.setProperty("--tp-bg-opacity", String(tp.bgOpacity / 100));
+    // 毛玻璃：开关走类，模糊半径走 CSS 变量（styles.css 据此挂 backdrop-filter）
+    this.rootEl.toggleClass("is-glass", tp.glassEnabled);
+    this.rootEl.style.setProperty("--tp-glass-blur", `${tp.glassBlur}px`);
     // 文字阴影（隐藏背景时的字幕投影）：参数走 CSS 变量，开关走类
     this.rootEl.style.setProperty("--tp-shadow-x", `${tp.shadowOffsetX}px`);
     this.rootEl.style.setProperty("--tp-shadow-y", `${tp.shadowOffsetY}px`);
     this.rootEl.style.setProperty("--tp-shadow-blur", `${tp.shadowBlur}px`);
     this.rootEl.style.setProperty("--tp-shadow-opacity", String(tp.shadowOpacity / 100));
     this.rootEl.toggleClass("is-shadow-off", !tp.shadowEnabled);
+    // 文字描边：开关走类，线宽/颜色走 CSS 变量（styles.css 据此挂 -webkit-text-stroke）；
+    // is-stroke-outer 切换到外侧描边（SVG 膨胀滤镜），两种方式互斥
+    this.rootEl.toggleClass("is-stroke", tp.strokeEnabled);
+    this.rootEl.toggleClass("is-stroke-outer", tp.strokeMode === "outer");
+    this.rootEl.style.setProperty("--tp-stroke-width", `${tp.strokeWidth}px`);
+    this.rootEl.style.setProperty("--tp-stroke-color", tp.strokeColor ?? DEFAULT_STROKE_COLOR_VALUE);
     // 文字渐变：CSS 变量携带渐变图片值，开关走类（开启后经 background-clip 覆盖字体颜色）
     const gradient = tp.gradientEnabled
       ? buildGradientImage(tp.gradientType, tp.gradientAngle, tp.gradientStops)
@@ -418,8 +454,9 @@ export class TeleprompterWindow extends Component {
       this.copyCapturedText();
     });
 
-    // 右缘宽度拖拽把手
-    this.resizeEl = root.createDiv("glimpse-tp-resize");
+    // 右缘宽度拖拽把手 —— 挂在面板（body）上而非根上：背景贴合内容后根宽可能大于
+    // 可见面板（异步宽度失配的过渡期），把手必须始终贴着可见面板的右缘
+    this.resizeEl = this.bodyEl.createDiv("glimpse-tp-resize");
     this.resizeEl.addEventListener("mousedown", e => this.startResize(e));
 
     // 视口中心吸附辅助线（全屏竖/横线，仅拖拽贴近中心线时显示）
@@ -516,7 +553,8 @@ export class TeleprompterWindow extends Component {
     return Math.min(Math.max(w, TP_MIN_WIDTH), Math.max(vw, TP_MIN_WIDTH));
   }
 
-  /** 测量内容与工具栏的自然宽度（最宽行）。
+  /** 测量内容的自然宽度（最宽行）。窗口宽度只由内容决定 —— 工具栏不参与宽度计算：
+      窗口比工具栏窄时由 CSS flex-wrap 换行收纳（styles.css），不把窗口撑宽。
       不能在容器上直接量 scrollWidth —— block 子元素（MarkdownRenderer 的 <p> 等）填满容器，
       量到的是容器自身宽度，再加内边距会逐次膨胀。改为克隆到隐藏 nowrap 测量容器，
       由 max-content 折叠出单行自然宽度（nowrap 亦消除 CJK 折行机会）。
@@ -556,17 +594,13 @@ export class TeleprompterWindow extends Component {
     for (const child of Array.from(this.contentEl.children)) {
       contentWrap.appendChild(child.cloneNode(true));
     }
-    // 工具栏按钮不走 markdown 类上下文，保持裸 probe
-    for (const child of Array.from(this.toolbarEl.children)) {
-      probe.appendChild(child.cloneNode(true));
-    }
     document.body.appendChild(probe);
     const w = probe.scrollWidth;
     probe.detach();
     return w;
   }
 
-  /** 宽度自适应：max(内容自然宽, 工具栏) + 内容 padding + 根 border + 缓冲；宽度锁定时跳过。
+  /** 宽度自适应：内容自然宽 + 内容 padding + 根 border + 缓冲，下限 TP_MIN_WIDTH；宽度锁定时跳过。
       宽度变化时保持窗口水平中心稳定（重新 place），避免换行/换项时文字左右跳动 */
   autoFitWidth() {
     if (this.state.widthLocked) return;
@@ -602,6 +636,8 @@ export class TeleprompterWindow extends Component {
 
   setWidthLocked(locked: boolean) {
     this.state.widthLocked = locked;
+    // 宽度锁定态背景铺满根宽（styles.css），自适应态背景贴合内容
+    this.rootEl.toggleClass("is-width-locked", locked);
     this.widthLockBtnEl?.buttonEl.toggleClass("is-active", locked);
     this.setTpTooltip(this.widthLockBtnEl?.buttonEl ?? null, () =>
       this.state.widthLocked ? "解锁宽度" : "宽度锁定"
@@ -1106,9 +1142,11 @@ export class TeleprompterWindow extends Component {
   /** 渲染内容；异步渲染防竞态，失败/同步抛错一律回退纯文本，完成后按内容适配宽度 */
   private renderMarkdown(text: string) {
     const seq = ++this.renderSeq;
+    this.renderSettled = false;
     this.contentEl.empty();
     const done = () => {
       if (seq !== this.renderSeq) return;
+      this.renderSettled = true;
       this.applyGradientScope(); // 内容重建后重套渐变范围（逐字包裹/解包）
       if (!this.state.widthLocked) this.autoFitWidth();
       // 宽度没变时 autoFitWidth 不会 place：内容高度变化也要按当前 y 重新限制高度，
@@ -1321,6 +1359,9 @@ export class TeleprompterManager {
 
   constructor(plugin: GlimpsePlugin) {
     this.plugin = plugin;
+    // 外侧描边滤镜先行注入（窗口构造即会带上 is-stroke-outer 类引用它），随后按设置同步属性
+    this.ensureStrokeFilter();
+    this.syncStrokeFilter();
     // 恢复上次会话的窗口状态（桌面端；移动端无此功能）
     if (Platform.isDesktop) {
       const saved = plugin.settings.teleprompter.windows ?? [];
@@ -1381,8 +1422,64 @@ export class TeleprompterManager {
     win.focus();
   }
 
+  /** 外侧描边 SVG 滤镜定义（styles.css 经 url(#glimpse-tp-stroke-outer) 引用）。
+      线宽/颜色是全局设置 → 全文档共享单个定义即可；feMorphology 的 radius 与
+      feFlood 的 flood-color 是 SVG 属性而非 CSS，只能由 JS 同步（syncStrokeFilter）。
+      隐藏用 CSS 类（.glimpse-tp-stroke-defs），卸载时整棵摘除 */
+  private strokeDefsEl: SVGSVGElement | null = null;
+
+  private ensureStrokeFilter() {
+    if (this.strokeDefsEl || !Platform.isDesktop) return;
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.addClass("glimpse-tp-stroke-defs");
+    const filter = document.createElementNS(SVG_NS, "filter");
+    filter.setAttribute("id", TP_STROKE_FILTER_ID);
+    // 滤镜区域外扩 50%：膨胀向外扩半径距离，默认 10% 余量在矮内容（一行小字）上会被裁
+    filter.setAttribute("x", "-50%");
+    filter.setAttribute("y", "-50%");
+    filter.setAttribute("width", "200%");
+    filter.setAttribute("height", "200%");
+    // 膨胀文字的 alpha 轮廓 → 染色 → 垫回原图下方：外露描边 = 完整 radius
+    const dilate = document.createElementNS(SVG_NS, "feMorphology");
+    dilate.setAttribute("in", "SourceAlpha");
+    dilate.setAttribute("operator", "dilate");
+    dilate.setAttribute("radius", "3");
+    dilate.setAttribute("result", "dilated");
+    const flood = document.createElementNS(SVG_NS, "feFlood");
+    flood.setAttribute("flood-color", "#000000");
+    flood.setAttribute("result", "flood");
+    const composite = document.createElementNS(SVG_NS, "feComposite");
+    composite.setAttribute("in", "flood");
+    composite.setAttribute("in2", "dilated");
+    composite.setAttribute("operator", "in");
+    composite.setAttribute("result", "outline");
+    const merge = document.createElementNS(SVG_NS, "feMerge");
+    const outlineNode = document.createElementNS(SVG_NS, "feMergeNode");
+    outlineNode.setAttribute("in", "outline");
+    const sourceNode = document.createElementNS(SVG_NS, "feMergeNode");
+    sourceNode.setAttribute("in", "SourceGraphic");
+    merge.append(outlineNode, sourceNode);
+    filter.append(dilate, flood, composite, merge);
+    svg.append(filter);
+    document.body.appendChild(svg);
+    this.strokeDefsEl = svg;
+  }
+
+  /** 设置变更后同步滤镜属性（线宽 = 膨胀半径，颜色 = feFlood），多窗口幂等 */
+  private syncStrokeFilter() {
+    if (!this.strokeDefsEl) return;
+    const tp = this.plugin.settings.teleprompter;
+    this.strokeDefsEl
+      .querySelector<SVGFEMorphologyElement>("feMorphology")
+      ?.setAttribute("radius", String(Math.max(tp.strokeWidth, 0)));
+    this.strokeDefsEl
+      .querySelector<SVGFEFloodElement>("feFlood")
+      ?.setAttribute("flood-color", tp.strokeColor ?? DEFAULT_STROKE_COLOR_VALUE);
+  }
+
   /** 设置变更后套用到所有实例 */
   applySettingsToAll() {
+    this.syncStrokeFilter(); // 滤镜属性先于窗口类切换更新，避免引用到旧参数
     this.windows.forEach(w => w.applySettings());
   }
 
@@ -1433,5 +1530,7 @@ export class TeleprompterManager {
 
   onunload() {
     this.closeAll(false);
+    this.strokeDefsEl?.detach(); // 外侧描边滤镜定义随插件卸载摘除
+    this.strokeDefsEl = null;
   }
 }

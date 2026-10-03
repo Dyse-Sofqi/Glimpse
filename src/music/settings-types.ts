@@ -32,6 +32,8 @@ export interface MusicSettings {
   audioFolder: string;
   /** 多平台下载 Cookie：各平台登录 Cookie，仅存本地 data.json */
   platformCookies: Record<string, string>;
+  /** 各平台 Cookie 最近一次「被响应头自动续期」的落地时间（epoch ms，仅存本地 data.json） */
+  platformCookiesUpdatedAt?: Record<string, number>;
   /** 下载搜索启用的平台：勾选的控制搜索结果是否包含该平台 */
   downloadSources: Record<string, boolean>;
   /** 上次播放：歌曲路径 + 进度秒数。退出 Obsidian 时保存，下次启动恢复进度但不自动播放 */

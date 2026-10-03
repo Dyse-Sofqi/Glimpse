@@ -1296,19 +1296,53 @@
   flex-direction: column;
   box-sizing: border-box;
   min-width: 240px;
+  /* 根只做交互壳（拖拽边界/定位），自身不命中鼠标 —— 宽度失配变宽时
+     （如异步渲染回调丢失后未再适配），透明区域不会挡住背后编辑器；
+     可命中的只有可见的面板/工具栏/拖拽把手（各自打回 auto）。
+     悬停链不受影响：命中子元素时祖先（含根）仍进入 :hover */
+  pointer-events: none;
   -webkit-user-select: none;
   user-select: none;
 }
 
 /* 面板视觉（边框/圆角/背景/阴影/过渡）挂在内容体外层 .glimpse-tp-body，
    与工具栏分离；背景色 = 主题背景色 rgba(--tp-bg-rgb, --tp-bg-opacity)，透明度由设置控制。
-   外轮廓阴影常驻显示；背景隐藏时全透明 */
+   外轮廓阴影常驻显示；背景隐藏时全透明。
+   宽度贴合：fit-content 让背景始终包住内容（宽度状态失配也不留大片空白），
+   上限钳到根宽（长文本在此换行）；宽度锁定/拖拽中铺满根宽（用户所选宽度生效、
+   拖宽有即时反馈）。min-width 与根一致，防两三个字的行把面板压得过窄难抓取 */
 .glimpse-tp-body {
+  position: relative;
+  pointer-events: auto;
+  align-self: center;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 240px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 10px;
   background: rgba(var(--tp-bg-rgb, 27, 27, 27), var(--tp-bg-opacity, 0.5));
   box-shadow: var(--shadow-s);
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease,
+    -webkit-backdrop-filter 0.2s ease, backdrop-filter 0.2s ease;
+}
+
+/* 宽度锁定 / 拖拽调宽中：背景铺满根宽（用户所选宽度生效，把手拖到哪面板就多宽） */
+.glimpse-teleprompter.is-width-locked .glimpse-tp-body,
+.glimpse-teleprompter.is-resizing .glimpse-tp-body {
+  width: 100%;
+}
+
+/* 毛玻璃（设置开关）：backdrop-filter 模糊并提饱和面板覆盖的底层内容，
+   模糊半径由设置注入 --tp-glass-blur；配合较低的「背景透明度」效果更明显 */
+.glimpse-teleprompter.is-glass .glimpse-tp-body {
+  -webkit-backdrop-filter: blur(var(--tp-glass-blur, 16px)) saturate(1.4);
+  backdrop-filter: blur(var(--tp-glass-blur, 16px)) saturate(1.4);
+}
+
+/* 背景隐藏时无背景可衬，撤掉模糊 —— 否则留下一块无边框的纯模糊矩形 */
+.glimpse-teleprompter.is-glass.is-bg-hidden .glimpse-tp-body {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* 背景隐藏：激活后无论悬停/拖拽均全透明，不显示背景与边框。
@@ -1334,6 +1368,44 @@
 /* 阴影关闭（设置开关）：隐藏背景时也不投影 */
 .glimpse-teleprompter.is-shadow-off .glimpse-tp-content {
   filter: none;
+}
+
+/* 文字描边（设置开关）：字形轮廓描线，线宽/颜色由设置注入 --tp-stroke-*。
+   paint-order 把描边垫在填充之下 —— 描边中心线与字形边缘重合，内半侧被填充盖住，
+   只露外半侧，笔画粗细不受影响（HTML 文本的 paint-order 需 Chromium 123+，
+   旧内核无此属性时描边压在填充上，观感为笔画变粗，可接受）。
+   -webkit-text-stroke 可继承：逐字渐变的 .glimpse-grad-char 无需单独声明；
+   与渐变/字体颜色填充、隐藏背景时的 drop-shadow 均可叠加。
+   仅字形描边模式（glyph）：外侧描边走下方的 SVG 滤镜，两种方式互斥 */
+.glimpse-teleprompter.is-stroke:not(.is-stroke-outer) .glimpse-tp-content {
+  -webkit-text-stroke-width: var(--tp-stroke-width, 1px);
+  -webkit-text-stroke-color: var(--tp-stroke-color, #ffffff);
+  paint-order: stroke fill;
+}
+
+/* 外侧描边（描边方式 = outer）：SVG feMorphology 膨胀文字的 alpha 轮廓后染色垫回
+   文字之下 —— 作用于渲染后的像素（渐变/逐字 span/半透明填充均兼容），
+   完整线宽外露；滤镜定义由 TeleprompterManager 注入文档并随设置同步线宽/颜色。
+   大线宽下膨胀核为矩形，斜向笔画拐角略方 */
+.glimpse-teleprompter.is-stroke.is-stroke-outer .glimpse-tp-content {
+  filter: url(#glimpse-tp-stroke-outer);
+}
+
+/* 外侧描边 + 隐藏背景 + 投影开：filter 是单属性，两条规则会整体互相覆盖，
+   必须合成一条；:not(.is-placeholder) 让占位文本落入下方「保持轻量」规则
+   （两者特异性同组，源顺序在其后，:not 保证本规则不与之争） */
+.glimpse-teleprompter.is-stroke.is-stroke-outer.is-bg-hidden:not(.is-shadow-off) .glimpse-tp-content:not(.is-placeholder) {
+  filter: url(#glimpse-tp-stroke-outer)
+    drop-shadow(var(--tp-shadow-x, 2px) var(--tp-shadow-y, 3px) var(--tp-shadow-blur, 6px)
+    rgba(0, 0, 0, var(--tp-shadow-opacity, 0.6)));
+}
+
+/* 外侧描边滤镜定义容器：仅承载 <filter>，不参与渲染与布局 */
+.glimpse-tp-stroke-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
 
 /* 文字渐变（设置开关）：背景裁切到文字，覆盖「字体颜色」；
@@ -1362,11 +1434,8 @@
   filter: none;
 }
 
-/* 穿透锁定：整窗鼠标事件穿透，仅保留交互按钮，不显示背景 */
-.glimpse-teleprompter.is-locked {
-  pointer-events: none;
-}
-
+/* 穿透锁定：整窗鼠标事件穿透（根已恒为 pointer-events:none，本态仅隐藏非交互按钮），
+   仅保留交互按钮 */
 .glimpse-teleprompter.is-locked .glimpse-tp-btn {
   display: none;
 }
@@ -1386,17 +1455,16 @@
   display: none;
 }
 
-/* 穿透锁定时工具栏自身可命中：root pointer-events:none 下仅交互按钮可触发 hover，
-   工具栏打回 auto 后整条（含按钮间隙）悬停即显示，移出窗口即隐藏 */
-.glimpse-teleprompter.is-locked .glimpse-tp-toolbar {
-  pointer-events: auto;
-}
-
-/* 工具栏：默认隐藏，悬停/拖拽/锁定（仅交互按钮）时显示 */
+/* 工具栏：默认隐藏，悬停/拖拽/锁定（仅交互按钮）时显示。
+   不参与窗口宽度计算（宽度只由内容决定）：窗口比工具栏窄时自动换行收纳，
+   而不是把窗口撑宽 —— 换行行距沿用 gap，居中排布与单行观感一致 */
 .glimpse-tp-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   width: fit-content;
+  max-width: 100%;
   align-self: center;
   gap: 2px;
   padding: 4px 6px;
@@ -1405,6 +1473,7 @@
   cursor: grab;
   opacity: 0;
   transition: opacity 0.15s ease;
+  pointer-events: auto;
 }
 
 .glimpse-teleprompter:hover .glimpse-tp-toolbar,
@@ -1667,6 +1736,14 @@
 
 .glimpse-font-modal-content h2 {
   margin: 0;
+}
+
+/* 标题行：标题居左、取消/确定居右 —— 按钮常驻顶部，列表再长也无需滚动到底部点击 */
+.glimpse-font-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .glimpse-font-modal-desc {

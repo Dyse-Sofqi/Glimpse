@@ -104,7 +104,14 @@ export class FontPickerModal extends Modal {
     modalEl.addClass("glimpse-font-modal");
     contentEl.addClass("glimpse-font-modal-content");
 
-    contentEl.createEl("h2", { text: "选择字体" });
+    // ── 标题行：标题居左，取消/确定居右 —— 模态窗较小，按钮放底部要滚到底才能点到；
+    // 常驻顶部开窗即见，操作后列表再长也不影响确认 ──
+    const header = contentEl.createDiv({ cls: "glimpse-font-modal-header" });
+    header.createEl("h2", { text: "选择字体" });
+    const actions = header.createDiv({ cls: "glimpse-font-modal-actions" });
+    new ButtonComponent(actions).setButtonText("取消").onClick(() => this.close());
+    new ButtonComponent(actions).setButtonText("确定").setCta().onClick(() => this.confirm());
+
     contentEl.createEl("p", {
       cls: "glimpse-font-modal-desc",
       text: "勾选本机字体，可拖拽调整优先级：列表靠前且本机已安装的字体优先生效，未安装的自动顺延到下一项。留空则跟随主题默认字体。",
@@ -139,11 +146,6 @@ export class FontPickerModal extends Modal {
       .addButton(btn =>
         btn.setButtonText("添加").onClick(() => this.addCustom())
       );
-
-    // ── 底部操作 ──
-    const actions = contentEl.createDiv({ cls: "glimpse-font-modal-actions" });
-    new ButtonComponent(actions).setButtonText("取消").onClick(() => this.close());
-    new ButtonComponent(actions).setButtonText("确定").setCta().onClick(() => this.confirm());
 
     void this.loadFonts();
   }

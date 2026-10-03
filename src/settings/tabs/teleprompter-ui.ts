@@ -5,14 +5,21 @@ import {
   buildGradientImage,
   DEFAULT_BG_OPACITY,
   DEFAULT_FONT_OPACITY,
+  DEFAULT_GLASS_BLUR,
+  DEFAULT_GLASS_ENABLED,
   DEFAULT_GRADIENT_ANGLE,
   DEFAULT_GRADIENT_STOPS,
   DEFAULT_SHADOW_BLUR,
   DEFAULT_SHADOW_OFFSET_X,
   DEFAULT_SHADOW_OFFSET_Y,
   DEFAULT_SHADOW_OPACITY,
+  DEFAULT_STROKE_COLOR,
+  DEFAULT_STROKE_ENABLED,
+  DEFAULT_STROKE_MODE,
+  DEFAULT_STROKE_WIDTH,
   GradientScope,
   GradientType,
+  StrokeMode,
 } from "../settings";
 import { FontPickerModal } from "../font-picker-modal";
 import type { SettingTab } from "../ui";
@@ -189,6 +196,46 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
         })
     );
 
+  // 毛玻璃效果 —— 开关 + 模糊强度；把面板覆盖的底层内容做模糊/提饱和处理
+  new Setting(containerEl)
+    .setName("毛玻璃效果")
+    .setDesc("背景以毛玻璃呈现：模糊面板覆盖的底层内容；配合较低的背景透明度效果更明显，隐藏背景时自动撤除")
+    .addToggle(toggle =>
+      toggle.setValue(plugin.settings.teleprompter.glassEnabled).onChange(value => {
+        plugin.settings.teleprompter.glassEnabled = value;
+        plugin.saveSettings();
+        plugin.teleprompterManager.applySettingsToAll();
+      })
+    );
+
+  let glassBlurSlider: SliderComponent;
+  new Setting(containerEl)
+    .setName("毛玻璃模糊强度")
+    .setDesc("毛玻璃的模糊半径（px），0 为不模糊（仅保留提饱和）")
+    .addSlider(slider => {
+      glassBlurSlider = slider;
+      slider
+        .setLimits(0, 40, 1)
+        .setValue(plugin.settings.teleprompter.glassBlur)
+        .setDynamicTooltip()
+        .onChange(value => {
+          plugin.settings.teleprompter.glassBlur = value;
+          plugin.saveSettings();
+          plugin.teleprompterManager.applySettingsToAll();
+        });
+    })
+    .addButton(button =>
+      button
+        .setIcon("rotate-ccw")
+        .setTooltip("重置为初始值")
+        .onClick(() => {
+          plugin.settings.teleprompter.glassBlur = DEFAULT_GLASS_BLUR;
+          glassBlurSlider.setValue(DEFAULT_GLASS_BLUR);
+          plugin.saveSettings();
+          plugin.teleprompterManager.applySettingsToAll();
+        })
+    );
+
   // 文字阴影 —— 可折叠分组：隐藏背景时的字幕投影参数（开关 + 偏移/模糊/不透明度）
   // setHeading：Obsidian 原生分组标题样式，与普通设置项区分
   const shadowHeader = new Setting(containerEl)
@@ -280,6 +327,116 @@ export function render(containerEl: HTMLElement, plugin: GlimpsePlugin, tab: Set
     () => tpSettings().shadowOpacity,
     v => { tpSettings().shadowOpacity = v; },
     DEFAULT_SHADOW_OPACITY
+  );
+
+  // 文字描边 —— 可折叠分组：正文字形轮廓描线（开关 + 线宽 + 颜色），
+  // 与「文字阴影」同款折叠交互
+  const strokeHeader = new Setting(containerEl)
+    .setName("文字描边")
+    .setDesc("为正文文字添加轮廓描线（桌面歌词风格），复杂背景上更易读，始终生效")
+    .setClass("glimpse-collapse-header")
+    .setHeading();
+  const strokeChevron = strokeHeader.controlEl.createSpan("glimpse-collapse-chevron");
+  setIcon(strokeChevron, "chevron-down");
+  const strokeBody = containerEl.createDiv("glimpse-collapse-body");
+  const toggleStrokeCollapse = () => {
+    const collapsed = strokeBody.hasClass("is-collapsed");
+    strokeBody.toggleClass("is-collapsed", !collapsed);
+    strokeChevron.toggleClass("is-collapsed", !collapsed);
+  };
+  strokeHeader.settingEl.addEventListener("click", toggleStrokeCollapse);
+
+  new Setting(strokeBody)
+    .setName("启用文字描边")
+    .setDesc("描边垫在渐变/字体颜色填充之下，笔画粗细不受影响；可与隐藏背景时的投影叠加")
+    .addToggle(toggle =>
+      toggle.setValue(plugin.settings.teleprompter.strokeEnabled).onChange(value => {
+        plugin.settings.teleprompter.strokeEnabled = value;
+        plugin.saveSettings();
+        plugin.teleprompterManager.applySettingsToAll();
+      })
+    );
+
+  // 描边方式：字形描边 = text-stroke 沿字形（可见约一半线宽）；
+  // 外侧描边 = SVG feMorphology 膨胀滤镜（完整线宽外露，大线宽下斜角略方）
+  new Setting(strokeBody)
+    .setName("描边方式")
+    .setDesc("字形：沿字形轮廓的描线，可见线宽约为一半；外侧：膨胀滤镜完整线宽外露，大线宽下斜角略方")
+    .addDropdown(dropdown =>
+      dropdown
+        .addOption("glyph", "字形描边")
+        .addOption("outer", "外侧描边")
+        .setValue(plugin.settings.teleprompter.strokeMode)
+        .onChange(v => {
+          plugin.settings.teleprompter.strokeMode = v as StrokeMode;
+          plugin.saveSettings();
+          plugin.teleprompterManager.applySettingsToAll();
+        })
+    );
+
+  let strokeWidthSlider: SliderComponent;
+  new Setting(strokeBody)
+    .setName("描边宽度")
+    .setDesc("描边线宽（px），0 为无描边；字形描边可见约为一半，外侧描边为完整线宽")
+    .addSlider(slider => {
+      strokeWidthSlider = slider;
+      slider
+        .setLimits(0, 12, 1)
+        .setValue(plugin.settings.teleprompter.strokeWidth)
+        .setDynamicTooltip()
+        .onChange(value => {
+          plugin.settings.teleprompter.strokeWidth = value;
+          plugin.saveSettings();
+          plugin.teleprompterManager.applySettingsToAll();
+        });
+    })
+    .addButton(button =>
+      button
+        .setIcon("rotate-ccw")
+        .setTooltip("重置为初始值")
+        .onClick(() => {
+          plugin.settings.teleprompter.strokeWidth = DEFAULT_STROKE_WIDTH;
+          strokeWidthSlider.setValue(DEFAULT_STROKE_WIDTH);
+          plugin.saveSettings();
+          plugin.teleprompterManager.applySettingsToAll();
+        })
+    );
+
+  // 描边颜色 —— 色板；null = 默认描边色（白），「清除」恢复
+  const strokeColorSetting = new Setting(strokeBody)
+    .setName("描边颜色")
+    .setDesc("描边线色；点击色块选取，点「清除」恢复默认白");
+  const strokeColorWrapper = strokeColorSetting.controlEl.createDiv("color-wrapper");
+  const strokeColorPicker = createColorPicker({
+    container: strokeColorWrapper,
+    initial: plugin.settings.teleprompter.strokeColor,
+    placement: "left-start", // 弹层在按钮左侧，避免被下方内容遮挡
+    label: "描边颜色",
+    onChange: hexa => {
+      // 只取 RRGGBB 段；描边不做半透明
+      plugin.settings.teleprompter.strokeColor = hexa.slice(0, 7);
+      plugin.saveSettings();
+      plugin.teleprompterManager.applySettingsToAll();
+    },
+    onClear: () => {
+      plugin.settings.teleprompter.strokeColor = null;
+      plugin.saveSettings();
+      plugin.teleprompterManager.applySettingsToAll();
+    },
+  });
+  tab.registerDisposable(strokeColorPicker.destroy);
+
+  // 重置为初始值：默认描边色（null = 白），并重置色板外观
+  strokeColorSetting.addButton(button =>
+    button
+      .setIcon("rotate-ccw")
+      .setTooltip("重置为初始值")
+      .onClick(() => {
+        plugin.settings.teleprompter.strokeColor = null;
+        plugin.saveSettings();
+        plugin.teleprompterManager.applySettingsToAll();
+        strokeColorPicker.setColor(null); // 静默重置外观，不触发 clear 回调
+      })
   );
 
   // 文字渐变 —— 可折叠分组：开启后覆盖「字体颜色」，背景裁切到文字
