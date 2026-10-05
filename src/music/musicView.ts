@@ -113,6 +113,9 @@ export default class MusicView extends ItemView {
   /** 试听：当前试听的行 key（`${source}:${id}`），""=无试听。
    *  试听音频走主播放器（manager.playPreview，底栏可控）；此 key 仅用于行按钮图标复位 */
   private previewKey = "";
+  /** 试听行封面浮层当前的播放态：只在翻转时重设图标（setIcon 会重建 svg，
+   *  timeupdate 每秒数次推送，没必要每次重建） */
+  private previewPlaying = false;
   /** 在线搜索防抖定时器 */
   private onlineDebounceTimer: number | null = null;
   /** 在线搜索代际令牌：新搜索使在途旧搜索结果作废 */
@@ -236,22 +239,19 @@ export default class MusicView extends ItemView {
   }
 
   private _onStateChange = (state: MusicState | null) => {
-    // 封面浮层的试听图标与播放位同步：续播切换到队列下一首时 stop 标记自动转移；
+    // 封面浮层的试听位与播放位同步：续播切换到队列下一首时浮层自动转移；
     // 播放位被本地歌曲占用（选歌/切歌）→ 复位。state=null 是停止流程自身的推送，不复位
     if (state?.filePath?.startsWith("preview:")) {
       const key = state.filePath.slice("preview:".length);
       if (key !== this.previewKey) {
         this.stopPreview();
         this.previewKey = key;
-        const coverPlay = this.tabContent?.querySelector<HTMLElement>(`[data-dl-key="${CSS.escape(key)}"] .gm-download-item-cover-play`);
-        if (coverPlay) {
-          this.setCoverPlayIcon(coverPlay, "square", "停止试听");
-          coverPlay.addClass("gm-download-item-cover-play-active");
-        }
       }
     } else if (this.previewKey && state) {
       this.stopPreview();
     }
+    // 试听行的封面浮层跟随播放态：与本地行同一套「播放中=暂停、暂停=播放」语义
+    this.syncPreviewCover(state);
     this.renderLyrics(state);
     this.renderStatusBar(state);
     // 歌词标题栏行数计数
@@ -1499,8 +1499,9 @@ export default class MusicView extends ItemView {
     el.setAttribute("title", title);
   }
 
-  /** 封面浮层的「本地播放态」：播放中显示暂停图标（点击暂停），否则播放图标。
-   *  本地歌单行与账号歌单里已下载到本地的行共用（两者都走本地播放链路） */
+  /** 封面浮层的「播放态」：播放中显示暂停图标（点击暂停），否则播放图标（点击播放）。
+   *  本地歌单行、账号歌单里已下载的行、以及流媒体试听行共用 —— 三者都经主播放器，
+   *  暂停/续播语义一致（试听的 blob 由播放器持有，续播不重新拉取） */
   private renderCoverPlayIcon(el: HTMLElement, playing: boolean) {
     this.setCoverPlayIcon(el, playing ? "pause" : "play", playing ? "暂停" : "播放（含歌词）");
   }
@@ -1734,7 +1735,7 @@ export default class MusicView extends ItemView {
       const coverPlay = row.querySelector<HTMLElement>(".gm-download-item-cover-play");
       if (coverPlay) this.renderCoverPlayIcon(coverPlay, isActiveRow && isPlaying);
     });
-    // 账号歌单行：已下载到本地的行也走本地播放链路，封面浮层同样跟随（试听态由 previewKey 链路管）
+    // 账号歌单行：已下载到本地的行也走本地播放链路，封面浮层同样跟随（试听态由 previewKey 链路的 syncPreviewCover 管）
     if (iconDirty) {
       this.tabContent.querySelectorAll<HTMLElement>(".gm-download-item[data-local-path]").forEach((row) => {
         const key = row.dataset.dlKey ?? "";
@@ -1945,8 +1946,8 @@ export default class MusicView extends ItemView {
       renderCoverPlaceholder(coverEl);
     }
 
-    // 封面播放/停止浮层（原行尾播放按钮并入此处）：本地歌单已有 → 播放本地文件
-    // （本地文件 + 歌词/侧车，播放中点击暂停/续播）；否则试听（拉取标准档音频经底栏播放，再点停止）
+    // 封面播放/暂停浮层（原行尾播放按钮并入此处）：本地歌单已有 → 播放本地文件
+    // （本地文件 + 歌词/侧车）；否则试听（拉取标准档音频经底栏播放，再点暂停/续播）
     const localSong = opts?.localDownloaded ? this.findLocalSong(song) : null;
     const key = `${song.source}:${song.id}`;
     const st = this.plugin.getState();
@@ -1957,8 +1958,9 @@ export default class MusicView extends ItemView {
       row.setAttribute("data-local-path", localSong.path);
       this.renderCoverPlayIcon(coverPlay, st?.filePath === localSong.path && !!st.isPlaying);
     } else if (previewing) {
-      this.setCoverPlayIcon(coverPlay, "square", "停止试听");
+      // 试听中：与本地行同一套浮层（压暗封面 + 播放中=暂停、暂停=播放），常驻显示标记「哪首在试听」
       coverPlay.addClass("gm-download-item-cover-play-active");
+      this.renderCoverPlayIcon(coverPlay, !!st?.isPlaying);
     } else {
       this.setCoverPlayIcon(coverPlay, "play", "试听（拉取标准档音频，不写入库）");
     }
@@ -2041,19 +2043,16 @@ export default class MusicView extends ItemView {
     return row;
   }
 
-  /** 试听：点击封面浮层拉取标准档音频 → **经主播放器（底栏）播放**，再点或切行停止；
-   *  播放中该行封面浮层图标变 stop（强调色底）。
+  /** 试听：点击封面浮层拉取标准档音频 → **经主播放器（底栏）播放**；播放中再点=暂停、暂停再点=续播
+   *  （与本地行同一套浮层语义；播放器与 blob 保留，续播不重新拉取）。
    *  本地歌曲开始播放时自动停试听（_onStateChange 接管守卫） */
   private async togglePreview(song: DownloadSong, coverPlay: HTMLElement): Promise<void> {
     const key = `${song.source}:${song.id}`;
     const previewPath = `preview:${key}`;
-    // 正在试听这首歌且播放器已就绪（播放中/暂停/播完）→ 停止（销毁底栏播放器；行浮层立即复位）。
+    // 正在试听这首歌且播放器已就绪（播放中/暂停/播完）→ 播放/暂停切换（与本地行一致）。
     // 仅拉取中（播放器尚未建立）的重复点击直接忽略——取消重发只会让试听「永远差一次」
     if (this.previewKey === key) {
-      if (this.plugin.getState()?.filePath === previewPath) {
-        this.plugin.stopAllPlayback();
-        this.stopPreview();
-      }
+      if (this.plugin.getState()?.filePath === previewPath) this.plugin.toggleActivePlayer();
       return;
     }
     // 试听接管播放位：先等本地播放完全停止（期间发出的空状态推送时 previewKey 尚未设置，
@@ -2061,8 +2060,14 @@ export default class MusicView extends ItemView {
     await this.plugin.stopAllPlayback();
     if (this.previewKey) this.stopPreview(); // 复位其他试听行 / 取消在途拉取
     this.previewKey = key;
-    this.setCoverPlayIcon(coverPlay, "square", "停止试听");
+    this.previewPlaying = false; // 出声后由状态推送切到暂停图标
     coverPlay.addClass("gm-download-item-cover-play-active");
+    this.renderCoverPlayIcon(coverPlay, false); // 拉取中先显播放图标（此期间的点击被忽略）
+    // 与本地行一致：起播即切到歌词面板（试听同样经主播放器）。标签页进度条在歌单面板里，
+    // 切走后看不见，改在歌词面板给一条同义状态；出声后由「空歌词自动在线匹配」接力
+    // （maybeAutoSearchLyrics → applyPreviewLyrics 挂临时歌词，不写文件）
+    this.setViewMode("lyrics");
+    this.renderLyricSearchStatus(`正在加载试听 ${song.name}…`);
     this.renderTabProgress(null, `正在试听 ${song.name}…`);
     // 试听队列：从歌单曲目列表/在线搜索结果发起的试听，播完按播放模式在列表内续播，
     // 加载失败（VIP 受限/版权）也按播放模式自动跳下一首
@@ -2121,8 +2126,28 @@ export default class MusicView extends ItemView {
     }
   }
 
+  /** 试听行封面浮层跟随播放态（与本地行同一套语义：播放中=暂停图标、暂停/播完=播放图标）。
+   *  底栏播放键、快捷键、队列续播等任何来源的暂停/续播都会推状态，这里统一把浮层对上；
+   *  只在播放态翻转时重设图标 —— setIcon 会重建 svg，timeupdate 每秒数次推送，不必每次重建 */
+  private syncPreviewCover(state: MusicState | null) {
+    const key = this.previewKey;
+    if (!key) return;
+    const playing = !!state?.isPlaying && state?.filePath === `preview:${key}`;
+    if (playing === this.previewPlaying) return;
+    this.previewPlaying = playing;
+    const coverPlay = this.tabContent?.querySelector<HTMLElement>(
+      `[data-dl-key="${CSS.escape(key)}"] .gm-download-item-cover-play`
+    );
+    if (!coverPlay) return; // 该行不在当前列表（切了标签页/换了搜索结果）：重渲染时按状态自然复位
+    coverPlay.addClass("gm-download-item-cover-play-active");
+    this.renderCoverPlayIcon(coverPlay, playing);
+  }
+
   /** 复位试听行按钮图标并清除 key（音频的停止/销毁由播放器侧负责） */
   private stopPreview(): void {
+    this.previewPlaying = false;
+    // 收起「正在加载试听…」状态：拉取失败/被接管后不该继续挂在歌词面板上
+    this.clearLyricCandidates();
     if (this.previewKey) {
       const coverPlay = this.tabContent?.querySelector<HTMLElement>(`[data-dl-key="${CSS.escape(this.previewKey)}"] .gm-download-item-cover-play`);
       if (coverPlay) {

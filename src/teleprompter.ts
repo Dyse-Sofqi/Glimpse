@@ -8,7 +8,8 @@ import type { MusicState } from "./music/manager";
 
 const TP_SNAP_EDGE = 24; // px，贴近视口边缘的吸附距离
 const TP_SNAP_CENTER = 10; // px，贴近视口中心线的吸附距离
-const TP_MIN_WIDTH = 240; // 窗口最小宽度
+const TP_MIN_WIDTH = 240; // 窗口最小宽度下限（顶栏单行宽度不及此值时兜底，见 minWidth）
+const TP_TOOLBAR_WIDTH_BUFFER = 4; // px，顶栏单行宽度的亚像素缓冲（同内容测量的 +4）
 const TP_MIN_VISIBLE_H = 44; // px，窗口纵向至少露出这么高（工具栏可抓取）
 const TP_FONT_SIZES = [32, 40, 50, 64, 80]; // 字体大小循环档位
 
@@ -350,7 +351,7 @@ export class TeleprompterWindow extends Component {
     root.style.width = this.state.width + "px";
     document.body.appendChild(root);
 
-    // 工具栏（9 个按钮）
+    // 工具栏（文档绑定 + 模式下拉 + 10 个图标按钮）—— 其单行宽度就是窗口最小宽度（见 minWidth）
     const toolbar = (this.toolbarEl = root.createDiv("glimpse-tp-toolbar"));
     const addBtn = (
       icon: string,
@@ -446,8 +447,9 @@ export class TeleprompterWindow extends Component {
     // 内容区高度设计上限（styles.css 的 max-height: 70vh）在此读一次：
     // 之后 place/capContentHeight 会写 inline max-height，回读会拿到被压过的值
     this.contentMaxH = parseFloat(getComputedStyle(this.contentEl).maxHeight) || 0;
-    // 双击：光标跳到捕获文本所在行并聚焦编辑器（穿透锁定时事件穿透,天然失效）
-    this.contentEl.addEventListener("dblclick", () => this.jumpToCapturedLine());
+    // 双击：歌词模式播放/暂停当前歌曲；其余模式光标跳到捕获文本所在行并聚焦编辑器
+    // （穿透锁定时事件穿透到编辑器，两种手势都天然失效）
+    this.contentEl.addEventListener("dblclick", () => this.handleContentDblClick());
     // 右键：复制捕获文本的纯文本（渲染后 innerText,无 md 语法;抑制原生菜单）
     this.contentEl.addEventListener("contextmenu", e => {
       e.preventDefault();
@@ -547,14 +549,42 @@ export class TeleprompterWindow extends Component {
     this.unload();
   }
 
-  /** 宽度钳制：不低于最小宽度，不超视口宽（长文本换行而非撑破屏幕） */
+  /** 宽度钳制：不低于最小宽度（顶栏单行宽度，见 minWidth），不超视口宽（长文本换行而非撑破屏幕） */
   private clampWidth(w: number) {
     const vw = window.innerWidth;
-    return Math.min(Math.max(w, TP_MIN_WIDTH), Math.max(vw, TP_MIN_WIDTH));
+    const min = this.minWidth();
+    return Math.min(Math.max(w, min), Math.max(vw, min));
   }
 
-  /** 测量内容的自然宽度（最宽行）。窗口宽度只由内容决定 —— 工具栏不参与宽度计算：
-      窗口比工具栏窄时由 CSS flex-wrap 换行收纳（styles.css），不把窗口撑宽。
+  /** 窗口最小宽度 = max(TP_MIN_WIDTH, 顶栏单行自然宽度 + 缓冲)，上限视口宽。
+      顶栏是**宽度下限**而非「窄了就折行收纳」：折行会把一行图标拆成两三行（顶栏完整
+      一行展示是打开窗口就可用的前提，见 styles.css .glimpse-tp-toolbar）。
+      顶栏组成随状态变化（穿透锁定只留交互按钮、绑定按钮显示活动文档名）→ 每次现测：
+      锁定态不因「少几个图标」把窗口撑宽，绑定文档名变长则下限随之变宽。
+      构造早期（顶栏未建）与视口比顶栏还窄时退回可用值（后者折行不可避免） */
+  private minWidth(): number {
+    const vw = window.innerWidth > 0 ? window.innerWidth : TP_MIN_WIDTH;
+    const bar = this.measureToolbarWidth();
+    const want = bar > 0 ? Math.max(TP_MIN_WIDTH, bar + TP_TOOLBAR_WIDTH_BUFFER) : TP_MIN_WIDTH;
+    return Math.min(want, vw);
+  }
+
+  /** 顶栏单行（不折行）自然宽度：临时取消折行与宽度上限量一次，量完立即还原。
+      不能直接量现状 —— 顶栏已折行时 max-width:100% 把它钳到窗口宽，量到的是折行后的宽度，
+      拿它当最小值只会锁死现状。nowrap + max-content 让 flex 项不再收缩/换行，量到真实单行宽。
+      读 offsetWidth 强制同步布局，样式在同一帧内还原 → 中间态不会被画出来
+      （与 measureNaturalWidth 的离屏探针同一套路，这里直接量真实顶栏以带上当前状态） */
+  private measureToolbarWidth(): number {
+    const bar = this.toolbarEl;
+    if (!bar?.isConnected) return 0;
+    bar.setCssProps({ flexWrap: "nowrap", width: "max-content", maxWidth: "none" });
+    const w = bar.offsetWidth || bar.scrollWidth;
+    bar.setCssProps({ flexWrap: null, width: null, maxWidth: null });
+    return w;
+  }
+
+  /** 测量内容的自然宽度（最宽行）。窗口宽度只由内容决定 —— 工具栏不参与撑宽，
+      只提供下限（单行宽度，见 minWidth），因此不再需要靠 flex-wrap 折行收纳工具栏。
       不能在容器上直接量 scrollWidth —— block 子元素（MarkdownRenderer 的 <p> 等）填满容器，
       量到的是容器自身宽度，再加内边距会逐次膨胀。改为克隆到隐藏 nowrap 测量容器，
       由 max-content 折叠出单行自然宽度（nowrap 亦消除 CJK 折行机会）。
@@ -600,7 +630,8 @@ export class TeleprompterWindow extends Component {
     return w;
   }
 
-  /** 宽度自适应：内容自然宽 + 内容 padding + 根 border + 缓冲，下限 TP_MIN_WIDTH；宽度锁定时跳过。
+  /** 宽度自适应：内容自然宽 + 内容 padding + 根 border + 缓冲；下限是「顶栏单行宽度」
+      （clampWidth 内经 minWidth 施加），宽度锁定时跳过。
       宽度变化时保持窗口水平中心稳定（重新 place），避免换行/换项时文字左右跳动 */
   autoFitWidth() {
     if (this.state.widthLocked) return;
@@ -609,9 +640,7 @@ export class TeleprompterWindow extends Component {
     const rcs = getComputedStyle(this.bodyEl);
     const borderX = parseFloat(rcs.borderLeftWidth) + parseFloat(rcs.borderRightWidth);
     // +4 缓冲：吸收亚像素/字体度量误差，避免最宽行末尾溢出一个字符触发换行
-    const w = this.clampWidth(
-      Math.max(this.measureNaturalWidth() + padX + borderX + 4, TP_MIN_WIDTH)
-    );
+    const w = this.clampWidth(this.measureNaturalWidth() + padX + borderX + 4);
     const oldW = this.rootEl.offsetWidth;
     this.state.width = w;
     this.rootEl.style.width = w + "px";
@@ -642,8 +671,23 @@ export class TeleprompterWindow extends Component {
     this.setTpTooltip(this.widthLockBtnEl?.buttonEl ?? null, () =>
       this.state.widthLocked ? "解锁宽度" : "宽度锁定"
     );
-    if (!locked) this.autoFitWidth();
+    // 锁定的是「宽度不随内容变」，不是「可以窄到把顶栏折行」：锁定的宽度同样受下限约束
+    // （旧 data.json 里可能存着低于下限的宽度，解锁时不补，靠这里补）
+    if (locked) this.raiseToMinWidth();
+    else this.autoFitWidth();
     this.persist();
+  }
+
+  /** 把宽度抬到最小宽度（顶栏单行）：宽度已达标则不动 —— 只补下限，不按内容重排 */
+  private raiseToMinWidth() {
+    const min = this.minWidth();
+    if (this.state.width >= min) return;
+    const oldW = this.rootEl.offsetWidth;
+    this.state.width = min;
+    this.rootEl.style.width = min + "px";
+    // 与 autoFitWidth 同一套中心保持（Math.trunc 的理由见其注释）
+    const dx = Math.trunc((oldW - min) / 2);
+    this.place(Math.round(this.state.x + dx), this.state.y);
   }
 
   /** 背景隐藏：激活后整窗背景全透明；未激活时背景透明度取自设置界面 */
@@ -667,10 +711,14 @@ export class TeleprompterWindow extends Component {
     this.persist();
   }
 
-  /** 穿透锁定：整窗 pointer-events 穿透，仅保留交互按钮；不显示背景 */
+  /** 穿透锁定：整窗鼠标事件穿透到编辑器（正文区一并穿透，见 styles.css .is-locked .glimpse-tp-body），
+      仅保留交互按钮；背景是否透明只由「隐藏背景」控制，本状态不改背景 */
   setLocked(locked: boolean) {
     this.state.locked = locked;
+    // 穿透锁定改变顶栏组成（只留交互按钮）→ 下限随之变化：解除锁定时补回完整下限，
+    // 锁定时不强制收窄（窗口宽度仍由内容自适应/宽度锁定决定，下限只是不得更窄）
     this.rootEl.toggleClass("is-locked", locked);
+    this.raiseToMinWidth();
     this.lockBtnEl?.buttonEl.toggleClass("is-active", locked);
     this.lockBtnEl?.setIcon(locked ? "lock" : "unlock");
     this.setTpTooltip(this.lockBtnEl?.buttonEl ?? null, () =>
@@ -753,6 +801,9 @@ export class TeleprompterWindow extends Component {
       this.setTpTooltip(btn.buttonEl, () => (cur ? "锁定当前文档" : "没有活动文档"));
       btn.buttonEl.toggleClass("is-active", false);
     }
+    // 绑定按钮文本（活动文档名）参与顶栏单行宽度 → 文档切换后同步抬回下限：
+    // 构造期本方法晚于 setWidthLocked，宽度锁定的窗口只能靠这里补到含文档名的真实下限
+    this.raiseToMinWidth();
   }
 
   private updateModeSelect() {
@@ -769,6 +820,8 @@ export class TeleprompterWindow extends Component {
       );
     }
     this.setTpTooltip(this.modeBtnEl, () => "模式切换");
+    // 模式文案同样参与顶栏单行宽度（各档字数一致，仍按变更点统一补下限）
+    this.raiseToMinWidth();
   }
 
   private toggleModeMenu(): void {
@@ -1167,12 +1220,24 @@ export class TeleprompterWindow extends Component {
     }
   }
 
+  /** 文本域双击：歌词模式 → 播放/暂停当前歌曲；其余模式 → 跳转光标到捕获文本所在行。
+      歌词模式没有「对应的文档行」可跳，同一手势改作播放控制（桌面歌词的常见手势：
+      看着歌词双击就把歌放起来，正在播放时再双击即暂停）。切换语义与提示由
+      MusicManager.toggleCurrentSong() 决定，提词器不做状态判断、不重复提示 */
+  private handleContentDblClick() {
+    if (this.state.mode === "lyrics") {
+      void this.plugin.music?.toggleCurrentSong();
+      return;
+    }
+    this.jumpToCapturedLine();
+  }
+
   /** 双击：滚动到捕获文本所在位置、选中对应文本并聚焦编辑器。
       高亮模式 → 尽量选中匹配文本段（归一化后找不到则回退整行）;
       行模式 → 选中整行;选中覆盖 → 保留编辑器现有选择（即对应文本），仅聚焦；
-      朗读模式 → 由朗读控制器定位到**正在朗读的区间**（滚动到该段 + 选中朗读高亮的那段文字） */
+      朗读模式 → 由朗读控制器定位到**正在朗读的区间**（滚动到该段 + 选中朗读高亮的那段文字）。
+      歌词模式不走这里（无文档行可跳，见 handleContentDblClick） */
   private jumpToCapturedLine() {
-    if (this.state.mode === "lyrics") return; // 歌词模式无文档行可跳
     const src = this.resolveDoc();
     // 高亮模式：同步选中高亮索引中对应卡片（即使匹配文档未打开为视图也触发）
     const match = this.state.mode === "highlight" ? this.matches[this.currentIndex] : undefined;
@@ -1327,11 +1392,11 @@ export class TeleprompterWindow extends Component {
     e.preventDefault();
     this.rootEl.addClass("is-resizing");
     const move = (ev: MouseEvent) => {
+      const left = this.rootEl.offsetLeft;
       const vw = window.innerWidth;
-      const w = this.clampWidth(Math.min(
-        Math.max(ev.clientX - this.rootEl.offsetLeft, TP_MIN_WIDTH),
-        Math.max(vw - this.rootEl.offsetLeft, TP_MIN_WIDTH)
-      ));
+      // 上限仍按「不拖出视口右缘」封顶（鼠标移出视口时 clientX 会越界）；
+      // 下限由 clampWidth 统一施加：拖不到顶栏单行宽度以下（顶栏不折行）
+      const w = this.clampWidth(Math.min(ev.clientX - left, vw - left));
       this.state.width = w;
       this.rootEl.style.width = w + "px";
     };
@@ -1495,6 +1560,8 @@ export class TeleprompterManager {
       ? new TeleprompterWindow(this.plugin, this, saved)
       : new TeleprompterWindow(this.plugin, this, {
           id: "tp-" + this.nextId++,
+          // 种子宽度：构造期 setFontPx → autoFitWidth / setWidthLocked → raiseToMinWidth
+          // 会把它抬到「顶栏单行宽度」并保持水平中心不变（见 minWidth）
           x: Math.max((window.innerWidth - TP_MIN_WIDTH) / 2, 0),
           y: 24,
           width: TP_MIN_WIDTH,

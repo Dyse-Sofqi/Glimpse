@@ -22,6 +22,9 @@ data.json
 # AI assistant working files
 .workbuddy-ai/
 
+# 发版工作目录（本地脚本，含 GitHub/Gitee 令牌，绝不入库）
+.tmp-release/
+
 # 朗读模块的运行时产物 —— 都不是源码，不该进仓库
 #   reader-service.json / reader-qwen-service.json     服务进程归属记录（PID/端口/启动时间）
 #   reader-service.log / reader-qwen-service.log       服务子进程的 stdout/stderr（会持续增长）

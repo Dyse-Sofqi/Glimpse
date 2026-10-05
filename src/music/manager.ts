@@ -212,6 +212,33 @@ export class MusicManager {
     this.player?.toggle();
   }
 
+  /**
+   * 播放/暂停当前歌曲（提词器歌词模式双击文本域的入口）：正在播放 → 暂停，已暂停 → 续播。
+   * 与 `toggleActivePlayer()` 的区别只在「有反馈」——面板按钮/命令是纯切换，没歌时静默；
+   * 提词器文本域上的双击是唯一没有按钮提示的手势，没歌/起播被拒必须说话。
+   * 没有当前歌曲（无播放器）或浏览器拒绝起播时给出提示并返回 false。
+   */
+  async toggleCurrentSong(): Promise<boolean> {
+    if (!this.player) {
+      new Notice("未在播放歌曲", 3000); // 与提词器歌词模式的占位文案一致
+      return false;
+    }
+    const audio = this.player.player;
+    if (!audio) {
+      // 歌曲已加载但音频没挂上（解码失败/无可播源）：与「没有歌曲」区分提示
+      new Notice("当前歌曲未就绪，无法起播", 4000);
+      return false;
+    }
+    if (!audio.paused()) {
+      // 暂停：与面板按钮同一条链路（audio 的 pause 事件 → 播放器回调 → emitState）
+      audio.pause();
+      return true;
+    }
+    if (await audio.play()) return true;
+    new Notice("起播失败：点击音乐面板的播放键重试", 5000);
+    return false;
+  }
+
   seekActivePlayer(time: number) {
     this.player?.seek(time);
   }

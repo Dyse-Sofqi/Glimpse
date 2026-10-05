@@ -1295,7 +1295,7 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  min-width: 240px;
+  min-width: 240px; /* 下限兜底；实际下限 = 顶栏单行宽度，由 JS 写内联宽度（teleprompter.ts minWidth） */
   /* 根只做交互壳（拖拽边界/定位），自身不命中鼠标 —— 宽度失配变宽时
      （如异步渲染回调丢失后未再适配），透明区域不会挡住背后编辑器；
      可命中的只有可见的面板/工具栏/拖拽把手（各自打回 auto）。
@@ -1434,8 +1434,15 @@
   filter: none;
 }
 
-/* 穿透锁定：整窗鼠标事件穿透（根已恒为 pointer-events:none，本态仅隐藏非交互按钮），
-   仅保留交互按钮 */
+/* 穿透锁定：整窗鼠标事件穿透到编辑器，仅保留交互按钮。
+   面板（含正文）必须显式打回 none —— 1.1.2 起 .glimpse-tp-body 常驻 pointer-events:auto
+   （根窗口恒为 none，为的是失配的透明区域不拦截点击），但子元素显式 auto 会重新参与命中：
+   只靠根挡不住正文区，锁定的正文仍会截住点击（双击跳转/右键复制/新增的双击起播都跑在锁定态里）。
+   工具栏不受影响：它自身的规则里已打回 auto，锁定态靠它悬停显隐、交互按钮可点 */
+.glimpse-teleprompter.is-locked .glimpse-tp-body {
+  pointer-events: none;
+}
+
 .glimpse-teleprompter.is-locked .glimpse-tp-btn {
   display: none;
 }
@@ -1456,8 +1463,9 @@
 }
 
 /* 工具栏：默认隐藏，悬停/拖拽/锁定（仅交互按钮）时显示。
-   不参与窗口宽度计算（宽度只由内容决定）：窗口比工具栏窄时自动换行收纳，
-   而不是把窗口撑宽 —— 换行行距沿用 gap，居中排布与单行观感一致 */
+   工具栏单行宽度是**窗口最小宽度的来源**（teleprompter.ts minWidth()）—— 窗口再窄
+   也不会把顶栏拆成两三行；flex-wrap 只作兜底（顶栏比视口还宽时换行收纳，而非把窗口
+   撑出屏幕）。居中排布，行距沿用 gap */
 .glimpse-tp-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -2841,7 +2849,7 @@
   z-index: 2;
 }
 
-/* 封面播放/停止浮层：行悬停时淡入并接管点击（当前行显示暂停图标，其余行显示播放图标）。
+/* 封面播放浮层：行悬停时淡入并接管点击（当前播放行显示暂停图标，其余行显示播放图标）。
    未悬停时不占点击（pointer-events: none），避免不可见的浮层抢走封面上的点击 */
 .gm-download-item-playable .gm-download-item-cover {
   position: relative;
@@ -2979,14 +2987,13 @@
 }
 .gm-download-item-btn:hover { color: var(--color-green); }
 .gm-download-item-btn-loading { opacity: 0.5; pointer-events: none; }
-/* 试听中的封面浮层：常驻显示（不必悬停）+ 强调色底 + 反白图标——让「哪首在试听」一眼可见，
-   同时保留「点封面停止试听」的入口（浮层平时是悬停才出现的） */
+/* 试听中的封面浮层：常驻显示（不必悬停）—— 让「哪首在试听」一眼可见（浮层平时是悬停才出现的）。
+ *  背景沿用基础规则的「压暗封面」（rgba(0,0,0,.45)，悬停 .62），与本地行同款，不用强调色纯色底；
+ *  图标与点击语义也同本地行：播放中=暂停、暂停=播放 */
 .gm-download-item-cover-play-active,
 .gm-download-item-cover-play-active:hover {
   opacity: 1;
   pointer-events: auto;
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
 }
 
 /* 全局下载中：禁用所有行下载按钮与封面播放浮层（视觉 + 交互，防误点其他行） */
