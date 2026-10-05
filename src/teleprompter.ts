@@ -207,6 +207,19 @@ export class TeleprompterWindow extends Component {
     const contentRO = new ResizeObserver(refitIfSettled);
     contentRO.observe(this.contentEl);
     this.register(() => contentRO.disconnect());
+    // 顶栏尺寸兜底：顶栏尺寸一变（被折行、或宽度上限/字体度量变化）就补一次宽度下限。
+    // ResizeObserver 回调在布局之后、绘制之前 → 折行不会被画到屏幕上，用户看不到「闪一下」。
+    // 它兜的是「宽度已低于下限」的所有原因：事件时序、下限测量与文案变化的先后、
+    // 状态宽度与实际渲染不一致等（用户报告：切文档标签页时顶栏折行、约 1s 后才自愈）
+    const toolbarRO = new ResizeObserver(() => {
+      if (this.rootEl.hasClass("is-resizing") || this.rootEl.hasClass("is-dragging")) return;
+      this.raiseToMinWidth();
+    });
+    toolbarRO.observe(this.toolbarEl);
+    // 绑定按钮单独观察：顶栏被 max-width 钳住（折行态）时，改文档名只改按钮宽度、
+    // 不改顶栏自身盒子 → 只观察顶栏会漏掉这次变化
+    if (this.bindBtnEl) toolbarRO.observe(this.bindBtnEl.buttonEl);
+    this.register(() => toolbarRO.disconnect());
     this.registerDomEvent(window, "resize", refitIfSettled);
     const reconcileTimer = window.setInterval(() => {
       if (this.state.widthLocked || this.rootEl.hasClass("is-resizing")) return;
@@ -569,18 +582,28 @@ export class TeleprompterWindow extends Component {
     return Math.min(want, vw);
   }
 
-  /** 顶栏单行（不折行）自然宽度：临时取消折行与宽度上限量一次，量完立即还原。
-      不能直接量现状 —— 顶栏已折行时 max-width:100% 把它钳到窗口宽，量到的是折行后的宽度，
-      拿它当最小值只会锁死现状。nowrap + max-content 让 flex 项不再收缩/换行，量到真实单行宽。
-      读 offsetWidth 强制同步布局，样式在同一帧内还原 → 中间态不会被画出来
-      （与 measureNaturalWidth 的离屏探针同一套路，这里直接量真实顶栏以带上当前状态） */
+  /** 顶栏单行（不折行）所需宽度 = 可见项宽度之和 + 间距 + 横向内边距。
+      按**已布局的真实几何**相加，而不是「临时取消折行再量一次」：
+      折行只决定各项落在哪一行，不改变各项自身宽度，所以折行状态下相加得到的仍是单行所需宽度。
+      两个好处：① 测量不再改动真实顶栏的任何内联样式 —— 测量动作本身不会干扰布局、
+      ResizeObserver 或其它读取；② 结果与顶栏当前是否折行无关，任何时候都拿到同一个下限，
+      不会出现「量到折行后的宽度、把偏窄的现状锁死」。
+      穿透锁定隐藏的按钮 display:none，本身不计宽，间距也按可见项数量算 */
   private measureToolbarWidth(): number {
     const bar = this.toolbarEl;
     if (!bar?.isConnected) return 0;
-    bar.setCssProps({ flexWrap: "nowrap", width: "max-content", maxWidth: "none" });
-    const w = bar.offsetWidth || bar.scrollWidth;
-    bar.setCssProps({ flexWrap: null, width: null, maxWidth: null });
-    return w;
+    const cs = getComputedStyle(bar);
+    const gap = parseFloat(cs.columnGap) || parseFloat(cs.gap) || 0;
+    const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    const widths: number[] = [];
+    for (const child of Array.from(bar.children) as HTMLElement[]) {
+      if (getComputedStyle(child).display === "none") continue;
+      const w = child.getBoundingClientRect().width;
+      if (w > 0) widths.push(w);
+    }
+    if (!widths.length) return 0;
+    const sum = widths.reduce((a, w) => a + w, 0) + gap * (widths.length - 1) + padX;
+    return Math.ceil(sum);
   }
 
   /** 测量内容的自然宽度（最宽行）。窗口宽度只由内容决定 —— 工具栏不参与撑宽，
@@ -678,15 +701,19 @@ export class TeleprompterWindow extends Component {
     this.persist();
   }
 
-  /** 把宽度抬到最小宽度（顶栏单行）：宽度已达标则不动 —— 只补下限，不按内容重排 */
+  /** 把宽度抬到最小宽度（顶栏单行）：宽度已达标则不动 —— 只补下限，不按内容重排。
+      判据用**实际渲染宽度**（state.width 可能落后于 DOM：只看 state 会在「状态偏大、
+      实际偏窄」时直接返回，顶栏就一直折行到下一次自动适配 —— 用户报告的
+      「切文档标签页后顶栏折行、过一会儿才自己恢复」正是这一类） */
   private raiseToMinWidth() {
     const min = this.minWidth();
-    if (this.state.width >= min) return;
-    const oldW = this.rootEl.offsetWidth;
+    const rendered = this.rootEl?.offsetWidth || 0;
+    const current = rendered || this.state.width;
+    if (current >= min) return;
     this.state.width = min;
     this.rootEl.style.width = min + "px";
     // 与 autoFitWidth 同一套中心保持（Math.trunc 的理由见其注释）
-    const dx = Math.trunc((oldW - min) / 2);
+    const dx = Math.trunc((current - min) / 2);
     this.place(Math.round(this.state.x + dx), this.state.y);
   }
 

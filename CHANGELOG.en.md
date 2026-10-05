@@ -1,5 +1,12 @@
 # Changelog
 
+#### 1.1.4 (2026-10-05)
+
+**Fixes**
+
+- **Fixed "the teleprompter toolbar wraps after switching document tabs and only heals ~1 s later"**: two parts of the toolbar width floor were fragile. **First**, `raiseToMinWidth()` decided "is the floor already met?" from `state.width`, which can disagree with the width actually rendered: once the state is the larger of the two it returns early and never fixes a too-narrow DOM, leaving the wrap until the once-per-second reconciliation's `autoFitWidth()` wrote the width back (which is exactly the "heals by itself after ~1 s" the user saw, mistaken for a second hover). The decision is now made on the **rendered width (`rootEl.offsetWidth`)**, so state/rendering disagreements are corrected immediately. **Second**, the floor was only re-measured at a few call sites (bind-name change, mode label, click-through lock, width lock), so any event-ordering mismatch skipped it. A **toolbar ResizeObserver** now re-applies the floor within the **same frame** whenever the toolbar itself or the bind button changes size (wrapping, renaming, font metrics) — its callback runs after layout and before paint, so a wrap is never painted and no "flash" is visible. Finally, the toolbar's single-line width is now measured by **summing the visible items' laid-out geometry** instead of "temporarily unwrap, measure, restore" (wrapping only decides which line each item lands on, it does not change item widths), so measuring no longer mutates the live toolbar's inline styles and no longer depends on whether it happens to be wrapped
+  - Verification: 3 new regression assertions (37 across both suites, all passing) — switching document tabs to a longer name keeps the toolbar on one row with the window width following the floor; **forcing the DOM below the floor while `state.width` stays larger** (the failure class) heals to one row within the same frame; and the floor measured while the toolbar is wrapped equals the unwrapped measurement
+
 #### 1.1.3 (2026-10-05)
 
 **New features**
