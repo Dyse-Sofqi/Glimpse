@@ -4,6 +4,30 @@
 
 ## 未发布 (2026-09-23)
 
+### 二维码渲染被审核判为 innerHTML 注入（2026-10-28）
+
+**现象：** 1.1.5 提交社区插件审核被驳回：
+
+```
+Error
+Unsafe assignment to innerHTML
+src/music/qrLogin.ts:345
+```
+
+**定位：** `qrcode-generator` 只提供 `createSvgTag()` / `createImgTag()`，两者都返回 HTML 字符串。要在弹窗里显示二维码，代码自然写成 `this.qrEl.innerHTML = qr.createSvgTag(...)`。当时还特意写了注释「内容是本地拼出的 unikey 链接，非外部 HTML」——**注释不改变审核规则**，规则禁的是这个赋值动作本身，不是内容来源。
+
+**修复：** 新增 `paintQrSvg(container, qr)`，用 `createElementNS` 逐节点构建 SVG：
+
+- 属性值全部是本地矩阵的下标与常量（`x/y/width/height` 来自 `getModuleCount()` 与 `isDark()` 的整数，`fill` 只有 `#ffffff` / `#000000`），不经过任何字符串→标记解析；
+- 同一行相邻暗块合并成一个 `rect`：37×37 的码从 702 个节点降到 360 个；
+- 静区做进 `viewBox`（`-3 -3 n+6 n+6`）：原先只有容器 10px padding，不足 4 模块，手机对准很吃力。白底 `rect` 必须显式给，深色主题下透明底会呈现反色码，直接扫不出来。
+
+**避坑：**
+
+1. **「不是外部 HTML」不是免责理由** —— 审核规则针对的是 `innerHTML` 这个赋值动作和它的攻面，不是调用点当时的内容可信度。任何第三方库返回 HTML 字符串的便捷方法（`createSvgTag`、`createImgTag`、各种 `toString()` 渲染器），在 Obsidian 插件里都要换成 DOM 构建。
+2. **定位行号来自 inline sourcemap** —— `main.js` 内嵌了 `inlineSourceMap`，审核报的是 `src/music/qrLogin.ts:345` 而不是产物行号。同一份产物里 pickr 内部也有 `innerHTML`（`build/main.js` 那类未压缩产物更明显），但审核只报了我们自己的源文件：路径落在 `node_modules` 的库代码不在检查范围。所以「产物里还剩一个 innerHTML」不等于没过审，要看的只是**自有源码**。
+3. **别把校验脚本的 PASS 当成审核的 PASS** —— 上一版 8 项内容体检全绿，照样被拒，因为体检清单里没有「禁用 API」这一项。发布前应该独立跑一次禁用 API 扫描（`innerHTML` / `insertAdjacentHTML` / `outerHTML` / `eval` / `new Function`），并且**区分自有源码与依赖**。
+
 ### 「自动续期」对该平台一直是空转（2026-10-28）
 
 **现象：** 用户反问「自动续期不是之前就做过吗」——如果早有续期，为什么凭证还是需要重取？
