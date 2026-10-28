@@ -1,5 +1,12 @@
 # Changelog
 
+#### 1.1.6 (2026-10-28)
+
+**Fixes**
+
+- **Clears the community-review rejection: `Unsafe assignment to innerHTML` (`src/music/qrLogin.ts:345`)**. The QR code used to be produced as an HTML string by `qrcode-generator`'s `createSvgTag()` and injected through `innerHTML`, which the review rejects outright. It is now built node by node with `createElementNS`: every attribute value comes from integers of the local matrix and fixed colour constants, no string is ever parsed as markup, so there is no injection surface at all
+  - Scanning improves too: the quiet zone is now part of the `viewBox`, giving the code a 3-module white border (previously only the container's 10 px padding, which made aiming awkward); horizontally adjacent dark modules are merged into a single `rect`, cutting a 33×33 code from 500+ nodes to roughly a hundred
+
 #### 1.1.5 (2026-10-28)
 
 **New features**

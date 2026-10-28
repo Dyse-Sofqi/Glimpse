@@ -1,5 +1,12 @@
 # 更新日志
 
+#### 1.1.6 (2026-10-28)
+
+**问题修复**
+
+- **修掉社区插件审核驳回：`Unsafe assignment to innerHTML`（`src/music/qrLogin.ts:345`）**。二维码原先用 `qrcode-generator` 的 `createSvgTag()` 生成 HTML 字符串、再赋给 `innerHTML` 注入，审核直接判不通过。现在改用 `createElementNS` 逐节点构建 SVG：所有属性值都来自本地矩阵的整数与固定色值，不经过任何字符串解析，注入面为零，也不再依赖关闭安全规则的豁免
+  - 顺带修好扫码体验：静区（quiet zone）做进 `viewBox`，图案四周自带 3 模块白边（原先只有容器 10px padding，手机对准吃力）；同一行相邻暗块合并为一个 `rect`，33×33 的码节点数从 500+ 降到百余个
+
 #### 1.1.5 (2026-10-28)
 
 **新增功能**

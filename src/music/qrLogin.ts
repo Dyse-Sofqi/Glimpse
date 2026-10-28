@@ -52,6 +52,74 @@ export function supportsQrLogin(key: MusicSource): boolean {
   return QR_LOGIN_PLATFORMS[key as CookiePlatform] !== undefined;
 }
 
+// --- 二维码渲染 ---
+
+/** qrcode-generator 实例里本文件用到的两个方法（该包不带 .d.ts，这里给出最小结构） */
+interface QrMatrix {
+  getModuleCount(): number;
+  isDark(row: number, col: number): boolean;
+}
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/**
+ * 把二维码矩阵直接画成 SVG 节点。
+ *
+ * 为什么不再用 qrcode-generator 自带的 createSvgTag()：它返回 HTML 字符串，只能经
+ * innerHTML 注入，而 Obsidian 审核直接判「Unsafe assignment to innerHTML」不通过。
+ * 这里用 createElementNS 逐个建节点——所有属性值都是本地生成的整数与固定色值，
+ * 没有任何外部内容参与，既过审也不会引入注入面。
+ *
+ * 同一行相邻的暗块合并成一个 rect，33×33 的码通常只产生百余个节点（不合并要 500+）。
+ */
+function paintQrSvg(container: HTMLElement, qr: QrMatrix): void {
+  container.empty();
+  const count = qr.getModuleCount();
+  // 静区（quiet zone）：二维码规范要求图案四周留白 ≥4 模块，缺了手机很难对准。
+  // 容器只有 10px padding，不够；这里把留白做进 viewBox，SVG 自己保证 3 模块白边。
+  const quiet = 3;
+  const side = count + quiet * 2;
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("xmlns", SVG_NS);
+  svg.setAttribute("viewBox", `${-quiet} ${-quiet} ${side} ${side}`);
+  svg.setAttribute("preserveAspectRatio", "xMinYMin meet");
+  // 扫码对边缘锐利度敏感：关掉抗锯齿，避免缩放后模块之间糊出灰边
+  svg.setAttribute("shape-rendering", "crispEdges");
+
+  // 白底：图案必须黑压白，深色主题下透明底会出现反色码，扫不出来
+  const bg = document.createElementNS(SVG_NS, "rect");
+  bg.setAttribute("x", String(-quiet));
+  bg.setAttribute("y", String(-quiet));
+  bg.setAttribute("width", String(side));
+  bg.setAttribute("height", String(side));
+  bg.setAttribute("fill", "#ffffff");
+  svg.appendChild(bg);
+
+  const appendRun = (x: number, y: number, width: number): void => {
+    const rect = document.createElementNS(SVG_NS, "rect");
+    rect.setAttribute("x", String(x));
+    rect.setAttribute("y", String(y));
+    rect.setAttribute("width", String(width));
+    rect.setAttribute("height", "1");
+    rect.setAttribute("fill", "#000000");
+    svg.appendChild(rect);
+  };
+
+  for (let row = 0; row < count; row++) {
+    let runStart = -1;
+    for (let col = 0; col < count; col++) {
+      if (qr.isDark(row, col)) {
+        if (runStart < 0) runStart = col;
+      } else if (runStart >= 0) {
+        appendRun(runStart, row, col - runStart);
+        runStart = -1;
+      }
+    }
+    if (runStart >= 0) appendRun(runStart, row, count - runStart);
+  }
+  container.appendChild(svg);
+}
+
 // --- 传输层 ---
 
 interface JsonWithHeaders {
@@ -340,9 +408,7 @@ export class QrLoginModal extends Modal {
       const qr = qrcode(0, "M");
       qr.addData(session.qrContent);
       qr.make();
-      this.qrEl.empty();
-      // 二维码内容是本地拼出的 unikey 链接，非外部 HTML
-      this.qrEl.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+      paintQrSvg(this.qrEl, qr);
       this.setStatus("打开手机网易云音乐 App 扫一扫");
       this.startPolling();
     } catch (e) {
