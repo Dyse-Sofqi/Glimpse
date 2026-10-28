@@ -13,6 +13,8 @@ import { formatBytes } from "../../music/tagSize";
 import { isWindowsAbsolutePath } from "../../music/songScanner";
 import { MUSIC_SOURCES, type MusicSource } from "../../music/shared";
 import { getBaselineCookie, getJarCookie, getStoredPlatformCookie, hydratePlatformCookie, sanitizeCookie, type CookiePlatform } from "../../music/cookieJar";
+import { QrLoginModal, supportsQrLogin } from "../../music/qrLogin";
+import { launchBrowserCookieHelper } from "../../music/browser-login";
 
 /** 平台标识收窄（MusicSource 的成员与 CookiePlatform 完全一致，这里显式转换以便类型安全地查 JAR） */
 const asCookiePlatform = (key: MusicSource): CookiePlatform => key as CookiePlatform;
@@ -363,31 +365,42 @@ async function selectFolderNative(app: App, defaultPath: string): Promise<string
 }
 
 /**
- * 「document.cookie」可点击代码芯片：点击复制到剪贴板（复用全局 copyText，带 execCommand 降级），
- * 图标短暂变为 ✓ 反馈后复原，免去用户手动键入。
+ * 可点击复制的代码芯片：点击把 value 复制到剪贴板（复用全局 copyText，带 execCommand 降级），
+ * 图标短暂变为 ✓ 反馈后复原，免去用户手动键入。用于获取 Cookie 流程里需要带到别处的字符串：
+ * document.cookie → 控制台执行；music.163.com / u.y.qq.com → 粘进「网络」面板筛选框定位请求。
  */
-function createCookieCopyChip(container: HTMLElement) {
+function createCopyChip(container: HTMLElement, value: string, doneNotice: string) {
   const chip = container.createEl("code", { cls: "gm-cookie-copy-chip" });
-  chip.setAttribute("title", "点击复制 document.cookie");
-  chip.createSpan({ cls: "gm-cookie-copy-chip-text", text: "document.cookie" });
+  chip.setAttribute("title", `点击复制 ${value}`);
+  chip.createSpan({ cls: "gm-cookie-copy-chip-text", text: value });
   const iconEl = chip.createSpan({ cls: "gm-cookie-copy-chip-icon" });
   setIcon(iconEl, "copy");
   chip.addEventListener("click", async () => {
-    const ok = await copyText("document.cookie");
+    const ok = await copyText(value);
     if (!ok) {
-      new Notice("复制失败，请在控制台手动输入 document.cookie", 3000);
+      new Notice(`复制失败，请手动复制 ${value}`, 3000);
       return;
     }
     iconEl.empty();
     setIcon(iconEl, "check");
     chip.addClass("gm-cookie-copy-chip-done");
-    new Notice("已复制 document.cookie，请到控制台粘贴并回车", 2000);
+    new Notice(doneNotice, 2000);
     window.setTimeout(() => {
       iconEl.empty();
       setIcon(iconEl, "copy");
       chip.removeClass("gm-cookie-copy-chip-done");
     }, 1500);
   });
+}
+
+/** 提示文案分段：普通文本渲染为 span，chip 段渲染成上面可点击复制的代码芯片 */
+type HintSegment = string | { chip: string; notice: string };
+
+function renderHintSegments(container: HTMLElement, segments: HintSegment[]) {
+  for (const seg of segments) {
+    if (typeof seg === "string") container.createSpan({ text: seg });
+    else createCopyChip(container, seg.chip, seg.notice);
+  }
 }
 
 /** 拖动排序落点：把 src 平台移到 target 平台之前/之后 → 持久化 → 重排 cookie 行 DOM → 刷新序号 */
@@ -405,6 +418,8 @@ function createCookieRow(
 ): void {
   const settings = plugin.music!.getSettings();
   const cookieKey = asCookiePlatform(key);
+  // 扫码登录（当前仅网易云，桌面端）：扫二维码需要另一台手机，凭证回调依赖 Node https 读 Set-Cookie
+  const qrSupported = supportsQrLogin(key) && Platform.isDesktopApp;
   const raw = settings.platformCookies[key] ?? "";
   // 播种 JAR 并取归一化值：手工粘贴常带换行/多余空格，归一化后同一份值也便于与续期结果比较
   const value = raw ? hydratePlatformCookie(cookieKey, raw) : "";
@@ -447,6 +462,9 @@ function createCookieRow(
   textarea.placeholder = `登录 ${site} 后 F12 → 控制台输入 document.cookie 复制整段`;
   textarea.addEventListener("input", () => {
     const v = sanitizeCookie(textarea.value);
+    // 空值不落库：清空请走「清除」按钮。否则一个仍显示导入前空内容的输入框
+    // （例如取件器刚把凭证写进设置时，设置页正开着）会在任何一次输入事件里把凭证抹掉。
+    if (!v) return;
     settings.platformCookies = { ...settings.platformCookies, [key]: v };
     // 手动重新粘贴/清空 → 之前的「自动续期」标记失效
     settings.platformCookiesUpdatedAt = { ...settings.platformCookiesUpdatedAt, [key]: 0 };
@@ -454,31 +472,69 @@ function createCookieRow(
     refreshStatus();
   });
   // 获取提示：QQ 的登录凭证 Cookie（qqmusic_key/qm_keyst）为 HttpOnly，控制台 document.cookie 读不到，
-  // 必须从网络面板复制请求头；其余平台 document.cookie 可用，做成可点击代码芯片（点击复制，图标短暂变 ✓ 反馈）
+  // 必须从网络面板复制请求头；其余平台 document.cookie 可用。提示里需要用户带到别处的字符串
+  // （域名 → 网络面板筛选框、document.cookie → 控制台）一律做成可点击复制的代码芯片
   const hint = body.createDiv({ cls: "gm-cookie-hint" });
   if (key === "qq") {
-    hint.createSpan({
-      text: "QQ 免费歌曲无需 Cookie 即可直接下载/试听；Cookie 仅用于 VIP 歌曲（需绿钻账号）。获取方式：点「打开登录页」登录并播放任意歌曲 → 按 F12 打开「网络 (Network)」面板 → 找到发往 u.y.qq.com 的请求 → 复制请求标头中整段 Cookie 值。注意：控制台 document.cookie 读不到 QQ 登录凭证（HttpOnly）；且新版网页登录的 Cookie 可能不被下载接口认可（服务端实测为准），此时免费歌曲不受影响。仅存本地 data.json。",
-    });
+    renderHintSegments(hint, [
+      "QQ 免费歌曲无需 Cookie 即可直接下载/试听；Cookie 仅用于 VIP 歌曲（需绿钻账号）。获取方式：点「打开登录页」登录并播放任意歌曲 → 按 F12 打开「网络 (Network)」面板 → 点任意发往 ",
+      { chip: "u.y.qq.com", notice: "已复制 u.y.qq.com，可粘贴到「网络」面板筛选框快速定位该域名的请求" },
+      " 的请求 → 复制请求标头中整段 Cookie 值。注意：控制台 document.cookie 读不到 QQ 登录凭证（HttpOnly）；且新版网页登录的 Cookie 可能不被下载接口认可（服务端实测为准），此时免费歌曲不受影响。仅存本地 data.json。",
+    ]);
   } else {
-    hint.createSpan({
-      text: key === "netease"
-        ? "可选：网易云 Cookie 用于 VIP 高音质下载与「账号歌单」同步。获取方式（登录凭证 MUSIC_U 是 HttpOnly，控制台 document.cookie 读不到）：点「打开登录页」登录 → 按 F12 打开「网络 (Network)」面板 → 刷新页面 → 点任意发往 music.163.com 的请求 → 复制请求标头中整段 Cookie 值（需含 MUSIC_U=…）粘贴到上方输入框。仅存本地 data.json。"
+    const neteaseQr = key === "netease" && qrSupported;
+    renderHintSegments(hint, [
+      key === "netease"
+        ? neteaseQr
+          ? "可选：网易云 Cookie 用于 VIP 高音质下载与「账号歌单」同步。推荐点下方「一键登录」：在浏览器里登录一次，凭证自动写回，全程无需复制粘贴（登录态会保留，下次秒过）。扫码登录对多数账号已被网易云风控拦截（8821），仅在「一键登录」不可用时才值得一试。也可手动获取（登录凭证 MUSIC_U 是 HttpOnly，控制台 document.cookie 读不到）：点「打开登录页」登录 → 按 F12 打开「网络 (Network)」面板 → 刷新页面 → 点任意发往 "
+          : "可选：网易云 Cookie 用于 VIP 高音质下载与「账号歌单」同步。获取方式（登录凭证 MUSIC_U 是 HttpOnly，控制台 document.cookie 读不到）：点「打开登录页」登录 → 按 F12 打开「网络 (Network)」面板 → 刷新页面 → 点任意发往 "
         : key === "kugou"
           ? "可选（下载不使用 Cookie，此项仅用于展示登录状态）。如需配置：点「打开登录页」登录 → 按 F12 打开控制台 → 点击 "
           : "可选（下载不使用 Cookie，预留）。如需配置：点「打开登录页」登录 → 按 F12 打开控制台 → 点击 ",
-    });
-    if (key !== "netease") {
-      createCookieCopyChip(hint);
-      hint.createSpan({ text: " 并回车执行 → 复制控制台输出，粘贴到上方输入框。仅存本地 data.json。" });
-    }
+      key === "netease"
+        ? { chip: "music.163.com", notice: "已复制 music.163.com，可粘贴到「网络」面板筛选框快速定位该域名的请求" }
+        : { chip: "document.cookie", notice: "已复制 document.cookie，请到控制台粘贴并回车" },
+      key === "netease"
+        ? " 的请求 → 复制请求标头中整段 Cookie 值（需含 MUSIC_U=…）粘贴到上方输入框。仅存本地 data.json。"
+        : " 并回车执行 → 复制控制台输出，粘贴到上方输入框。仅存本地 data.json。",
+    ]);
   }
-  // 续期说明：服务端在响应头里回吐新 Cookie 时会自动合并保存（域名+名字白名单），不必重去 F12 复制
+  // 续期说明按平台说实话：网易云 MUSIC_U 是登录时一次性下发的长效凭证，之后所有接口
+  // 都不回吐 Set-Cookie（实测 0 条），这个平台不存在「滚动续期」；QQ 的 qm_keyst 才会随请求刷新。
   body.createDiv({
     cls: "gm-cookie-hint",
-    text: "Cookie 会自动续期：平台在响应头里回吐新凭证时，插件自动合并保存（仅限该平台的登录凭证，仅存本地 data.json），续期后状态徽标会标注「已自动续期」时间。彻底失效（异地登录/风控作废）时仍需重新登录复制一次。",
+    text: key === "netease"
+      ? "这份凭证长期有效，但不会被「续期」——MUSIC_U 是登录那一刻一次性下发的，网易云之后的请求不会回吐新值。它失效只有一种原因：被服务端吊销（风控 / 异地登录 / 改密码）。吊销后插件会自动弹出「一键登录」，点一下重取即可（约十秒，不用复制粘贴）。"
+      : "Cookie 会自动续期：平台在响应头里回吐新凭证时，插件自动合并保存（仅限该平台的登录凭证，仅存本地 data.json），续期后状态徽标会标注「已自动续期」时间。彻底失效（异地登录/风控作废）时仍需重新登录一次。",
   });
   const actions = body.createDiv({ cls: "gm-cookie-body-actions" });
+  // 一键登录（主路径）：拉起取件器 → 真实浏览器登录 → obsidian:// 回传 → 直接写入设置。
+  // 扫码被账号级风控（8821）封死，先扫码再失败纯属浪费用户时间，所以浏览器是默认入口。
+  if (qrSupported) {
+    const autoBtn = actions.createEl("button", { text: "一键登录", cls: "gm-cookie-login-btn mod-cta" });
+    autoBtn.setAttribute("title", `打开浏览器登录 ${name}，凭证自动写入（无需复制粘贴）`);
+    autoBtn.addEventListener("click", () => {
+      if (launchBrowserCookieHelper(plugin.app) === "spawned") {
+        new Notice("已打开浏览器：登录完成后凭证会自动写入，无需粘贴");
+        return;
+      }
+      window.open(PLATFORMS[key]?.loginUrl ?? `https://${site}/`, "_blank");
+      testResultEl.setText("未能自动启动取件器：已打开登录页，请手动复制 Cookie");
+      new Notice("未能启动取件器，已改为打开登录页");
+    });
+  }
+  // 扫码：仅对未被风控的账号有效，保留为备选（默认入口已是一键登录）
+  if (qrSupported) {
+    const qrBtn = actions.createEl("button", { text: "扫码", cls: "gm-cookie-login-btn" });
+    qrBtn.setAttribute("title", "备选：手机 App 扫码（账号被风控时会返回 8821，届时请用「一键登录」）");
+    qrBtn.addEventListener("click", () => {
+      new QrLoginModal(plugin.app, cookieKey, getStoredPlatformCookie(settings, cookieKey), (cookie) => {
+        textarea.value = cookie;
+        testResultEl.setText("");
+        refreshStatus();
+      }).open();
+    });
+  }
   const loginBtn = actions.createEl("button", { text: "打开登录页", cls: "gm-cookie-login-btn" });
   loginBtn.setAttribute("title", `在系统浏览器打开 ${site} 的登录页面`);
   loginBtn.addEventListener("click", () => {

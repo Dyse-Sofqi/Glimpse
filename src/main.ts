@@ -41,6 +41,8 @@ import { TeleprompterManager } from "./teleprompter";
 import { MUSIC_VIEW_TYPE } from "./music/shared";
 import { MusicManager } from "./music/manager";
 import MusicView from "./music/musicView";
+import { registerNeteaseCookieImport } from "./music/cookie-import";
+import { configureLoginExpiredHost } from "./music/login-expired";
 
 /**
  * 两个权重是否「名称成对」：去掉目录与扩展名后同名（大小写不敏感）。
@@ -168,6 +170,10 @@ export default class GlimpsePlugin extends Plugin {
     this.registerView(MUSIC_VIEW_TYPE, (leaf) => new MusicView(leaf, this.music));
     this.settingsTab = new SettingTab(this.app, this);
     this.addSettingTab(this.settingsTab);
+    // 取件器（tools/netease-cookie）抓到凭证后经 obsidian:// 回传，直接写入设置并弹原生弹窗
+    registerNeteaseCookieImport(this);
+    // 请求层发现网易云登录失效时直接弹「一键登录」，不要求用户自己想起来去设置页
+    configureLoginExpiredHost(this);
     this.staticHighlighter = staticHighlighterExtension(this);
     this.extensions = [];
     this.updateSelectionHighlighter();

@@ -1,6 +1,6 @@
 {
 	"name": "glimpse",
-	"version": "1.1.4",
+	"version": "1.1.5",
 	"description": "An Obsidian plugin that dynamically highlights text based on selection or search query",
 	"main": "main.js",
 	"scripts": {
@@ -46,6 +46,7 @@
 		"typescript-json-schema": "^0.53.0"
 	},
 	"dependencies": {
-		"playwright": "^1.63.0"
+		"playwright": "^1.63.0",
+		"qrcode-generator": "^2.0.4"
 	}
 }

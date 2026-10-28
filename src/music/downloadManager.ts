@@ -38,6 +38,7 @@ import {
 } from "./kuwoMusic";
 import { MUSIC_SOURCES, type MusicSource, asArrayBuffer } from "./shared";
 import { refreshCookieFromResponse, resolvePlatformCookie, splitSetCookieHeader } from "./cookieJar";
+import { reportNeteaseLoginExpired } from "./login-expired";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 /** QQ「测试连接」用的免费探针歌曲（许嵩《素颜 (Live)》，2026-09 实测免登录可拿直链） */
@@ -338,9 +339,20 @@ export async function fetchNeteaseAccountPlaylists(cookie: string): Promise<Reco
     { "Cookie": c, platform: "netease" });
   if (!acctRes) throw new Error("获取账号信息失败（网络或接口变更）");
   const info = parseAccountLoginState(new TextDecoder().decode(acctRes.data));
-  if (!info.ok) throw new Error("网易云 Cookie 无效或已过期，请重新登录复制");
+  if (!info.ok) {
+    // 账号接口连 200 都不给：凭证被服务端拒绝（吊销 / 风控 / 格式损坏）
+    reportNeteaseLoginExpired("revoked");
+    throw new Error("网易云登录已失效，点「一键登录」重新获取凭证");
+  }
   if (!info.loggedIn) {
-    throw new Error("Cookie 未包含登录凭证（缺 MUSIC_U）：新版网页登录的 MUSIC_U 是 HttpOnly，document.cookie 读不到。请在 music.163.com 登录后按 F12 → 网络 面板刷新，复制任一请求请求头里的完整 Cookie（需含 MUSIC_U=…）再粘贴");
+    // code 200 但 profile 为空：区分「凭证被吊销」与「粘贴的值里没有 MUSIC_U」
+    const hasToken = /(^|;\s*)MUSIC_U=/.test(c);
+    reportNeteaseLoginExpired(hasToken ? "revoked" : "anonymous");
+    throw new Error(
+      hasToken
+        ? "网易云登录已失效（凭证被服务端吊销），点「一键登录」重新获取"
+        : "Cookie 未包含登录凭证（缺 MUSIC_U）：新版网页登录的 MUSIC_U 是 HttpOnly，document.cookie 读不到。请用「一键登录」重新获取",
+    );
   }
   const uid = info.uid;
   // 2. user/playlist 分页（每页 200，上限 10 页防失控；创建 + 收藏都在返回里）
@@ -446,11 +458,14 @@ export async function testPlatformConnection(
     // code===200 不代表已登录：匿名 Cookie（缺 MUSIC_U）同样返回 200 但 profile=null，
     // 必须以 profile.userId 判定，否则会出现「测试有效但账号歌单报 Cookie 过期」的假阳性
     const info = parseAccountLoginState(new TextDecoder().decode(res.data));
-    if (!info.ok) return { ok: false, message: "网易云 Cookie 无效或已过期，请重新登录复制" };
+    // 设置页里测试时不弹「一键登录」窗口（用户已在操作路径上），只把原因与下一步说清
+    if (!info.ok) return { ok: false, message: "网易云登录已失效（接口拒绝），点「一键登录」重新获取" };
     if (!info.loggedIn) {
       return {
         ok: false,
-        message: "Cookie 未包含登录凭证（缺 MUSIC_U）：新版网页登录的 MUSIC_U 是 HttpOnly，document.cookie 读不到。请在 music.163.com 登录后按 F12 → 网络 面板刷新，复制任一请求请求头里的完整 Cookie（需含 MUSIC_U=…）再粘贴",
+        message: /(^|;\s*)MUSIC_U=/.test(c)
+          ? "网易云登录已失效（凭证被服务端吊销），点「一键登录」重新获取"
+          : "Cookie 未包含登录凭证（缺 MUSIC_U）：新版网页登录的 MUSIC_U 是 HttpOnly，document.cookie 读不到。请用「一键登录」重新获取",
       };
     }
     return { ok: true, message: info.vipType !== 0 ? "网易云 Cookie 有效（会员）" : "网易云 Cookie 有效（普通账号）" };
@@ -855,9 +870,17 @@ async function downloadNeteaseVipBytes(
   const accountBody = `params=${encodeURIComponent(params)}&encSecKey=${encodeURIComponent(encSecKey)}`;
   const accountRes = await httpPost(NETEASE_ACCOUNT_API, accountBody, { "Cookie": c, platform: "netease" });
   if (!accountRes) return null;
-  const vip = parseVipAccountResponse(new TextDecoder().decode(accountRes.data));
+  const accountText = new TextDecoder().decode(accountRes.data);
+  const vip = parseVipAccountResponse(accountText);
   // 需登录有效（ok）且为会员（vipType!==0）才走 VIP 直链；普通账号/登录失效均回退外链
-  if (!vip.ok || vip.vipType === 0) return null;
+  if (!vip.ok || vip.vipType === 0) {
+    // 凭证被吊销时 account 仍返回 code 200，只是 profile 为空 —— 这条链路会静默降级成 128k 外链，
+    // 用户看到的是「无损怎么没了」而不是「登录失效」，所以在这里补一次显式上报（有 MUSIC_U 才算吊销）
+    if (/(^|;\s*)MUSIC_U=/.test(c) && !parseAccountLoginState(accountText).loggedIn) {
+      reportNeteaseLoginExpired("revoked");
+    }
+    return null;
+  }
 
   // 2. 尝试 eapi 无损（quality=lossless→hires→exhigh 逐级降级）
   const eapiPayload = (level: string) => JSON.stringify({

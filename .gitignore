@@ -21,6 +21,7 @@ data.json
 
 # AI assistant working files
 .workbuddy-ai/
+.workbuddy/
 
 # 发版工作目录（本地脚本，含 GitHub/Gitee 令牌，绝不入库）
 .tmp-release/

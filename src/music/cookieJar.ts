@@ -123,8 +123,11 @@ export function parseSetCookieHeader(value: string | string[] | undefined | null
 
 /**
  * 浏览器 fetch 的折叠串按逗号切分（`a=1, b=2` → 两条）。
- * 只有「逗号后紧跟 cookie 名= 或纯 token，且不是日期/时间的续段」才切：
- * `HttpOnly, __csrf=xyz`、`, NMTID=zzz` 切；`Expires=Fri, 13 Jun 2026`、`Domain=a, Path=/` 不切。
+ * 只有「逗号后紧跟 cookie 名=（且不是 Path/Domain 等属性段），也不是日期/值内逗号的续段」才切：
+ * `HttpOnly, __csrf=xyz`、`Domain=music.163.com, NMTID=zzz` 切；`Expires=Fri, 13 Jun 2026`、
+ * `Path=/`（属性段）、`a=1,2,3`（值内逗号）不切。注意不要给 `Expires=`/`Domain=` 属性后的
+ * 逗号开「一律不切」的口子——网易云每条 Set-Cookie 恰好以 `Domain=music.163.com` 结尾，
+ * 那样会把折叠串里的下一条 cookie（含 MUSIC_U）整个吞进上一条。
  */
 export function splitSetCookieHeader(header: string): string[] {
   const out: string[] = [];
@@ -132,25 +135,16 @@ export function splitSetCookieHeader(header: string): string[] {
   for (let i = 0; i < header.length; i++) {
     const ch = header[i];
     if (ch !== ",") { buf += ch; continue; }
-    const attr = lastAttrName(buf);
-    // Expires/Domain 的值本身含逗号，这两个属性后面的逗号一律不切
-    if (attr === "expires" || attr === "domain") { buf += ch; continue; }
     const rest = header.slice(i + 1);
     const m = /^\s*([A-Za-z0-9_.~-]+)\s*=/.exec(rest);
+    // 日期值自带逗号（`Expires=Fri, 13 Jun 2026 …`）、值内含逗号（`a=1,2,3`）：逗号后跟数字
+    // 或「星期缩写, 」续段时不切
     const isDateContinuation = /^\s*\d/.test(rest) || /^\s*[A-Za-z]{3},\s/.test(rest);
     if (m && !COOKIE_ATTRS.has(m[1].toLowerCase()) && !isDateContinuation) { out.push(buf); buf = ""; continue; }
     buf += ch;
   }
   if (buf.trim()) out.push(buf);
   return out;
-}
-
-/** 取缓冲区里最后一个 `;` 分隔段的属性名（无 `=` 的段按属性名返回，空段返回空） */
-function lastAttrName(buf: string): string {
-  const seg = (buf.split(";").pop() ?? "").trim();
-  if (!seg) return "";
-  const eq = seg.indexOf("=");
-  return (eq < 0 ? seg : seg.slice(0, eq)).trim().toLowerCase();
 }
 
 /** 解析 `Cookie` 请求头为有序键值对（值可能含 `=`，按首个 `=` 切分） */
@@ -340,6 +334,58 @@ export function refreshCookieFromResponse(
     sink(platform, merged);
   }
   return result;
+}
+
+/**
+ * 登录写入的共同落地：合并 → 更新会话值 / baseline → 立即落盘（不受续期节流约束）。
+ * 返回合并后的 Cookie；old 与 kept 都为空时返回 null。
+ */
+function commitLogin(platform: CookiePlatform, stored: string, kept: ParsedSetCookie[]): string | null {
+  const old = getJarCookie(platform, stored);
+  // 合并策略与续期一致：旧项保序、同名覆盖、新名追加（保留旧值里的非登录辅助项）
+  const merged = mergeCookieUpdates(old, kept) ?? old;
+  if (!merged) return null;
+  jar.set(platform, merged);
+  baseline.set(platform, merged);
+  lastPersist.set(platform, Date.now());
+  sink?.(platform, merged);
+  return merged;
+}
+
+/**
+ * 扫码登录写入：把登录确认接口响应头里的 Set-Cookie 过平台名字白名单后合并进本地 Cookie。
+ * 与 refreshCookieFromResponse 的差异：续期要求 JAR 里已有旧值才生效，登录（首次或已过期重登）
+ * 是从零写入，且要立即落盘（不受节流约束——登录是显式低频事件）。
+ * 登录写入的值同时记为新 baseline：之后服务端续期才会在徽标上显示「已自动续期」。
+ * 返回合并后的 Cookie（无可用的白名单内 Cookie 时返回 null，调用方提示改用手动复制）。
+ */
+export function applyLoginSetCookie(
+  platform: CookiePlatform,
+  stored: string,
+  header: string | string[] | null | undefined,
+): string | null {
+  const kept = parseSetCookieHeader(header)
+    .filter((c) => nameAllowed(platform, c.name))
+    .filter((c) => !c.isDelete);
+  if (kept.length === 0) return null;
+  return commitLogin(platform, stored, kept);
+}
+
+/**
+ * 扫码登录写入（Cookie 串版本）：部分平台把登录凭证直接放在状态接口的响应体里
+ * （`{ code: 803, cookie: "MUSIC_U=…; __csrf=…" }`）而不是 Set-Cookie 头，
+ * 语义与 applyLoginSetCookie 完全一致 —— 同样过名字白名单、同样立即落盘。
+ */
+export function applyLoginCookieString(
+  platform: CookiePlatform,
+  stored: string,
+  cookieString: string,
+): string | null {
+  const kept = parseCookieHeader(cookieString)
+    .filter(([name]) => nameAllowed(platform, name))
+    .map(([name, value]) => ({ name, value, isDelete: !value }));
+  if (kept.length === 0) return null;
+  return commitLogin(platform, stored, kept);
 }
 
 /** 仅测试/调试用：清空会话内状态 */

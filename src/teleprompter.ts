@@ -48,15 +48,19 @@ interface TpMatch {
   text: string;
 }
 
-/** 扫描 ==...== 匹配（与高亮索引同一规则） */
+/** 扫描 ==...== 匹配（与高亮索引同一规则）。
+ *  内容允许含单个 `=`（如 `==青莲剑·宫=4631==`）—— 高亮以成对 `==` 为界，等号不是分隔符；
+ *  旧实现用 `[^=]+?` 排除等号，带算式的条目会被整条漏掉。跨行不算高亮，故限定在同一行内。 */
 function scanMatches(text: string): TpMatch[] {
   const items: TpMatch[] = [];
-  const re = /==[^=]+?==/g;
+  const re = /==([^\n]+?)==/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
+    const inner = m[1].trim();
+    if (!inner || /^=+$/.test(inner)) continue; // `====` 这类纯等号串不是高亮
     items.push({
       line: text.slice(0, m.index).split("\n").length - 1,
-      text: m[0].replace(/^==|==$/g, "").trim(),
+      text: inner,
     });
   }
   return items;

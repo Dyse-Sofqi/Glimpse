@@ -73,15 +73,20 @@ function parseHeadings(fullText: string): HeadingNode[] {
   return headings;
 }
 
-/** Scan ==highlight== matches from plain text（与提词器 scanMatches 同规则；line 为 1 基）。 */
+/** Scan ==highlight== matches from plain text（与提词器 scanMatches 同规则；line 为 1 基）。
+    内容允许含单个 `=`（如 `==青莲剑·宫=4631==`）：Obsidian 的高亮只以成对 `==` 为界，
+    `=` 不是分隔符 —— 旧实现用 `[^=]+?` 排除等号，带算式的条目会被整条漏掉（索引显示 0 条）。
+    跨行的 `==…==` 不算高亮，故用 `[^\n]` 限定在同一行内；纯等号串（`====`）另行排除。 */
 function scanHighlightMatches(text: string): MatchEntry[] {
   const items: MatchEntry[] = [];
-  const re = /==[^=]+?==/g;
+  const re = /==([^\n]+?)==/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
+    const inner = m[1].trim();
+    if (!inner || /^=+$/.test(inner)) continue; // `====` / `======` 这类纯等号串不是高亮
     items.push({
       line: text.slice(0, m.index).split("\n").length, // 1-based
-      text: m[0].replace(/^==|==$/g, "").trim(),
+      text: inner,
     });
   }
   return items;
